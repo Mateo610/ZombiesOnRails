@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // ============================================================================
 // ZOMBIE TYPES CONFIG
@@ -11,7 +12,8 @@ export const ZOMBIE_TYPES = {
         damage: 10,
         points: 100,
         color: 0xff0000,
-        scale: 1.0
+        scale: 1.0,
+        modelPath: '/models/models/zombies/zombie/source/scene.glb'
     },
     runner: {
         name: 'Runner',
@@ -20,7 +22,8 @@ export const ZOMBIE_TYPES = {
         damage: 15,
         points: 150,
         color: 0xff6600,
-        scale: 0.9
+        scale: 0.9,
+        modelPath: '/models/models/zombies/zombie/source/scene.glb'
     },
     tank: {
         name: 'Tank',
@@ -29,7 +32,8 @@ export const ZOMBIE_TYPES = {
         damage: 25,
         points: 200,
         color: 0x660000,
-        scale: 1.3
+        scale: 1.3,
+        modelPath: '/models/models/zombies/bloated/source/scene.glb'
     },
     crawler: {
         name: 'Crawler',
@@ -38,9 +42,13 @@ export const ZOMBIE_TYPES = {
         damage: 5,
         points: 75,
         color: 0x00ff00,
-        scale: 0.5
+        scale: 0.5,
+        modelPath: '/models/models/zombies/zombie/source/scene.glb'
     }
 };
+
+// Shared loader instance
+const gltfLoader = new GLTFLoader();
 
 // ============================================================================
 // ZOMBIE CLASS
@@ -64,7 +72,7 @@ export default class Zombie {
         this.damagePlayer = damagePlayer;
         this.incrementCombo = incrementCombo;
         
-        // Create mesh
+        // Create temporary placeholder mesh (will be replaced by GLB)
         const geometry = this.type === 'crawler'
             ? new THREE.BoxGeometry(0.8, 0.5, 0.8)
             : new THREE.BoxGeometry(0.5, 1.5, 0.5);
@@ -79,6 +87,7 @@ export default class Zombie {
         this.mesh.scale.setScalar(this.config.scale);
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
+        this.isPlaceholder = true;
         
         // Stats
         this.health = this.config.health;
@@ -107,7 +116,104 @@ export default class Zombie {
         
         this.scene.add(this.mesh);
         
+        // Load GLB model asynchronously
+        this.loadModel();
+        
         console.log(`🧟 Spawned ${this.config.name} at`, position);
+    }
+    
+    /**
+     * Load GLB model for this zombie
+     */
+    async loadModel() {
+        try {
+            console.log(`📦 Loading zombie model: ${this.config.modelPath}`);
+            const gltf = await gltfLoader.loadAsync(this.config.modelPath);
+            const model = gltf.scene.clone();
+            
+            // Enable shadows on all meshes
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    
+                    // Ensure materials are visible (fix for dark/invisible models)
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => {
+                                if (mat) {
+                                    mat.needsUpdate = true;
+                                    // Increase emissive if material is too dark
+                                    if (!mat.emissive) mat.emissive = new THREE.Color(0x000000);
+                                    if (mat.color) {
+                                        // Lighten very dark materials
+                                        if (mat.color.r < 0.1 && mat.color.g < 0.1 && mat.color.b < 0.1) {
+                                            mat.color.multiplyScalar(2);
+                                        }
+                                    }
+                                }
+                            });
+                        } else {
+                            child.material.needsUpdate = true;
+                            if (!child.material.emissive) child.material.emissive = new THREE.Color(0x000000);
+                            if (child.material.color) {
+                                if (child.material.color.r < 0.1 && child.material.color.g < 0.1 && child.material.color.b < 0.1) {
+                                    child.material.color.multiplyScalar(2);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Store original material for hit flash
+                    if (!child.userData.originalMaterial) {
+                        child.userData.originalMaterial = child.material;
+                    }
+                }
+            });
+            
+            // Get model bounding box to determine proper scale
+            const box = new THREE.Box3().setFromObject(model);
+            const size = box.getSize(new THREE.Vector3());
+            const maxDimension = Math.max(size.x, size.y, size.z);
+            
+            // Calculate scale based on expected zombie height (roughly 1.8 units)
+            // If model is very large or very small, adjust scale accordingly
+            let calculatedScale = this.config.scale;
+            if (maxDimension > 0) {
+                // If model is larger than 10 units, scale it down
+                if (maxDimension > 10) {
+                    calculatedScale = (this.config.scale * 1.8) / maxDimension;
+                } else if (maxDimension < 0.5) {
+                    // If model is very small, scale it up
+                    calculatedScale = (this.config.scale * 1.8) / maxDimension;
+                }
+            }
+            
+            // Position and scale model
+            model.position.copy(this.mesh.position);
+            model.scale.setScalar(calculatedScale);
+            model.rotation.y = this.mesh.rotation.y;
+            
+            console.log(`📏 ${this.config.name} model size: ${maxDimension.toFixed(2)}, applied scale: ${calculatedScale.toFixed(2)}`);
+            
+            // Replace placeholder with model
+            const oldMesh = this.mesh;
+            this.mesh = model;
+            this.mesh.userData.zombie = this;
+            this.mesh.userData.isZombie = true;
+            
+            // Remove placeholder and add model
+            this.scene.remove(oldMesh);
+            oldMesh.geometry.dispose();
+            oldMesh.material.dispose();
+            this.scene.add(this.mesh);
+            
+            this.isPlaceholder = false;
+            console.log(`✅ Loaded GLB model for ${this.config.name}`);
+        } catch (error) {
+            console.error(`❌ Failed to load zombie model for ${this.config.name}:`, error);
+            // Keep placeholder mesh if loading fails
+        }
     }
     
     update(deltaTime, slowMoActive) {
@@ -117,7 +223,16 @@ export default class Zombie {
         if (this.hitFlashTimer > 0) {
             this.hitFlashTimer -= deltaTime;
             if (this.hitFlashTimer <= 0) {
-                this.mesh.material.emissiveIntensity = 0.3;
+                if (this.isPlaceholder) {
+                    this.mesh.material.emissiveIntensity = 0.3;
+                } else {
+                    // Reset all mesh materials in the model
+                    this.mesh.traverse((child) => {
+                        if (child.isMesh && child.userData.originalMaterial) {
+                            child.material = child.userData.originalMaterial;
+                        }
+                    });
+                }
             }
         }
         
@@ -199,7 +314,19 @@ export default class Zombie {
         this.health -= actualDamage;
         
         // Flash effect
-        this.mesh.material.emissiveIntensity = 1.0;
+        if (this.isPlaceholder) {
+            this.mesh.material.emissiveIntensity = 1.0;
+        } else {
+            // Flash all meshes in the model
+            this.mesh.traverse((child) => {
+                if (child.isMesh) {
+                    const flashMaterial = child.material.clone();
+                    flashMaterial.emissive = new THREE.Color(this.config.color);
+                    flashMaterial.emissiveIntensity = 1.0;
+                    child.material = flashMaterial;
+                }
+            });
+        }
         this.hitFlashTimer = 0.1;
         
         console.log(`🎯 ${this.config.name} hit! ${isHeadshot ? '💀 HEADSHOT!' : ''} HP: ${this.health}/${this.maxHealth}`);
@@ -253,8 +380,31 @@ export default class Zombie {
     
     remove() {
         this.scene.remove(this.mesh);
-        this.mesh.geometry.dispose();
-        this.mesh.material.dispose();
+        
+        if (this.isPlaceholder) {
+            this.mesh.geometry.dispose();
+            this.mesh.material.dispose();
+        } else {
+            // Dispose GLB model resources
+            this.mesh.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => {
+                                if (mat.map) mat.map.dispose();
+                                if (mat.normalMap) mat.normalMap.dispose();
+                                mat.dispose();
+                            });
+                        } else {
+                            if (child.material.map) child.material.map.dispose();
+                            if (child.material.normalMap) child.material.normalMap.dispose();
+                            child.material.dispose();
+                        }
+                    }
+                }
+            });
+        }
     }
 }
 

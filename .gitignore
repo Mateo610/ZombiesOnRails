@@ -32,3 +32,6 @@ yarn-error.log*
 # Vite
 .vite/
 *.zip
+
+# Large model files (keep locally, don't commit to git)
+public/models/

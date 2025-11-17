@@ -18,6 +18,12 @@
         
         canvas {
             display: block;
+            opacity: 0;
+            transition: opacity 0.8s ease-in;
+        }
+
+        canvas.visible {
+            opacity: 1;
         }
         
         /* Arcade-style crosshair */
@@ -79,9 +85,85 @@
             transition: opacity 0.05s ease-out;
             z-index: 50;
         }
+
+        /* Loading screen overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.8s ease-out;
+        }
+
+        #loading-overlay.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #loading-text {
+            font-family: 'Courier New', monospace;
+            font-size: 32px;
+            color: #00ffff;
+            text-shadow: 0 0 20px #00ffff, 4px 4px 8px #000;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Start prompt */
+        #start-prompt {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Courier New', monospace;
+            font-size: 36px;
+            color: #00ffff;
+            text-shadow: 0 0 20px #00ffff, 4px 4px 8px #000;
+            z-index: 1000;
+            animation: pulse 1.5s ease-in-out infinite;
+            display: none;
+        }
+
+        #start-prompt.visible {
+            display: block;
+        }
+
+        /* Fade transition overlay */
+        #fade-transition {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 5000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        #fade-transition.active {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
+    <div id="loading-overlay">
+        <div id="loading-text">LOADING...</div>
+    </div>
+    <div id="fade-transition"></div>
+    <div id="start-prompt">PRESS SPACE TO START</div>
     <div id="muzzle-flash"></div>
     <div id="crosshair">
         <div class="crosshair-line horizontal"></div>
