@@ -38,7 +38,7 @@ let currentCameraScene = CAMERA_SCENES[0];
 // Player Manager
 const playerManager = new PlayerManager(
     updateUI,
-    () => {}, // Not needed - PlayerManager handles resetCombo internally
+    () => playerManager.resetCombo(),
     gameOver
 );
 
@@ -77,8 +77,7 @@ initShootingSystem({
     resetCombo: () => playerManager.resetCombo(),
     createDamageNumber,
     showHeadshotIndicator,
-    triggerScreenShake: () => { screenShakeIntensity = 0.02; },
-    getGround: () => threeRenderer.getGround() // Pass renderer's getGround method
+    triggerScreenShake: () => { screenShakeIntensity = 0.02; }
 });
 
 // ============================================================================
@@ -192,7 +191,7 @@ function updateScreenShake() {
 renderManager.setUpdateCallbacks({
     tween: () => TWEEN.update(),
     freeCamera: {
-        enabled: true, // Enabled by default for debugging
+        enabled: false,
         update: () => threeRenderer.controls.update()
     },
     gameplay: [
@@ -235,91 +234,6 @@ let factorySceneLoaded = false;
 let warehouseLoaded = false;
 let isFirstGameStart = true;
 
-/**
- * Find and set ground mesh from a GLB model
- * Uses multiple detection strategies: name, geometry characteristics, position
- */
-function findAndSetGround(model, modelName = 'model') {
-    if (!model) return false;
-    
-    let groundFound = false;
-    const candidateMeshes = [];
-    
-    // First pass: Find ground by name/material
-    model.traverse((child) => {
-        if (child.isMesh) {
-            const name = child.name.toLowerCase();
-            const matName = child.material?.name?.toLowerCase() || '';
-            
-            if (name.includes('ground') || name.includes('floor') || 
-                matName.includes('ground') || matName.includes('floor')) {
-                child.name = 'ground';
-                child.receiveShadow = true;
-                threeRenderer.setGround(child);
-                groundFound = true;
-                console.log(`✅ Found ground mesh by name in ${modelName}: "${child.name}"`);
-                return;
-            }
-            
-            // Store potential ground candidates (large horizontal meshes)
-            const box = new THREE.Box3().setFromObject(child);
-            const size = box.getSize(new THREE.Vector3());
-            const isHorizontal = size.y < Math.min(size.x, size.z) * 0.1; // Height is much smaller than width/depth
-            const isLarge = Math.max(size.x, size.z) > 10; // At least 10 units wide
-            const isLow = box.min.y < 0.5 && box.max.y < 2; // Close to ground level
-            
-            if (isHorizontal && isLarge && isLow) {
-                candidateMeshes.push({
-                    mesh: child,
-                    size: size,
-                    y: box.min.y,
-                    name: child.name
-                });
-            }
-        }
-    });
-    
-    // Second pass: If no ground found by name, try to find by geometry characteristics
-    if (!groundFound && candidateMeshes.length > 0) {
-        // Sort by lowest Y position (closest to ground level)
-        candidateMeshes.sort((a, b) => a.y - b.y);
-        const groundCandidate = candidateMeshes[0].mesh;
-        groundCandidate.name = 'ground';
-        groundCandidate.receiveShadow = true;
-        threeRenderer.setGround(groundCandidate);
-        groundFound = true;
-        console.log(`✅ Found ground mesh by geometry in ${modelName}: "${groundCandidate.name}" (Y: ${candidateMeshes[0].y.toFixed(2)})`);
-    }
-    
-    // Third pass: Try to find any mesh at y=0 or very low
-    if (!groundFound) {
-        model.traverse((child) => {
-            if (child.isMesh && !groundFound) {
-                const box = new THREE.Box3().setFromObject(child);
-                const center = box.getCenter(new THREE.Vector3());
-                // Check if mesh is near ground level (y < 1)
-                if (center.y < 1 && box.min.y < 0.5) {
-                    const size = box.getSize(new THREE.Vector3());
-                    // Prefer larger meshes (likely ground)
-                    if (size.x > 5 || size.z > 5) {
-                        child.name = 'ground';
-                        child.receiveShadow = true;
-                        threeRenderer.setGround(child);
-                        groundFound = true;
-                        console.log(`✅ Found ground mesh by position in ${modelName}: "${child.name}" at Y: ${center.y.toFixed(2)}`);
-                    }
-                }
-            }
-        });
-    }
-    
-    if (!groundFound && candidateMeshes.length > 0) {
-        console.log(`⚠️ ${modelName}: Found ${candidateMeshes.length} candidate meshes but none were suitable`);
-    }
-    
-    return groundFound;
-}
-
 function spawnSceneZombies() {
     console.log(`🎬 Spawning zombies for Scene ${gameData.currentScene + 1}: ${currentCameraScene.name}`);
     zombieManager.spawnSceneZombies(currentCameraScene.spawnPoints);
@@ -351,24 +265,30 @@ function transitionToNextScene() {
     // Switch scene models
     if (gameData.currentScene === 1) {
         sceneLoader.transitionToWarehouse();
-        // Update ground reference using improved detection
-        if (!findAndSetGround(sceneLoader.warehouseModel, 'warehouse')) {
-            console.warn('⚠️ No ground found in warehouse, using factory ground');
-        }
+        // Update ground reference
+        sceneLoader.warehouseModel?.traverse((child) => {
+            if (child.isMesh) {
+                const name = child.name.toLowerCase();
+                const matName = child.material?.name?.toLowerCase() || '';
+                if (name.includes('ground') || name.includes('floor') || 
+                    matName.includes('ground') || matName.includes('floor')) {
+                    child.name = 'ground';
+                    child.receiveShadow = true;
+                    threeRenderer.setGround(child);
+                }
+            }
+        });
     } else if (gameData.currentScene === 0) {
         sceneLoader.showFactory();
-        // Update ground reference using improved detection
-        if (!findAndSetGround(sceneLoader.currentSceneModel, 'factory')) {
-            console.warn('⚠️ No ground found in factory, creating fallback');
-            const groundGeo = new THREE.PlaneGeometry(200, 200);
-            const groundMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a });
-            const fallbackGround = new THREE.Mesh(groundGeo, groundMat);
-            fallbackGround.name = 'ground';
-            fallbackGround.rotation.x = -Math.PI / 2;
-            fallbackGround.position.y = -0.1;
-            fallbackGround.receiveShadow = true;
-            threeRenderer.setGround(fallbackGround);
-        }
+        sceneLoader.currentSceneModel?.traverse((child) => {
+            if (child.isMesh) {
+                const name = child.name.toLowerCase();
+                if (name.includes('ground') || name.includes('floor')) {
+                    child.name = 'ground';
+                    threeRenderer.setGround(child);
+                }
+            }
+        });
     }
     
     zombieManager.clearZombies();
@@ -734,12 +654,24 @@ createUI();
 // Load factory scene on startup
 sceneLoader.loadFactoryScene(scene, (factoryModel) => {
     if (factoryModel) {
-        // Find ground using improved detection
-        const groundFound = findAndSetGround(factoryModel, 'factory scene');
+        // Find ground mesh
+        factoryModel.traverse((child) => {
+            if (child.isMesh) {
+                const name = child.name.toLowerCase();
+                const matName = child.material?.name?.toLowerCase() || '';
+                if (name.includes('ground') || name.includes('floor') || 
+                    matName.includes('ground') || matName.includes('floor')) {
+                    child.name = 'ground';
+                    child.receiveShadow = true;
+                    threeRenderer.setGround(child);
+                    console.log('✅ Found ground mesh:', child.name);
+                }
+            }
+        });
         
         // Fallback ground if none found
-        if (!groundFound || !threeRenderer.getGround()) {
-            console.log('⚠️ No ground found in factory scene, creating fallback');
+        if (!threeRenderer.getGround()) {
+            console.log('⚠️ No ground found, creating fallback');
             const groundGeo = new THREE.PlaneGeometry(200, 200);
             const groundMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a });
             const fallbackGround = new THREE.Mesh(groundGeo, groundMat);
@@ -787,14 +719,8 @@ console.log('Controls:');
 console.log('  SPACE - Start Game');
 console.log('  Click - Shoot');
 console.log('  R - Reload / Restart');
-console.log('  C - Toggle Camera (Orbit/Rail)');
+console.log('  C - Toggle Camera');
 console.log('  H - Toggle Helpers');
-console.log('');
-console.log('🎥 Orbit Controls ENABLED by default:');
-console.log('  - Left Click + Drag: Rotate');
-console.log('  - Right Click + Drag: Pan');
-console.log('  - Scroll Wheel: Zoom');
-console.log('  - Press C to toggle between Orbit/Rail camera modes');
 
 // Note: Scene pre-rendering happens before revealing to ensure renderer readiness
 // This prevents startup glitch by ensuring textures are uploaded to GPU first

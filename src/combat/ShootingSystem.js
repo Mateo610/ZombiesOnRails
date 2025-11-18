@@ -12,7 +12,6 @@ let resetComboFn;
 let createDamageNumberFn;
 let showHeadshotIndicatorFn;
 let onScreenShake;
-let getGroundFn; // Reference to renderer's getGround() method
 
 const raycaster = new THREE.Raycaster();
 const muzzleFlash = document.getElementById('muzzle-flash');
@@ -29,8 +28,7 @@ export function initShootingSystem({
     resetCombo,
     createDamageNumber,
     showHeadshotIndicator,
-    triggerScreenShake,
-    getGround // Callback to get the active ground mesh
+    triggerScreenShake
 }) {
     scene = sceneRef;
     camera = cameraRef;
@@ -43,7 +41,6 @@ export function initShootingSystem({
     createDamageNumberFn = createDamageNumber;
     showHeadshotIndicatorFn = showHeadshotIndicator;
     onScreenShake = triggerScreenShake;
-    getGroundFn = getGround;
 }
 
 export function shoot(mouseX, mouseY, currentWeaponId) {
@@ -68,11 +65,7 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
     const zombieMeshes = zombies.filter(z => !z.isDead).map(z => z.mesh);
     const powerUps = powerUpsRef ? powerUpsRef() : [];
     const powerUpGroups = powerUps.map(p => p.group);
-    
-    // Use renderer's getGround() to ensure we get the correct active ground
-    // This prevents issues when both scenes exist in the scene tree
-    const ground = getGroundFn ? getGroundFn() : null;
-    const intersects = raycaster.intersectObjects([ground, ...zombieMeshes, ...powerUpGroups].filter(Boolean), true);
+    const intersects = raycaster.intersectObjects([scene.getObjectByName('ground') || null, ...zombieMeshes, ...powerUpGroups].filter(Boolean), true);
     
     if (intersects.length > 0) {
         const hitObject = intersects[0].object;
