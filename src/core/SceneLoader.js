@@ -50,7 +50,7 @@ export class SceneLoader {
      */
     async loadFactoryScene(scene, onComplete) {
         try {
-            const gltf = await this.loader.loadAsync('/models/models/scenes/factory_scene/source/scene.glb');
+            const gltf = await this.loader.loadAsync('/models/scenes/factory_scene/source/scene.glb');
             
             // Remove old scene model if exists
             if (this.currentSceneModel) {
@@ -97,7 +97,7 @@ export class SceneLoader {
         }
 
         try {
-            const gltf = await this.loader.loadAsync('/models/models/scenes/warehouse_interior/source/scene.glb');
+            const gltf = await this.loader.loadAsync('/models/scenes/warehouse_interior/source/scene.glb');
             
             this.warehouseModel = gltf.scene;
             this.warehouseModel.name = 'warehouse_interior';

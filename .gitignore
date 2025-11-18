@@ -35,3 +35,5 @@ yarn-error.log*
 
 # Large model files (keep locally, don't commit to git)
 public/models/
+
+models/
