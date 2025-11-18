@@ -8,7 +8,9 @@ import { GameState } from '../core/GameState.js';
 export class PlayerManager {
     constructor(updateUIFn, resetComboFn, gameOverFn) {
         this.updateUI = updateUIFn;
-        this.resetCombo = resetComboFn;
+        // Don't overwrite resetCombo - it's defined as a method below
+        // Store the callback if needed for external systems, but don't use it internally
+        this._resetComboCallback = resetComboFn;
         this.gameOver = gameOverFn;
     }
     

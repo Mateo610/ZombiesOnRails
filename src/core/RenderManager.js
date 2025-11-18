@@ -35,7 +35,13 @@ export class RenderManager {
     }
     
     prepareSceneForDisplay() {
-        // Make scene visible for pre-rendering (still hidden behind loading overlay)
+        // Ensure only the active scene is visible for pre-rendering
+        // Hide warehouse if it exists (it may have been preloaded)
+        if (this.sceneLoader && this.sceneLoader.warehouseModel) {
+            this.sceneLoader.warehouseModel.visible = false;
+        }
+        
+        // Make active scene visible for pre-rendering (still hidden behind loading overlay)
         if (this.sceneLoader && this.sceneLoader.currentSceneModel) {
             this.sceneLoader.currentSceneModel.visible = true;
         }

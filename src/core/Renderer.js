@@ -39,15 +39,21 @@ export class Renderer {
         // Lighting setup
         this.setupLighting();
         
-        // Controls
+        // Controls - Enabled by default for debugging
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
-        this.isFreeCamera = false;
+        this.controls.dampingFactor = 0.05;
+        this.controls.minDistance = 1;
+        this.controls.maxDistance = 100;
+        this.controls.maxPolarAngle = Math.PI; // Allow full rotation
+        this.controls.enablePan = true;
+        this.isFreeCamera = true; // Start with free camera enabled
         this.controls.enabled = this.isFreeCamera;
         
         // Scene objects
         this.ground = null;
         this.axesHelper = new THREE.AxesHelper(5);
+        this.axesHelper.visible = true; // Visible by default for debugging
         this.scene.add(this.axesHelper);
         
         // Window resize handler
@@ -101,20 +107,57 @@ export class Renderer {
     }
     
     setGround(groundMesh) {
-        if (this.ground) {
+        // Only dispose of old ground if it's a standalone fallback ground (not part of a GLB model)
+        // GLB model grounds are already in the scene tree, so we just store a reference
+        if (this.ground && this.ground.parent === this.scene) {
+            // Old ground was added directly to scene (fallback), safe to remove and dispose
             this.scene.remove(this.ground);
             if (this.ground.geometry) this.ground.geometry.dispose();
-            if (this.ground.material) this.ground.material.dispose();
+            if (this.ground.material) {
+                if (Array.isArray(this.ground.material)) {
+                    this.ground.material.forEach(mat => mat.dispose());
+                } else {
+                    this.ground.material.dispose();
+                }
+            }
         }
+        
         this.ground = groundMesh;
         if (groundMesh) {
             groundMesh.name = 'ground';
-            this.scene.add(groundMesh);
+            // Only add to scene if it's not already part of a GLB model hierarchy
+            // GLB models are added to scene as complete hierarchies, so the ground is already included
+            if (!groundMesh.parent) {
+                this.scene.add(groundMesh);
+            }
         }
     }
     
     getGround() {
-        return this.ground || this.scene.getObjectByName('ground');
+        // Prefer the explicitly set ground reference
+        if (this.ground) {
+            return this.ground;
+        }
+        
+        // Fallback: find a visible ground mesh (prevent getting wrong scene's ground)
+        // If multiple scenes exist, we want the visible one
+        const groundByName = this.scene.getObjectByName('ground');
+        if (groundByName && groundByName.visible) {
+            return groundByName;
+        }
+        
+        // Last resort: search for any visible ground in the scene
+        let foundGround = null;
+        this.scene.traverse((child) => {
+            if (child.isMesh && 
+                (child.name.toLowerCase().includes('ground') || 
+                 child.name.toLowerCase().includes('floor')) &&
+                child.visible) {
+                foundGround = child;
+            }
+        });
+        
+        return foundGround || null;
     }
     
     render() {
