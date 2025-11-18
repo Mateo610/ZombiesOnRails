@@ -1,5 +1,6 @@
 import { gameData } from '../core/GameState.js';
 import { GameState } from '../core/GameState.js';
+import { soundManager } from './SoundManager.js';
 
 /**
  * PlayerManager
@@ -71,10 +72,13 @@ export class PlayerManager {
         }
     }
     
-    reload() {
+    reload(weaponId = 'pistol') {
         if (gameData.isReloading) return;
         if (gameData.currentAmmo === gameData.maxAmmo) return;
         if (gameData.reserveAmmo === 0) return;
+        
+        // Play reload sound
+        soundManager.playReload(weaponId);
         
         gameData.isReloading = true;
         const reloadIndicator = document.getElementById('reload-indicator');
@@ -97,7 +101,7 @@ export class PlayerManager {
         }, gameData.reloadTime);
     }
     
-    resetStats() {
+    resetStats(weaponAmmoConfig = null) {
         gameData.health = gameData.maxHealth;
         gameData.totalZombiesKilled = 0;
         gameData.shotsFired = 0;
@@ -107,7 +111,15 @@ export class PlayerManager {
         gameData.maxCombo = 0;
         gameData.score = 0;
         gameData.currentAmmo = gameData.maxAmmo;
-        gameData.reserveAmmo = 60;
+        
+        // Set reserve ammo based on current weapon config if provided
+        if (weaponAmmoConfig) {
+            const currentWeaponConfig = weaponAmmoConfig['pistol']; // Default to pistol on reset
+            if (currentWeaponConfig) {
+                gameData.reserveAmmo = currentWeaponConfig.reserveSize;
+            }
+        }
+        
         gameData.isReloading = false;
     }
 }

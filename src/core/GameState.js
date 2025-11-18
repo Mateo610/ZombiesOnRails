@@ -39,10 +39,10 @@ export const gameData = {
     // Score
     score: 0,
     
-    // Ammo
-    currentAmmo: 12,
-    maxAmmo: 12,
-    reserveAmmo: 60,
+    // Ammo (will be updated based on current weapon)
+    currentAmmo: 11,
+    maxAmmo: 11,
+    reserveAmmo: 22, // 2 clips for pistol
     isReloading: false,
     reloadTime: 2000,
     

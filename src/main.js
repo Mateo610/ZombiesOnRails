@@ -16,6 +16,7 @@ import ZombieManager from './enemies/ZombieManager.js';
 import { updateRecoil, setRecoilWeapon } from './combat/Recoil.js';
 import { initShootingSystem } from './combat/ShootingSystem.js';
 import { initHUD, createUI, updateUI, updateFinalStats, saveLeaderboard } from './ui/HUD.js';
+import { WeaponModelManager } from './weapons/WeaponModelManager.js';
 
 // ============================================================================
 // THREE.JS SETUP
@@ -60,6 +61,9 @@ const zombieManager = new ZombieManager(
     () => playerManager.incrementCombo()
 );
 
+// Weapon Model Manager
+const weaponModelManager = new WeaponModelManager(scene, camera);
+
 // Screen shake
 let screenShakeIntensity = 0;
 
@@ -72,7 +76,7 @@ initShootingSystem({
     gameDataRef: gameData,
     zombieManagerRef: zombieManager,
     powerUpsArrayRef: () => powerUpManager.getPowerUps(),
-    reload: () => playerManager.reload(),
+    reload: () => playerManager.reload(currentWeaponId),
     updateUI,
     resetCombo: () => playerManager.resetCombo(),
     createDamageNumber,
@@ -96,11 +100,49 @@ initHUD({
 // ============================================================================
 let currentWeaponId = 'pistol';
 
+// Weapon ammo configuration
+const WEAPON_AMMO_CONFIG = {
+    pistol: {
+        clipSize: 11,
+        reserveSize: 22 // 2 clips
+    },
+    shotgun: {
+        clipSize: 6,
+        reserveSize: 12 // 2 clips
+    },
+    rifle: {
+        clipSize: 24,
+        reserveSize: 48 // 2 clips
+    }
+};
+
 function switchCurrentWeapon(id) {
     if (currentWeaponId === id) return;
     
     currentWeaponId = id;
     setRecoilWeapon(id);
+    
+    // Switch weapon model
+    if (weaponModelManager) {
+        weaponModelManager.switchWeapon(id);
+    }
+    
+    // Update ammo values for the new weapon
+    const weaponConfig = WEAPON_AMMO_CONFIG[id];
+    if (weaponConfig) {
+        // If switching weapons, preserve current ammo ratio or set to full
+        const oldMaxAmmo = gameData.maxAmmo;
+        const ammoRatio = oldMaxAmmo > 0 ? gameData.currentAmmo / oldMaxAmmo : 1;
+        
+        gameData.maxAmmo = weaponConfig.clipSize;
+        gameData.currentAmmo = Math.round(weaponConfig.clipSize * ammoRatio);
+        gameData.reserveAmmo = weaponConfig.reserveSize;
+        
+        // Ensure we don't exceed max ammo
+        if (gameData.currentAmmo > gameData.maxAmmo) {
+            gameData.currentAmmo = gameData.maxAmmo;
+        }
+    }
     
     const weaponLabel = {
         pistol: 'PISTOL',
@@ -215,7 +257,13 @@ renderManager.setUpdateCallbacks({
     camera: [
         (elapsedTime) => updateCameraBreathing(elapsedTime),
         (elapsedTime, deltaTime) => updateRecoil(deltaTime, camera, threeRenderer.BASE_FOV),
-        () => updateScreenShake()
+        () => updateScreenShake(),
+        (elapsedTime, deltaTime) => {
+            // Update weapon models to follow camera
+            if (weaponModelManager) {
+                weaponModelManager.update(deltaTime);
+            }
+        }
     ],
     ui: [
         () => powerUpManager.updateUI(),
@@ -378,9 +426,17 @@ function startGame() {
     }
     
     gameData.gameStarted = true;
-    gameData.currentState = GameState.GAMEPLAY;
     gameData.currentScene = 0;
-    playerManager.resetStats();
+    
+    // Initialize weapon ammo for starting weapon (pistol)
+    const pistolConfig = WEAPON_AMMO_CONFIG['pistol'];
+    if (pistolConfig) {
+        gameData.maxAmmo = pistolConfig.clipSize;
+        gameData.currentAmmo = pistolConfig.clipSize;
+        gameData.reserveAmmo = pistolConfig.reserveSize;
+    }
+    
+    playerManager.resetStats(WEAPON_AMMO_CONFIG);
     
     // Reset power-ups
     powerUpManager.clear();
@@ -390,24 +446,52 @@ function startGame() {
     gameData.slowMoTimer = 0;
     gameData.startTime = Date.now();
     
-    // Camera setup
+    // Camera setup - ALWAYS reset to exact scene position on game start
+    // This must happen BEFORE setting game state to GAMEPLAY to prevent camera breathing from overriding
     currentCameraScene = CAMERA_SCENES[0];
-    const isCameraAtOrigin = camera.position.x === 0 && 
-                             camera.position.y === 0 && 
-                             camera.position.z === 0;
     
-    if (isCameraAtOrigin) {
-        camera.position.set(
-            currentCameraScene.position.x,
-            currentCameraScene.position.y,
-            currentCameraScene.position.z
-        );
-        camera.lookAt(
-            currentCameraScene.lookAt.x,
-            currentCameraScene.lookAt.y,
-            currentCameraScene.lookAt.z
-        );
+    
+    // Set camera position and lookAt
+    camera.position.set(
+        currentCameraScene.position.x,
+        currentCameraScene.position.y,
+        currentCameraScene.position.z
+    );
+    
+    // Reset camera rotation before lookAt to prevent upside down issues
+    camera.rotation.set(0, 0, 0);
+    camera.rotation.order = 'XYZ';
+    
+    camera.lookAt(
+        currentCameraScene.lookAt.x,
+        currentCameraScene.lookAt.y,
+        currentCameraScene.lookAt.z
+    );
+    
+    // Ensure camera is not upside down by checking and correcting rotation
+    if (Math.abs(camera.rotation.x) > Math.PI / 2) {
+        // Camera is looking too far up/down, adjust
+        camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
     }
+    
+    // Force camera matrix update
+    camera.updateMatrixWorld();
+    
+    
+    // Now set game state to GAMEPLAY after camera is positioned
+    gameData.currentState = GameState.GAMEPLAY;
+    
+    // Show weapon models when game starts
+    if (weaponModelManager) {
+        weaponModelManager.showWeapons();
+        // Ensure current weapon is set
+        weaponModelManager.switchWeapon(currentWeaponId);
+    }
+    
+    // TEMPORARY: Enable orbit controls for debugging weapon positions
+    threeRenderer.isFreeCamera = true;
+    threeRenderer.controls.enabled = true;
+    renderManager.updateCallbacks.freeCamera.enabled = true;
     
     // Spawn entities
     if (factorySceneLoaded || gameData.currentScene > 0) {
@@ -603,7 +687,7 @@ window.addEventListener('keydown', (event) => {
                 gameData.currentState === GameState.MISSION_COMPLETE) {
                 restartGame();
             } else if (gameData.currentState === GameState.GAMEPLAY) {
-                playerManager.reload();
+                playerManager.reload(currentWeaponId);
             }
             break;
             

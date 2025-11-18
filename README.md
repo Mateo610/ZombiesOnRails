@@ -1,48 +1,38 @@
-# Zombie Rail Shooter
+# Zombies On Rails
 
-A zombie rail shooter game built with Three.js and Vite.
+A rail shooter game built with Three.js.
 
-## Setup
+## Getting Started
+
+### Installation
 
 1. Install dependencies:
 ```bash
 npm install
 ```
 
-2. Run development server:
+2. Start the development server:
 ```bash
 npm run dev
 ```
 
-The game will open in your browser at `http://localhost:3000`.
+## Controls
 
-## Features
+- **SPACE** - Start Game
+- **Click** - Shoot
+- **R** - Reload / Restart
+- **C** - Toggle Camera
+- **H** - Toggle Helpers
+- **1, 2, 3** - Switch Weapons (Pistol, Shotgun, Rifle)
 
-- Modern ES6+ JavaScript with Vite bundling
-- Three.js 3D scene with moody fog
-- Eye-level camera (y=1.6) for first-person perspective
-- Ground plane with shadows
-- Ambient and directional lighting
-- Responsive window handling
-- Smooth render loop
+## Development
 
-## Project Structure
+- `main.js` - Main game entry point
+- `mainorbit.js` - Development version with orbit controls for exploration
+- `src/weapons/WeaponModelManager.js` - Manages 3D weapon models
+- `src/core/SceneConfig.js` - Scene and camera configuration
 
-```
-.
-├── src/
-│   └── main.js          # Main game entry point
-├── index.html           # HTML entry point
-├── package.json         # Dependencies
-├── vite.config.js       # Vite configuration
-└── README.md           # This file
-```
+## Notes
 
-## Building for Production
-
-```bash
-npm run build
-```
-
-The compiled files will be in the `dist/` directory.
+See `TODO.md` for current development tasks and notes.
 

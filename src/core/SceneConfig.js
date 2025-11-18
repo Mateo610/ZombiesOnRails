@@ -9,7 +9,7 @@ export const CAMERA_SCENES = [
     {
         name: "Warehouse Exterior",
         position: { x: 16.44, y: 1, z: -1.37 },
-        lookAt: { x: 0, y: 0, z: 0 },
+        lookAt: { x: 0, y: 1, z: -3 },
         spawnPoints: [
             { x: -3, y: 0, z: -5, type: 'walker' },
             { x: -1, y: 0, z: -7, type: 'runner' },

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { applyWeaponRecoil } from './Recoil.js';
+import { soundManager } from '../systems/SoundManager.js';
 
 let scene;
 let camera;
@@ -47,12 +48,18 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
     if (gameData.currentState !== 'GAMEPLAY') return;
     if (gameData.isReloading) return;
     if (gameData.currentAmmo <= 0) {
-        if (gameData.reserveAmmo > 0 && reloadFn) reloadFn();
+        if (gameData.reserveAmmo > 0 && reloadFn) {
+            // Reload sound will be played by PlayerManager.reload()
+            reloadFn();
+        }
         return;
     }
     
     gameData.currentAmmo--;
     gameData.shotsFired++;
+    
+    // Play shot sound (can overlap for rapid firing)
+    soundManager.playShot(currentWeaponId);
     
     triggerMuzzleFlash();
     if (onScreenShake) onScreenShake();
