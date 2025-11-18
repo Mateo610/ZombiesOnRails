@@ -8,8 +8,8 @@ import * as THREE from 'three';
 export const CAMERA_SCENES = [
     {
         name: "Warehouse Exterior",
-        position: { x: 0, y: 1.6, z: 5 },
-        lookAt: { x: 0, y: 1.5, z: 0 },
+        position: { x: 16.44, y: 1, z: -1.37 },
+        lookAt: { x: 0, y: 0, z: 0 },
         spawnPoints: [
             { x: -3, y: 0, z: -5, type: 'walker' },
             { x: -1, y: 0, z: -7, type: 'runner' },

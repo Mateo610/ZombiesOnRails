@@ -13,7 +13,7 @@ export const ZOMBIE_TYPES = {
         points: 100,
         color: 0xff0000,
         scale: 1.0,
-        modelPath: '/models/models/zombies/zombie/source/scene.glb'
+        // modelPath: '/models/zombies/zombie/source/scene.glb'
     },
     runner: {
         name: 'Runner',
@@ -23,7 +23,7 @@ export const ZOMBIE_TYPES = {
         points: 150,
         color: 0xff6600,
         scale: 0.9,
-        modelPath: '/models/models/zombies/zombie/source/scene.glb'
+        // modelPath: '/models/zombies/zombie/source/scene.glb'
     },
     tank: {
         name: 'Tank',
@@ -33,7 +33,7 @@ export const ZOMBIE_TYPES = {
         points: 200,
         color: 0x660000,
         scale: 1.3,
-        modelPath: '/models/models/zombies/bloated/source/scene.glb'
+        // modelPath: '/models/zombies/bloated/source/scene.glb'
     },
     crawler: {
         name: 'Crawler',
@@ -43,7 +43,7 @@ export const ZOMBIE_TYPES = {
         points: 75,
         color: 0x00ff00,
         scale: 0.5,
-        modelPath: '/models/models/zombies/zombie/source/scene.glb'
+        // modelPath: '/models/zombies/zombie/source/scene.glb'
     }
 };
 
