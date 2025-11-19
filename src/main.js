@@ -309,72 +309,43 @@ function transitionToNextScene() {
     
     gameData.currentScene++;
     currentCameraScene = CAMERA_SCENES[gameData.currentScene];
-    
-    // Switch scene models
-    if (gameData.currentScene === 1) {
-        sceneLoader.transitionToWarehouse();
-        // Update ground reference
-        sceneLoader.warehouseModel?.traverse((child) => {
-            if (child.isMesh) {
-                const name = child.name.toLowerCase();
-                const matName = child.material?.name?.toLowerCase() || '';
-                if (name.includes('ground') || name.includes('floor') || 
-                    matName.includes('ground') || matName.includes('floor')) {
-                    child.name = 'ground';
-                    child.receiveShadow = true;
-                    threeRenderer.setGround(child);
-                }
-            }
-        });
-    } else if (gameData.currentScene === 0) {
-        sceneLoader.showFactory();
-        sceneLoader.currentSceneModel?.traverse((child) => {
-            if (child.isMesh) {
-                const name = child.name.toLowerCase();
-                if (name.includes('ground') || name.includes('floor')) {
-                    child.name = 'ground';
-                    threeRenderer.setGround(child);
-                }
-            }
-        });
-    }
-    
+
     zombieManager.clearZombies();
     powerUpManager.clear();
-    
-    // Animate camera
+
+    // Camera start/end
     const startPos = camera.position.clone();
-    const startLookAt = new THREE.Vector3(0, 1.5, 0);
-    camera.getWorldDirection(startLookAt);
-    startLookAt.add(camera.position);
-    
-    const endPos = new THREE.Vector3(
-        currentCameraScene.position.x,
-        currentCameraScene.position.y,
-        currentCameraScene.position.z
-    );
-    const endLookAt = new THREE.Vector3(
-        currentCameraScene.lookAt.x,
-        currentCameraScene.lookAt.y,
-        currentCameraScene.lookAt.z
-    );
-    
-    new TWEEN.Tween(startPos)
+    const endPos = currentCameraScene.position.clone();
+
+    const startLookAt = camera.getWorldDirection(new THREE.Vector3()).add(camera.position);
+    const endLookAt = currentCameraScene.lookAt.clone();
+
+    // Temporarily disable camera overrides during transition
+    const prevScreenShake = screenShakeIntensity;
+    screenShakeIntensity = 0;
+
+    const tweenPos = new TWEEN.Tween(startPos)
         .to(endPos, 2000)
         .easing(TWEEN.Easing.Quadratic.InOut)
         .onUpdate(() => {
             camera.position.copy(startPos);
         })
         .start();
-    
-    new TWEEN.Tween(startLookAt)
+
+    const tweenLookAt = new TWEEN.Tween(startLookAt)
         .to(endLookAt, 2000)
         .easing(TWEEN.Easing.Quadratic.InOut)
         .onUpdate(() => {
+            camera.up.set(0, 1, 0); // ADD THIS LINE
             camera.lookAt(startLookAt);
         })
         .onComplete(() => {
+            camera.up.set(0, 1, 0); // ADD THIS LINE
+            camera.lookAt(endLookAt);
+            camera.updateMatrixWorld(true); // ADD THIS LINE
+            
             gameData.currentState = GameState.GAMEPLAY;
+            screenShakeIntensity = prevScreenShake; // restore shake
             spawnSceneZombies();
             powerUpManager.spawnScenePowerUps(gameData.currentScene);
             showSceneTitle();
@@ -446,36 +417,32 @@ function startGame() {
     gameData.slowMoTimer = 0;
     gameData.startTime = Date.now();
     
-    // Camera setup - ALWAYS reset to exact scene position on game start
-    // This must happen BEFORE setting game state to GAMEPLAY to prevent camera breathing from overriding
-    currentCameraScene = CAMERA_SCENES[0];
-    
-    
-    // Set camera position and lookAt
-    camera.position.set(
-        currentCameraScene.position.x,
-        currentCameraScene.position.y,
-        currentCameraScene.position.z
-    );
-    
-    // Reset camera rotation before lookAt to prevent upside down issues
-    camera.rotation.set(0, 0, 0);
-    camera.rotation.order = 'XYZ';
-    
-    camera.lookAt(
-        currentCameraScene.lookAt.x,
-        currentCameraScene.lookAt.y,
-        currentCameraScene.lookAt.z
-    );
-    
-    // Ensure camera is not upside down by checking and correcting rotation
-    if (Math.abs(camera.rotation.x) > Math.PI / 2) {
-        // Camera is looking too far up/down, adjust
-        camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
-    }
-    
-    // Force camera matrix update
-    camera.updateMatrixWorld();
+// Camera setup - ALWAYS reset to exact scene position on game start
+// This must happen BEFORE setting game state to GAMEPLAY to prevent camera breathing from overriding
+currentCameraScene = CAMERA_SCENES[0];
+
+// ALWAYS reset the up vector first
+camera.up.set(0, 1, 0);
+
+// Set camera position
+camera.position.set(
+    currentCameraScene.position.x,
+    currentCameraScene.position.y,
+    currentCameraScene.position.z
+);
+
+// Reset camera rotation before lookAt to prevent upside down issues
+camera.rotation.set(0, 0, 0);
+camera.rotation.order = 'YXZ'; // Changed from 'XYZ' to 'YXZ'
+
+camera.lookAt(
+    currentCameraScene.lookAt.x,
+    currentCameraScene.lookAt.y,
+    currentCameraScene.lookAt.z
+);
+
+// Force camera matrix update
+camera.updateMatrixWorld(true);
     
     
     // Now set game state to GAMEPLAY after camera is positioned
@@ -488,10 +455,10 @@ function startGame() {
         weaponModelManager.switchWeapon(currentWeaponId);
     }
     
-    // TEMPORARY: Enable orbit controls for debugging weapon positions
-    threeRenderer.isFreeCamera = true;
-    threeRenderer.controls.enabled = true;
-    renderManager.updateCallbacks.freeCamera.enabled = true;
+    // // TEMPORARY: Enable orbit controls for debugging weapon positions
+    // threeRenderer.isFreeCamera = true;
+    // threeRenderer.controls.enabled = true;
+    // renderManager.updateCallbacks.freeCamera.enabled = true;
     
     // Spawn entities
     if (factorySceneLoaded || gameData.currentScene > 0) {
