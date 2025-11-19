@@ -200,6 +200,30 @@ export function createUI() {
             "></div>
         </div>
         
+        <!-- Rail Movement Button -->
+        <button id="rail-movement-btn" style="
+            position: fixed;
+            bottom: 40px;
+            left: 40px;
+            padding: 12px 24px;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            font-weight: bold;
+            color: #00ffff;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ffff;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 100;
+            text-shadow: 0 0 10px #00ffff, 2px 2px 4px #000;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2);
+            transition: all 0.3s;
+            pointer-events: auto;
+        " onmouseover="this.style.background='rgba(0, 255, 255, 0.2)'; this.style.boxShadow='0 0 20px rgba(0, 255, 255, 0.8), inset 0 0 15px rgba(0, 255, 255, 0.3)';" 
+           onmouseout="this.style.background='rgba(0, 0, 0, 0.8)'; this.style.boxShadow='0 0 15px rgba(0, 255, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2)';">
+            🚂 NEXT LOCATION
+        </button>
+        
         <!-- Game Over Screen -->
         <div id="game-over-screen" style="
             position: fixed;
@@ -294,6 +318,20 @@ export function createUI() {
     `;
     
     document.body.appendChild(uiContainer);
+    
+    // Add click handler for rail movement button
+    const railBtn = document.getElementById('rail-movement-btn');
+    if (railBtn) {
+        railBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (window.startRailMovement && typeof window.startRailMovement === 'function') {
+                window.startRailMovement();
+            } else {
+                console.error('⚠️ startRailMovement function not available');
+            }
+        });
+    }
 }
 
 export function updateUI() {

@@ -189,6 +189,52 @@ function updateScreenShake() {
     }
 }
 
+// WASD camera movement (only when in free camera mode)
+function updateWASDMovement(deltaTime) {
+    if (!threeRenderer.isFreeCamera) return;
+    
+    const moveDistance = moveSpeed * deltaTime;
+    
+    // Get camera's forward and right vectors
+    const forward = new THREE.Vector3(0, 0, -1);
+    forward.applyQuaternion(camera.quaternion);
+    forward.y = 0; // Keep movement horizontal
+    forward.normalize();
+    
+    const right = new THREE.Vector3(1, 0, 0);
+    right.applyQuaternion(camera.quaternion);
+    right.y = 0; // Keep movement horizontal
+    right.normalize();
+    
+    // Calculate movement vector
+    const moveVector = new THREE.Vector3(0, 0, 0);
+    
+    if (keys.w) {
+        moveVector.add(forward);
+    }
+    if (keys.s) {
+        moveVector.sub(forward);
+    }
+    if (keys.a) {
+        moveVector.sub(right);
+    }
+    if (keys.d) {
+        moveVector.add(right);
+    }
+    
+    // Normalize diagonal movement
+    if (moveVector.length() > 0) {
+        moveVector.normalize();
+        moveVector.multiplyScalar(moveDistance);
+        
+        // Apply movement to camera position
+        camera.position.add(moveVector);
+        
+        // Update orbit controls target to match camera movement
+        threeRenderer.controls.target.add(moveVector);
+    }
+}
+
 // ============================================================================
 // RENDER MANAGER UPDATE CALLBACKS
 // ============================================================================
@@ -220,7 +266,8 @@ renderManager.setUpdateCallbacks({
     camera: [
         (elapsedTime) => updateCameraBreathing(elapsedTime),
         (elapsedTime, deltaTime) => updateRecoil(deltaTime, camera, threeRenderer.BASE_FOV),
-        () => updateScreenShake()
+        () => updateScreenShake(),
+        (elapsedTime, deltaTime) => updateWASDMovement(deltaTime)
     ],
     ui: [
         () => powerUpManager.updateUI(),
@@ -607,9 +654,182 @@ async function loadWarehouseInterior() {
 // ============================================================================
 import { shoot as shootWeapon } from './combat/ShootingSystem.js';
 
-// Raycaster for teleportation
+// Raycaster for teleportation and point placement
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
+
+// Rail path point system
+const railPoints = [];
+const railPointMarkers = []; // Visual markers for points
+let railPathLine = null; // Line connecting all points
+const railPointGroup = new THREE.Group();
+railPointGroup.name = 'RailPoints';
+scene.add(railPointGroup);
+
+// WASD movement controls
+const keys = {
+    w: false,
+    a: false,
+    s: false,
+    d: false
+};
+
+const moveSpeed = 5.0; // Units per second
+
+// Place rail point at clicked location
+function placeRailPoint(event) {
+    if (!threeRenderer.isFreeCamera) return;
+    
+    // Calculate mouse position in normalized device coordinates
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    // Update raycaster with camera and mouse position
+    raycaster.setFromCamera(mouse, camera);
+    
+    // Get all objects in the scene that can be intersected
+    const intersectableObjects = [];
+    scene.traverse((object) => {
+        if (object.isMesh && object.visible && object.name !== 'RailPointMarker') {
+            intersectableObjects.push(object);
+        }
+    });
+    
+    const intersects = raycaster.intersectObjects(intersectableObjects, true);
+    
+    if (intersects.length > 0) {
+        const hitPoint = intersects[0].point;
+        const hitObject = intersects[0].object;
+        
+        // Add point to array
+        const pointData = {
+            x: hitPoint.x,
+            y: hitPoint.y,
+            z: hitPoint.z,
+            index: railPoints.length
+        };
+        railPoints.push(pointData);
+        
+        // Create visual marker (sphere)
+        const markerGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+        const markerMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x00ff00, 
+            transparent: true,
+            opacity: 0.8
+        });
+        const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+        marker.position.copy(hitPoint);
+        marker.name = 'RailPointMarker';
+        marker.userData.pointIndex = pointData.index;
+        
+        railPointMarkers.push(marker);
+        railPointGroup.add(marker);
+        
+        // Update rail path line
+        updateRailPathLine();
+        
+        // Console log
+        console.log(`📍 Rail Point #${pointData.index + 1} placed:`);
+        console.log(`  Position: { x: ${hitPoint.x.toFixed(2)}, y: ${hitPoint.y.toFixed(2)}, z: ${hitPoint.z.toFixed(2)} }`);
+        console.log(`  Total points: ${railPoints.length}`);
+        
+        // Auto-export coordinates (only if we have 2+ points to show the line)
+        if (railPoints.length >= 2) {
+            exportRailPath();
+        }
+    } else {
+        console.log('⚠️ No object clicked - cannot place point');
+    }
+}
+
+// Update the line connecting all rail points
+function updateRailPathLine() {
+    // Remove existing line
+    if (railPathLine) {
+        railPointGroup.remove(railPathLine);
+        railPathLine.geometry.dispose();
+        railPathLine.material.dispose();
+    }
+    
+    if (railPoints.length < 2) {
+        return; // Need at least 2 points for a line
+    }
+    
+    // Create points array for curve
+    const points = railPoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
+    
+    // Create Catmull-Rom spline for smooth curve
+    const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
+    
+    // Generate points along the curve
+    const curvePoints = curve.getPoints(200); // 200 points for smooth line
+    
+    // Create line geometry
+    const geometry = new THREE.BufferGeometry().setFromPoints(curvePoints);
+    const material = new THREE.LineBasicMaterial({ 
+        color: 0x00ffff, 
+        linewidth: 3,
+        transparent: true,
+        opacity: 0.7
+    });
+    
+    railPathLine = new THREE.Line(geometry, material);
+    railPathLine.name = 'RailPathLine';
+    railPointGroup.add(railPathLine);
+}
+
+// Export rail path coordinates
+function exportRailPath() {
+    if (railPoints.length === 0) {
+        console.log('⚠️ No rail points to export');
+        return;
+    }
+    
+    console.log('\n═══════════════════════════════════════════════════');
+    console.log('📋 RAIL PATH COORDINATES (Copy this to RailPathConfig.js)');
+    console.log('═══════════════════════════════════════════════════\n');
+    
+    console.log('export const RAIL_PATHS = [');
+    railPoints.forEach((point, index) => {
+        const isLast = index === railPoints.length - 1;
+        console.log(`    {`);
+        console.log(`        id: 'path_${index + 1}',`);
+        console.log(`        name: 'Path ${index + 1}',`);
+        console.log(`        waypoints: [`);
+        console.log(`            { x: ${point.x.toFixed(2)}, y: ${point.y.toFixed(2)}, z: ${point.z.toFixed(2)} }`);
+        console.log(`        ],`);
+        console.log(`        duration: 5000,`);
+        console.log(`        lookAt: { x: 0, y: 1.00, z: 0 }, // TODO: Set lookAt point`);
+        console.log(`        enemySpawns: []`);
+        console.log(`    }${isLast ? '' : ','}`);
+    });
+    console.log('];\n');
+    console.log('═══════════════════════════════════════════════════\n');
+}
+
+// Clear all rail points
+function clearRailPoints() {
+    // Remove all markers
+    railPointMarkers.forEach(marker => {
+        railPointGroup.remove(marker);
+        marker.geometry.dispose();
+        marker.material.dispose();
+    });
+    railPointMarkers.length = 0;
+    
+    // Remove line
+    if (railPathLine) {
+        railPointGroup.remove(railPathLine);
+        railPathLine.geometry.dispose();
+        railPathLine.material.dispose();
+        railPathLine = null;
+    }
+    
+    // Clear array
+    railPoints.length = 0;
+    
+    console.log('🗑️ All rail points cleared');
+}
 
 // Teleport function - moves camera to clicked point
 function teleportToPoint(event) {
@@ -661,15 +881,22 @@ function teleportToPoint(event) {
 }
 
 window.addEventListener('click', (event) => {
-    // Shift+Click for teleportation
+    // Left-click in orbit mode: Place rail point
+    if (threeRenderer.isFreeCamera && !event.shiftKey && event.button === 0) {
+        event.preventDefault();
+        placeRailPoint(event);
+        return;
+    }
+    
+    // Shift+Click for teleportation (backward compatibility)
     if (threeRenderer.isFreeCamera && event.shiftKey) {
         event.preventDefault();
         teleportToPoint(event);
         return;
     }
     
-    // Normal click for shooting
-    if (!threeRenderer.isFreeCamera || !event.shiftKey) {
+    // Normal click for shooting (when not in orbit mode)
+    if (!threeRenderer.isFreeCamera || event.shiftKey) {
         const mouseX = (event.clientX / window.innerWidth) * 2 - 1;
         const mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
         shootWeapon(mouseX, mouseY, currentWeaponId);
@@ -679,11 +906,58 @@ window.addEventListener('click', (event) => {
 // Right-click for teleportation (when in orbit mode)
 window.addEventListener('contextmenu', (event) => {
     event.preventDefault(); // Prevent right-click menu
-    teleportToPoint(event);
+    if (threeRenderer.isFreeCamera) {
+        teleportToPoint(event);
+    }
+});
+
+// Double-click for coordinate logging
+window.addEventListener('dblclick', (event) => {
+    if (!threeRenderer.isFreeCamera) return;
+    
+    // Calculate mouse position in normalized device coordinates
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    // Update raycaster with camera and mouse position
+    raycaster.setFromCamera(mouse, camera);
+    
+    // Get all objects in the scene that can be intersected
+    const intersectableObjects = [];
+    scene.traverse((object) => {
+        if (object.isMesh && object.visible) {
+            intersectableObjects.push(object);
+        }
+    });
+    
+    // Calculate intersections
+    const intersects = raycaster.intersectObjects(intersectableObjects, true);
+    
+    if (intersects.length > 0) {
+        const hitPoint = intersects[0].point;
+        const hitObject = intersects[0].object;
+        
+        // Console log the coordinates
+        console.log('📍 Double-click coordinates:');
+        console.log(`  Position: { x: ${hitPoint.x.toFixed(2)}, y: ${hitPoint.y.toFixed(2)}, z: ${hitPoint.z.toFixed(2)} }`);
+        console.log(`  Camera Position: { x: ${camera.position.x.toFixed(2)}, y: ${camera.position.y.toFixed(2)}, z: ${camera.position.z.toFixed(2)} }`);
+        console.log(`  Hit Object: ${hitObject.name || 'unnamed'} (${hitObject.type})`);
+    } else {
+        // Log camera position if no object was clicked
+        console.log('📍 Double-click coordinates (no object hit):');
+        console.log(`  Camera Position: { x: ${camera.position.x.toFixed(2)}, y: ${camera.position.y.toFixed(2)}, z: ${camera.position.z.toFixed(2)} }`);
+        console.log(`  Camera Look Direction: { x: ${camera.rotation.x.toFixed(2)}, y: ${camera.rotation.y.toFixed(2)}, z: ${camera.rotation.z.toFixed(2)} }`);
+    }
 });
 
 window.addEventListener('keydown', (event) => {
     const key = event.key.toLowerCase();
+    
+    // WASD movement keys
+    if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
+        keys[key] = true;
+        return;
+    }
     
     switch(key) {
         case 'r':
@@ -702,19 +976,31 @@ window.addEventListener('keydown', (event) => {
             break;
             
         case 'c':
-            const isFree = threeRenderer.toggleFreeCamera();
-            renderManager.updateCallbacks.freeCamera.enabled = isFree;
-            if (!isFree) {
-                camera.position.set(
-                    currentCameraScene.position.x,
-                    currentCameraScene.position.y,
-                    currentCameraScene.position.z
-                );
-                camera.lookAt(
-                    currentCameraScene.lookAt.x,
-                    currentCameraScene.lookAt.y,
-                    currentCameraScene.lookAt.z
-                );
+            if (threeRenderer.isFreeCamera) {
+                // In orbit mode: Clear rail points
+                clearRailPoints();
+            } else {
+                // In game mode: Toggle camera
+                const isFree = threeRenderer.toggleFreeCamera();
+                renderManager.updateCallbacks.freeCamera.enabled = isFree;
+                if (!isFree) {
+                    camera.position.set(
+                        currentCameraScene.position.x,
+                        currentCameraScene.position.y,
+                        currentCameraScene.position.z
+                    );
+                    camera.lookAt(
+                        currentCameraScene.lookAt.x,
+                        currentCameraScene.lookAt.y,
+                        currentCameraScene.lookAt.z
+                    );
+                }
+            }
+            break;
+            
+        case 'e':
+            if (threeRenderer.isFreeCamera) {
+                exportRailPath();
             }
             break;
             
@@ -731,6 +1017,14 @@ window.addEventListener('keydown', (event) => {
         case '3':
             switchCurrentWeapon('rifle');
             break;
+    }
+});
+
+// Handle key release for WASD movement
+window.addEventListener('keyup', (event) => {
+    const key = event.key.toLowerCase();
+    if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
+        keys[key] = false;
     }
 });
 
@@ -809,16 +1103,24 @@ console.log('✅ Game Initialized (Orbit Controls Enabled)');
 console.log('⚠️ Zombies are DISABLED in orbit mode for exploration');
 console.log('Controls:');
 console.log('  SPACE - Start Game');
-console.log('  Click - Shoot (zombies disabled, but shooting still works)');
-console.log('  R - Reload / Restart');
-console.log('  C - Toggle Camera (Locked/Free)');
-console.log('  H - Toggle Helpers');
+console.log('\n═══════════════════════════════════════════════════');
+console.log('🎮 ORBIT MODE - RAIL PATH EDITOR');
+console.log('═══════════════════════════════════════════════════');
+console.log('  Left Click (on object) - Place rail point');
+console.log('  Right Click (on object) - Teleport camera');
+console.log('  Shift + Click (on object) - Teleport camera');
+console.log('  Double Click - Output coordinates to console');
+console.log('  C - Clear all rail points');
+console.log('  E - Export rail path coordinates');
 console.log('  Mouse Drag - Rotate Camera (Orbit Controls)');
 console.log('  Mouse Wheel - Zoom');
 console.log('  Right Click + Drag - Pan');
-console.log('  Right Click (on object) - Teleport to clicked point');
-console.log('  Shift + Click (on object) - Teleport to clicked point');
-console.log('  📍 Teleported coordinates are logged to console for spawn point reference');
+console.log('  W/A/S/D - Move camera (in free camera mode)');
+console.log('  R - Reload / Restart');
+console.log('  H - Toggle Helpers');
+console.log('\n📍 Rail points are shown as GREEN spheres');
+console.log('📍 Rail path is shown as CYAN line connecting points');
+console.log('═══════════════════════════════════════════════════\n');
 
 // Note: Scene pre-rendering happens before revealing to ensure renderer readiness
 // This prevents startup glitch by ensuring textures are uploaded to GPU first

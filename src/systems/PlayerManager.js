@@ -9,11 +9,17 @@ import { soundManager } from './SoundManager.js';
 export class PlayerManager {
     constructor(updateUIFn, resetComboFn, gameOverFn) {
         this.updateUI = updateUIFn;
-        this.resetCombo = resetComboFn;
+        // Note: resetComboFn is not used - PlayerManager has its own resetCombo method
+        // The resetComboFn parameter is kept for backward compatibility but not assigned
         this.gameOver = gameOverFn;
     }
     
     damage(amount) {
+        // TESTING MODE: Player cannot die
+        // Uncomment the code below to re-enable damage
+        return;
+        
+        /* DISABLED FOR TESTING
         if (gameData.health <= 0) return;
         
         gameData.health = Math.max(0, gameData.health - amount);
@@ -35,6 +41,7 @@ export class PlayerManager {
         if (gameData.health <= 0) {
             this.gameOver();
         }
+        */
     }
     
     incrementCombo() {

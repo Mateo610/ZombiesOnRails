@@ -106,7 +106,8 @@ export class RenderManager {
         const deltaTime = this.clock.getDelta();
         const elapsedTime = this.clock.getElapsedTime();
         
-        // Update TWEEN for camera transitions
+        // CRITICAL: Update TWEEN FIRST - this handles rail movement camera updates
+        // This must run before camera breathing/shake to prevent overriding rail movement
         if (this.updateCallbacks.tween) {
             this.updateCallbacks.tween();
         }
@@ -121,7 +122,9 @@ export class RenderManager {
             this.updateCallbacks.gameplay.forEach(callback => callback(deltaTime));
         }
         
-        // Update camera systems
+        // Update camera systems (breathing, shake, recoil)
+        // NOTE: These check railMovementManager.isMoving() to prevent overriding rail movement
+        // IMPORTANT: The last callback in the camera array is forceCameraUpdate which ALWAYS wins
         if (this.updateCallbacks.camera.length > 0) {
             this.updateCallbacks.camera.forEach(callback => callback(elapsedTime, deltaTime));
         }

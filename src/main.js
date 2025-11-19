@@ -17,6 +17,7 @@ import { updateRecoil, setRecoilWeapon } from './combat/Recoil.js';
 import { initShootingSystem } from './combat/ShootingSystem.js';
 import { initHUD, createUI, updateUI, updateFinalStats, saveLeaderboard } from './ui/HUD.js';
 import { WeaponModelManager } from './weapons/WeaponModelManager.js';
+import { RailMovementManager } from './systems/RailMovementManager.js';
 
 // ============================================================================
 // THREE.JS SETUP
@@ -64,8 +65,24 @@ const zombieManager = new ZombieManager(
 // Weapon Model Manager
 const weaponModelManager = new WeaponModelManager(scene, camera);
 
+// Rail Movement Manager
+const railMovementManager = new RailMovementManager(camera, threeRenderer, gameData, GameState, clock);
+railMovementManager.init(); // Initialize paths
+
+// Set up enemy spawn callback for rail movement
+railMovementManager.setEnemySpawnCallback((position, type, zombiePath) => {
+    // TODO: Spawn enemy at position with type and optional path
+    // This will be called automatically when the camera reaches spawn points along the path
+    console.log(`🎯 Rail enemy spawn: ${type} at`, position, 'path:', zombiePath);
+    // Example: zombieManager.spawnZombieAt(position, type, zombiePath);
+});
+
 // Screen shake
 let screenShakeIntensity = 0;
+
+// Global flag to disable camera breathing/shake during rail movement
+// This is checked directly in camera update functions
+let isRailMovementActive = false;
 
 // ============================================================================
 // SHOOTING SYSTEM
@@ -192,6 +209,14 @@ function updateCameraBreathing(elapsedTime) {
     if (gameData.currentState !== GameState.GAMEPLAY) return;
     if (screenShakeIntensity > 0.001) return;
     
+    // CRITICAL: Check rail movement first - do NOT override camera during rail movement
+    // Use both the flag and the manager check for redundancy
+    if (isRailMovementActive || (railMovementManager && railMovementManager.isMoving())) {
+        // ABSOLUTELY do nothing - rail movement controls camera
+        // Do not modify camera position, rotation, or lookAt in any way
+        return;
+    }
+    
     const breathY = Math.sin(elapsedTime * 2.0) * 0.005;
     const breathX = Math.cos(elapsedTime * 1.5) * 0.003;
     const swayZ = Math.sin(elapsedTime * 1.8) * 0.002;
@@ -210,7 +235,17 @@ function updateCameraBreathing(elapsedTime) {
 }
 
 function updateScreenShake() {
-    if (screenShakeIntensity > 0) {
+        if (screenShakeIntensity > 0) {
+        // CRITICAL: Do NOT apply screen shake during rail movement
+        if (isRailMovementActive || (railMovementManager && railMovementManager.isMoving())) {
+            // Rail movement controls camera, ignore shake
+            screenShakeIntensity *= 0.85;
+            if (screenShakeIntensity < 0.001) {
+                screenShakeIntensity = 0;
+            }
+            return;
+        }
+        
         const shakeX = (Math.random() - 0.5) * screenShakeIntensity;
         const shakeY = (Math.random() - 0.5) * screenShakeIntensity;
         
@@ -227,11 +262,25 @@ function updateScreenShake() {
     }
 }
 
+// Expose rail movement function globally for button
+function startRailMovement() {
+    // Set global flag before starting movement
+    isRailMovementActive = true;
+    railMovementManager.moveToNextPath();
+}
+window.startRailMovement = startRailMovement;
+window.isRailMovementActive = false; // Initialize global flag
+
 // ============================================================================
 // RENDER MANAGER UPDATE CALLBACKS
 // ============================================================================
-renderManager.setUpdateCallbacks({
-    tween: () => TWEEN.update(),
+    renderManager.setUpdateCallbacks({
+        tween: () => {
+            // Update rail movement (now uses manual interpolation, not TWEEN)
+            railMovementManager.update();
+            // Still update TWEEN for any other tweens in the system
+            TWEEN.update();
+        }, // Rail movement updates here - MUST be before camera updates
     freeCamera: {
         enabled: false,
         update: () => threeRenderer.controls.update()
@@ -255,6 +304,8 @@ renderManager.setUpdateCallbacks({
         }
     ],
     camera: [
+        // IMPORTANT: These run AFTER tween updates, but check railMovementManager.isMoving()
+        // to prevent overriding the rail movement camera position
         (elapsedTime) => updateCameraBreathing(elapsedTime),
         (elapsedTime, deltaTime) => updateRecoil(deltaTime, camera, threeRenderer.BASE_FOV),
         () => updateScreenShake(),
@@ -262,6 +313,16 @@ renderManager.setUpdateCallbacks({
             // Update weapon models to follow camera
             if (weaponModelManager) {
                 weaponModelManager.update(deltaTime);
+            }
+        },
+        // CRITICAL: Run rail movement safety check LAST to ensure camera position is correct
+        // This runs after all other camera updates to fix any overrides
+        // MUST be the absolute last callback to always win
+        () => {
+            if (railMovementManager && railMovementManager.isMoving()) {
+                // Force camera position update from spline (safety check)
+                // This ALWAYS overrides anything else that modified camera position
+                railMovementManager.forceCameraUpdate();
             }
         }
     ],
@@ -444,6 +505,8 @@ camera.lookAt(
 // Force camera matrix update
 camera.updateMatrixWorld(true);
     
+    // Reset rail movement state
+    railMovementManager.reset();
     
     // Now set game state to GAMEPLAY after camera is positioned
     gameData.currentState = GameState.GAMEPLAY;
@@ -455,10 +518,10 @@ camera.updateMatrixWorld(true);
         weaponModelManager.switchWeapon(currentWeaponId);
     }
     
-    // // TEMPORARY: Enable orbit controls for debugging weapon positions
-    // threeRenderer.isFreeCamera = true;
-    // threeRenderer.controls.enabled = true;
-    // renderManager.updateCallbacks.freeCamera.enabled = true;
+    // Disable free camera by default (can be re-enabled later if needed)
+    threeRenderer.isFreeCamera = false;
+    threeRenderer.controls.enabled = false;
+    renderManager.updateCallbacks.freeCamera.enabled = false;
     
     // Spawn entities
     if (factorySceneLoaded || gameData.currentScene > 0) {
