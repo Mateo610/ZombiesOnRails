@@ -10,6 +10,7 @@ export const CAMERA_SCENES = [
         name: "1",
         position: { x: 16.44, y: 1, z: -1.37 },
         lookAt: { x: 8.71, y: 1, z: 3.17 },
+        transitionDuration: 3000, // Optional: duration in ms for rail movement transition
         spawnPoints: [
             { x: 6.75, y: 0.00, z: 10.49, type: 'walker' },
             { x: 6.75, y: 0.00, z: 11.49, type: 'walker' },
@@ -20,6 +21,7 @@ export const CAMERA_SCENES = [
         name: "2",
         position: { x: 11.96, y: 1, z: -2.74 },
         lookAt: { x: 11.85, y: 1, z: -7.08 },
+        transitionDuration: 3000, // Optional: duration in ms for rail movement transition
         spawnPoints: [
             { x: 11.85, y: 0, z: -7.08, type: 'walker' }
         ]
@@ -28,6 +30,7 @@ export const CAMERA_SCENES = [
         name: "3",
         position: { x: 2.54, y: 1, z: 3.49 },
         lookAt: { x: 0.64, y: 1, z: 6.74 },
+        transitionDuration: 3000, // Optional: duration in ms for rail movement transition
         spawnPoints: [
             { x: 3.00, y: 0, z: 6.61, type: 'walker' },
             { x: 0.72, y: 0, z: 6.82, type: 'walker' },
@@ -39,6 +42,7 @@ export const CAMERA_SCENES = [
         name: "Warehouse Interior",
         position: { x: 0, y: 1.6, z: 0 },
         lookAt: { x: 0, y: 1.5, z: -10 },
+        transitionDuration: 3000, // Optional: duration in ms for rail movement transition
         spawnPoints: [
             { x: -2, y: 0, z: -8, type: 'runner' },
             { x: 2, y: 0, z: -12, type: 'walker' },

@@ -77,6 +77,29 @@ railMovementManager.setEnemySpawnCallback((position, type, zombiePath) => {
     // Example: zombieManager.spawnZombieAt(position, type, zombiePath);
 });
 
+// Set up path completion callback for zombie spawning when rail path completes
+railMovementManager.setPathCompleteCallback((sceneIndex, scene) => {
+    console.log(`🎬 Rail path completed - Scene ${sceneIndex + 1}: ${scene.name}`);
+    
+    // Update current scene
+    gameData.currentScene = sceneIndex;
+    currentCameraScene = scene;
+    
+    // Clear existing zombies and power-ups
+    zombieManager.clearZombies();
+    powerUpManager.clear();
+    
+    // Spawn zombies for the new scene
+    spawnSceneZombies();
+    powerUpManager.spawnScenePowerUps(gameData.currentScene);
+    showSceneTitle();
+    
+    // Set state back to gameplay
+    gameData.currentState = GameState.GAMEPLAY;
+    
+    console.log(`✅ Scene ${sceneIndex + 1} setup complete - zombies spawned`);
+});
+
 // Screen shake
 let screenShakeIntensity = 0;
 
@@ -352,15 +375,87 @@ function spawnSceneZombies() {
 function onSceneCleared() {
     console.log(`✅ Scene ${gameData.currentScene + 1} cleared!`);
     
-    if (gameData.currentScene === 0) {
-        checkDoorInteraction();
+    // Check if this is the last scene (Scene 3, index 2 - Warehouse Interior is index 3)
+    if (gameData.currentScene >= CAMERA_SCENES.length - 1) {
+        completeMission();
         return;
     }
     
-    if (gameData.currentScene < gameData.totalScenes - 1) {
-        transitionToNextScene();
-    } else {
-        completeMission();
+    // For scene 2 (index 2, which is Scene 3), load warehouse before transitioning
+    if (gameData.currentScene === 2 && !warehouseLoaded) {
+        console.log('🚪 Scene 3 cleared! Loading warehouse interior...');
+        loadWarehouseInterior(() => {
+            // After warehouse loads, transition to warehouse interior using rail movement
+            advanceToNextSceneWithRail();
+        });
+        return;
+    }
+    
+    // For all other scenes, use rail movement to transition
+    advanceToNextSceneWithRail();
+}
+
+/**
+ * Advance to next scene using rail movement
+ */
+function advanceToNextSceneWithRail() {
+    // Check if there's a next scene available
+    if (gameData.currentScene >= CAMERA_SCENES.length - 1) {
+        console.log('⚠️ No next scene available');
+        return;
+    }
+    
+    // Set transition state
+    gameData.currentState = GameState.SCENE_TRANSITION;
+    console.log(`🎥 Advancing from Scene ${gameData.currentScene + 1} to Scene ${gameData.currentScene + 2} using rail movement...`);
+    
+    // Get the next scene
+    const nextSceneIndex = gameData.currentScene + 1;
+    const nextScene = CAMERA_SCENES[nextSceneIndex];
+    
+    if (!nextScene) {
+        console.error('❌ Next scene not found at index:', nextSceneIndex);
+        gameData.currentState = GameState.GAMEPLAY;
+        return;
+    }
+    
+    // Clear zombies and power-ups before transition
+    zombieManager.clearZombies();
+    powerUpManager.clear();
+    
+    // Start rail movement to exact scene position
+    const movementStarted = railMovementManager.moveToScenePosition(nextScene, () => {
+        // Callback fired when movement completes
+        console.log('✅ Rail movement to scene complete');
+        
+        // Update scene index and current camera scene
+        gameData.currentScene = nextSceneIndex;
+        currentCameraScene = nextScene;
+        
+        // Verify camera position matches exactly
+        const expectedPos = nextScene.position;
+        const actualPos = camera.position;
+        const posMatch = Math.abs(actualPos.x - expectedPos.x) < 0.001 &&
+                        Math.abs(actualPos.y - expectedPos.y) < 0.001 &&
+                        Math.abs(actualPos.z - expectedPos.z) < 0.001;
+        
+        console.log('🔍 Position verification:');
+        console.log(`  Expected: { x: ${expectedPos.x.toFixed(3)}, y: ${expectedPos.y.toFixed(3)}, z: ${expectedPos.z.toFixed(3)} }`);
+        console.log(`  Actual:   { x: ${actualPos.x.toFixed(3)}, y: ${actualPos.y.toFixed(3)}, z: ${actualPos.z.toFixed(3)} }`);
+        console.log(`  Match: ${posMatch ? '✅ YES' : '❌ NO'}`);
+        
+        // Spawn zombies and power-ups for new scene
+        spawnSceneZombies();
+        powerUpManager.spawnScenePowerUps(gameData.currentScene);
+        showSceneTitle();
+        
+        // Set state back to gameplay
+        gameData.currentState = GameState.GAMEPLAY;
+    });
+    
+    if (!movementStarted) {
+        console.error('❌ Failed to start rail movement to scene');
+        gameData.currentState = GameState.GAMEPLAY;
     }
 }
 
@@ -414,6 +509,18 @@ function transitionToNextScene() {
         .start();
 }
 
+/**
+ * Advance to next scene using rail movement system
+ * Uses RailMovementManager to smoothly animate camera, then snaps to exact SceneConfig position
+ * This is the global function that can be called manually
+ */
+function advanceToNextScene() {
+    return advanceToNextSceneWithRail();
+}
+
+// Expose advanceToNextScene globally
+window.advanceToNextScene = advanceToNextScene;
+
 function showSceneTitle() {
     const title = document.createElement('div');
     title.style.cssText = `
@@ -428,7 +535,14 @@ function showSceneTitle() {
         z-index: 200;
         animation: fadeInOut 3s;
     `;
-    title.textContent = `SCENE ${gameData.currentScene + 1}: ${currentCameraScene.name.toUpperCase()}`;
+    // Format scene title: if scene name is just a number, show "SCENE X", otherwise show "SCENE X: NAME"
+    const sceneNumber = gameData.currentScene + 1;
+    const sceneName = currentCameraScene.name;
+    // Check if scene name is just a number (like "1", "2", "3")
+    const isNumericName = /^\d+$/.test(sceneName);
+    title.textContent = isNumericName 
+        ? `SCENE ${sceneNumber}` 
+        : `SCENE ${sceneNumber}: ${sceneName.toUpperCase()}`;
     
     const style = document.createElement('style');
     style.textContent = `
@@ -652,20 +766,11 @@ function createDamageNumber(position, damage, isHeadshot) {
     }, 1000);
 }
 
-function checkDoorInteraction() {
-    if (gameData.currentScene === 0 && !warehouseLoaded) {
-        const zombies = zombieManager.getZombies();
-        const aliveZombies = zombies.filter(z => !z.isDead).length;
-        
-        if (aliveZombies === 0 && zombies.length > 0) {
-            console.log('🚪 All zombies cleared! Loading warehouse interior...');
-            loadWarehouseInterior();
-        }
+async function loadWarehouseInterior(onComplete) {
+    if (warehouseLoaded) {
+        if (onComplete) onComplete();
+        return;
     }
-}
-
-async function loadWarehouseInterior() {
-    if (warehouseLoaded) return;
     
     warehouseLoaded = true;
     
@@ -689,10 +794,10 @@ async function loadWarehouseInterior() {
             
             setTimeout(() => {
                 message.remove();
-                if (gameData.currentScene === 0 && warehouseLoaded) {
-                    transitionToNextScene();
-                }
+                if (onComplete) onComplete();
             }, 2000);
+        } else {
+            if (onComplete) onComplete();
         }
     });
 }

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RAIL_PATHS, getPathById } from './RailPathConfig.js';
+import { CAMERA_SCENES } from '../core/SceneConfig.js';
 
 /**
  * Easing function - cubic ease in/out
@@ -47,6 +48,14 @@ export class RailMovementManager {
         
         // Look-at target for smooth camera rotation
         this.targetLookAt = null;
+        
+        // Exact target position and lookAt for scene transitions
+        this.exactTargetPosition = null;
+        this.exactTargetLookAt = null;
+        this.onMovementComplete = null;
+        
+        // Callback for when a path completes (for zombie spawning)
+        this.onPathComplete = null;
     }
     
     /**
@@ -173,36 +182,136 @@ export class RailMovementManager {
      * Complete the current movement
      */
     completeMovement() {
-        if (this.splinePoints && this.splinePoints.length > 0) {
-            // Ensure final position
-            const finalPos = this.splineCurve.getPointAt(1.0);
-            this.camera.position.copy(finalPos);
+        // CRITICAL: If exact target position is set (from moveToScenePosition), snap to exact values
+        if (this.exactTargetPosition && this.exactTargetLookAt) {
+            // Snap camera to EXACT position from SceneConfig
+            this.camera.position.copy(this.exactTargetPosition);
             
-            // Set final look-at (use path's lookAt if available)
-            let finalTarget = this.targetLookAt;
-            if (!finalTarget && this.currentPath && this.currentPath.lookAt) {
-                finalTarget = new THREE.Vector3(
-                    this.currentPath.lookAt.x,
-                    this.currentPath.lookAt.y,
-                    this.currentPath.lookAt.z
+            // Reset camera up vector
+            this.camera.up.set(0, 1, 0);
+            
+            // Set EXACT lookAt from SceneConfig
+            this.camera.lookAt(this.exactTargetLookAt);
+            
+            // Force matrix update
+            this.camera.updateMatrixWorld(true);
+            
+            // Log verification
+            console.log('✅ Rail movement complete - snapped to exact scene position');
+            console.log(`📍 Target position: { x: ${this.exactTargetPosition.x.toFixed(2)}, y: ${this.exactTargetPosition.y.toFixed(2)}, z: ${this.exactTargetPosition.z.toFixed(2)} }`);
+            console.log(`📍 Actual position: { x: ${this.camera.position.x.toFixed(2)}, y: ${this.camera.position.y.toFixed(2)}, z: ${this.camera.position.z.toFixed(2)} }`);
+            console.log(`📍 Target lookAt: { x: ${this.exactTargetLookAt.x.toFixed(2)}, y: ${this.exactTargetLookAt.y.toFixed(2)}, z: ${this.exactTargetLookAt.z.toFixed(2)} }`);
+            
+            // Verify exact match
+            const posMatch = this.camera.position.distanceTo(this.exactTargetPosition) < 0.001;
+            if (!posMatch) {
+                console.warn('⚠️ Position mismatch detected!');
+            } else {
+                console.log('✅ Position matches exactly');
+            }
+            
+            // Fire completion callback if provided
+            if (this.onMovementComplete && typeof this.onMovementComplete === 'function') {
+                this.onMovementComplete();
+            }
+            
+            // Clear exact target values
+            this.exactTargetPosition = null;
+            this.exactTargetLookAt = null;
+            this.onMovementComplete = null;
+        } else {
+            // Standard path completion - check if path has sceneIndex (from SceneConfig)
+            let sceneIndex = null;
+            if (this.currentPath && this.currentPath.sceneIndex !== undefined) {
+                sceneIndex = this.currentPath.sceneIndex;
+            }
+            
+            // If path has sceneIndex, snap to exact SceneConfig position
+            if (sceneIndex !== null && sceneIndex < CAMERA_SCENES.length) {
+                const scene = CAMERA_SCENES[sceneIndex];
+                const exactPos = new THREE.Vector3(
+                    scene.position.x,
+                    scene.position.y,
+                    scene.position.z
                 );
+                const exactLookAt = new THREE.Vector3(
+                    scene.lookAt.x,
+                    scene.lookAt.y,
+                    scene.lookAt.z
+                );
+                
+                // Snap camera to EXACT position from SceneConfig
+                this.camera.position.copy(exactPos);
+                
+                // Reset camera up vector
+                this.camera.up.set(0, 1, 0);
+                
+                // Set EXACT lookAt from SceneConfig
+                this.camera.lookAt(exactLookAt);
+                
+                // Force matrix update
+                this.camera.updateMatrixWorld(true);
+                
+                // Log verification
+                console.log(`✅ Rail movement complete - snapped to exact Scene ${sceneIndex + 1} position`);
+                console.log(`📍 Scene: ${scene.name}`);
+                console.log(`📍 Target position: { x: ${exactPos.x.toFixed(2)}, y: ${exactPos.y.toFixed(2)}, z: ${exactPos.z.toFixed(2)} }`);
+                console.log(`📍 Actual position: { x: ${this.camera.position.x.toFixed(2)}, y: ${this.camera.position.y.toFixed(2)}, z: ${this.camera.position.z.toFixed(2)} }`);
+                console.log(`📍 Target lookAt: { x: ${exactLookAt.x.toFixed(2)}, y: ${exactLookAt.y.toFixed(2)}, z: ${exactLookAt.z.toFixed(2)} }`);
+                
+                // Verify exact match
+                const posMatch = this.camera.position.distanceTo(exactPos) < 0.001;
+                if (!posMatch) {
+                    console.warn('⚠️ Position mismatch detected!');
+                } else {
+                    console.log('✅ Position matches exactly');
+                }
+                
+                // Fire path completion callback for zombie spawning
+                if (this.onPathComplete && typeof this.onPathComplete === 'function') {
+                    this.onPathComplete(sceneIndex, scene);
+                }
+            } else {
+                // Standard path completion (no scene index)
+                if (this.splinePoints && this.splinePoints.length > 0) {
+                    // Ensure final position
+                    const finalPos = this.splineCurve.getPointAt(1.0);
+                    this.camera.position.copy(finalPos);
+                    
+                    // Set final look-at (use path's lookAt if available)
+                    let finalTarget = this.targetLookAt;
+                    if (!finalTarget && this.currentPath && this.currentPath.lookAt) {
+                        finalTarget = new THREE.Vector3(
+                            this.currentPath.lookAt.x,
+                            this.currentPath.lookAt.y,
+                            this.currentPath.lookAt.z
+                        );
+                    }
+                    if (!finalTarget) {
+                        finalTarget = finalPos;
+                    }
+                    
+                    const finalDirection = new THREE.Vector3()
+                        .subVectors(finalTarget, this.camera.position)
+                        .normalize();
+                    
+                    const finalLookAt = new THREE.Vector3()
+                        .copy(this.camera.position)
+                        .addScaledVector(finalDirection, this.lookAtDistance);
+                    
+                    finalLookAt.y = Math.max(this.camera.position.y, finalTarget.y) + 0.5;
+                    this.camera.lookAt(finalLookAt);
+                    this.camera.updateMatrixWorld();
+                }
+                
+                console.log('✅ Rail movement complete');
+                console.log(`📍 Camera at: { x: ${this.camera.position.x.toFixed(2)}, y: ${this.camera.position.y.toFixed(2)}, z: ${this.camera.position.z.toFixed(2)} }`);
+                console.log(`📍 Next path index: ${this.currentPathIndex} (total paths: ${this.paths.length})`);
             }
-            if (!finalTarget) {
-                finalTarget = finalPos;
-            }
-            
-            const finalDirection = new THREE.Vector3()
-                .subVectors(finalTarget, this.camera.position)
-                .normalize();
-            
-            const finalLookAt = new THREE.Vector3()
-                .copy(this.camera.position)
-                .addScaledVector(finalDirection, this.lookAtDistance);
-            
-            finalLookAt.y = Math.max(this.camera.position.y, finalTarget.y) + 0.5;
-            this.camera.lookAt(finalLookAt);
-            this.camera.updateMatrixWorld();
         }
+        
+        // Store exact target flag before clearing
+        const wasExactTarget = this.exactTargetPosition !== null;
         
         // Reset state
         this.isOnRails = false;
@@ -220,12 +329,11 @@ export class RailMovementManager {
             this.gameData.isRailMovementActive = false;
         }
         
-        // Move to next path index BEFORE logging
-        this.currentPathIndex++;
-        
-        console.log('✅ Rail movement complete');
-        console.log(`📍 Camera at: { x: ${this.camera.position.x.toFixed(2)}, y: ${this.camera.position.y.toFixed(2)}, z: ${this.camera.position.z.toFixed(2)} }`);
-        console.log(`📍 Next path index: ${this.currentPathIndex} (total paths: ${this.paths.length})`);
+        // Don't increment currentPathIndex for scene paths - gameData.currentScene is updated by the callback
+        // Only increment for non-scene paths (if any)
+        if (!wasExactTarget && (this.currentPath === null || this.currentPath.sceneIndex === undefined)) {
+            this.currentPathIndex++;
+        }
         
         // Reset spawned enemies for next path
         this.spawnedEnemies.clear();
@@ -233,15 +341,17 @@ export class RailMovementManager {
     
     /**
      * Start movement along the next path
+     * Uses gameData.currentScene to determine which path to take (path goes to next scene)
      * @returns {boolean} True if movement started, false if conditions not met
      */
     moveToNextPath() {
         console.log('🔘 moveToNextPath called');
         console.log('  - isOnRails:', this.isOnRails);
         console.log('  - gameState:', this.gameData.currentState);
+        console.log('  - currentScene:', this.gameData.currentScene);
         console.log('  - currentPathIndex:', this.currentPathIndex);
         console.log('  - paths.length:', this.paths.length);
-        console.log('  - paths available:', this.paths.map((p, i) => `${i}:${p.id}`).join(', '));
+        console.log('  - paths available:', this.paths.map((p, i) => `${i}:${p.id} -> scene ${p.sceneIndex}`).join(', '));
         
         // Check if game is in gameplay state
         if (this.gameData.currentState !== this.GameState.GAMEPLAY) {
@@ -249,12 +359,21 @@ export class RailMovementManager {
             return false;
         }
         
-        // Check if we have more paths
-        if (this.currentPathIndex >= this.paths.length) {
-            console.log('⚠️ Rail movement: No more paths (index:', this.currentPathIndex, ', total:', this.paths.length, ')');
-            console.log('  All paths completed!');
+        // Determine which path to use based on current scene
+        // Path 0 goes to Scene 1, Path 1 goes to Scene 2, etc.
+        // So if we're at Scene 0, use Path 0; if at Scene 1, use Path 1
+        const targetPathIndex = this.gameData.currentScene;
+        
+        // Check if we have a valid path for the next scene
+        if (targetPathIndex >= this.paths.length) {
+            console.log('⚠️ Rail movement: No more paths available');
+            console.log(`  Current scene: ${this.gameData.currentScene}, Total paths: ${this.paths.length}`);
+            console.log('  All scenes completed!');
             return false;
         }
+        
+        // Update currentPathIndex to match the target path
+        this.currentPathIndex = targetPathIndex;
         
         // Additional check: ensure paths array is valid
         if (!this.paths || this.paths.length === 0) {
@@ -398,6 +517,91 @@ export class RailMovementManager {
     }
     
     /**
+     * Move camera to exact scene position using rail movement
+     * Creates a spline from current position to exact target, then snaps to exact values on completion
+     * @param {Object} sceneConfig - Scene object from CAMERA_SCENES with position, lookAt, name
+     * @param {Function} onComplete - Callback fired when movement completes
+     * @returns {boolean} True if movement started, false otherwise
+     */
+    moveToScenePosition(sceneConfig, onComplete) {
+        if (!sceneConfig || !sceneConfig.position || !sceneConfig.lookAt) {
+            console.error('❌ Invalid scene config:', sceneConfig);
+            return false;
+        }
+        
+        console.log(`🎬 Starting rail movement to scene: ${sceneConfig.name}`);
+        console.log(`📍 Target position: { x: ${sceneConfig.position.x.toFixed(2)}, y: ${sceneConfig.position.y.toFixed(2)}, z: ${sceneConfig.position.z.toFixed(2)} }`);
+        console.log(`📍 Target lookAt: { x: ${sceneConfig.lookAt.x.toFixed(2)}, y: ${sceneConfig.lookAt.y.toFixed(2)}, z: ${sceneConfig.lookAt.z.toFixed(2)} }`);
+        
+        // Store exact target values for snapping on completion
+        this.exactTargetPosition = new THREE.Vector3(
+            sceneConfig.position.x,
+            sceneConfig.position.y,
+            sceneConfig.position.z
+        );
+        this.exactTargetLookAt = new THREE.Vector3(
+            sceneConfig.lookAt.x,
+            sceneConfig.lookAt.y,
+            sceneConfig.lookAt.z
+        );
+        this.onMovementComplete = onComplete;
+        
+        // Get current camera position
+        const startPos = new THREE.Vector3().copy(this.camera.position);
+        
+        // Create spline from current position to exact target
+        const points = [startPos, this.exactTargetPosition];
+        
+        try {
+            this.splineCurve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
+            this.pathLength = this.splineCurve.getLength();
+            this.splinePoints = points;
+        } catch (error) {
+            console.error('❌ Error creating spline curve:', error);
+            this.exactTargetPosition = null;
+            this.exactTargetLookAt = null;
+            this.onMovementComplete = null;
+            return false;
+        }
+        
+        // Set target lookAt for smooth rotation during movement
+        this.targetLookAt = this.exactTargetLookAt.clone();
+        
+        // Disable free camera during rail movement
+        this.renderer.isFreeCamera = false;
+        if (this.renderer.controls) {
+            this.renderer.controls.enabled = false;
+        }
+        
+        // Set duration from sceneConfig or default to 3000ms
+        this.duration = sceneConfig.transitionDuration || 3000;
+        
+        // Start animation
+        this.isOnRails = true;
+        
+        // Set global flag to disable camera breathing/shake
+        if (typeof window !== 'undefined' && window.isRailMovementActive !== undefined) {
+            window.isRailMovementActive = true;
+        }
+        if (this.gameData) {
+            this.gameData.isRailMovementActive = true;
+        }
+        
+        // Reset spawned enemies
+        this.spawnedEnemies.clear();
+        
+        // Set startTime LAST to ensure accurate timing
+        this.startTime = performance.now();
+        
+        // Reset debug counter
+        this._updateLogCount = 0;
+        
+        console.log(`▶️ Rail movement to scene started - duration: ${this.duration}ms`);
+        
+        return true;
+    }
+    
+    /**
      * Stop current movement
      */
     stop() {
@@ -507,6 +711,14 @@ export class RailMovementManager {
      */
     setEnemySpawnCallback(callback) {
         this.onEnemySpawn = callback;
+    }
+    
+    /**
+     * Set callback for path completion (for zombie spawning)
+     * @param {Function} callback - (sceneIndex, scene) => void
+     */
+    setPathCompleteCallback(callback) {
+        this.onPathComplete = callback;
     }
     
     /**
