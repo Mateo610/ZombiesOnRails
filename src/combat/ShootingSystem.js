@@ -78,8 +78,6 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
         const hitObject = intersects[0].object;
         const hitPoint = intersects[0].point;
         
-        createImpactSphere(hitPoint);
-        
         // Power-up hit
         if (hitObject.userData.isPowerUp) {
             const powerUpInstance = hitObject.userData.powerUp;
@@ -91,6 +89,7 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
         }
         
         if (hitObject.userData.isZombie) {
+            // Don't create impact sphere for zombie hits - they have death effects
             gameData.shotsHit++;
             const zombie = hitObject.userData.zombie;
             
@@ -123,6 +122,10 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
                     resetComboFn();
                 }
             }
+        } else {
+            // Only create impact sphere for environment hits (ground, walls, etc.)
+            // Not for zombies or power-ups
+            createImpactSphere(hitPoint);
         }
     }
     
@@ -149,11 +152,15 @@ export function createImpactSphere(hitPoint) {
     impactSpheres.push({ mesh: sphere, opacity: 1, scale: 1 });
 }
 
-export function updateImpactSpheres() {
+export function updateImpactSpheres(deltaTime = 0.016) {
     for (let i = impactSpheres.length - 1; i >= 0; i--) {
         const impact = impactSpheres[i];
-        impact.opacity -= 0.05;
-        impact.scale += 0.1;
+        // Fade out and scale up based on deltaTime for consistent animation speed
+        const fadeRate = 2.0 * deltaTime; // Fade out over ~0.5 seconds
+        const scaleRate = 6.0 * deltaTime; // Scale up rate
+        
+        impact.opacity -= fadeRate;
+        impact.scale += scaleRate;
         
         if (impact.opacity <= 0) {
             scene.remove(impact.mesh);

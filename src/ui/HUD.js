@@ -44,8 +44,8 @@ export function createUI() {
             top: 20px;
             left: 20px;
             font-family: 'Courier New', monospace;
-            color: #00ffff;
-            text-shadow: 0 0 10px #00ffff, 2px 2px 4px #000;
+            color: #999999;
+            text-shadow: 0 0 10px #999999, 2px 2px 4px #000;
             font-size: 18px;
             z-index: 10;
             pointer-events: none;
@@ -53,7 +53,7 @@ export function createUI() {
             <!-- Health Bar -->
             <div style="margin-bottom: 15px;">
                 <div style="margin-bottom: 5px;">HEALTH</div>
-                <div style="width: 200px; height: 30px; background: rgba(0,0,0,0.7); border: 2px solid #00ffff; position: relative;">
+                <div style="width: 200px; height: 30px; background: rgba(0,0,0,0.7); border: 2px solid #999999; position: relative;">
                     <div id="health-bar" style="
                         width: 100%;
                         height: 100%;
@@ -130,7 +130,7 @@ export function createUI() {
             width: 150px;
             height: 150px;
             background: rgba(0, 0, 0, 0.8);
-            border: 2px solid #00ffff;
+                border: 2px solid #999999;
             z-index: 10;
             pointer-events: none;
         ">
@@ -147,20 +147,20 @@ export function createUI() {
             z-index: 10;
             pointer-events: none;
         ">
-            <!-- Weapon Name / Icon -->
-            <div id="weapon-name" style="
-                font-size: 28px;
-                margin-bottom: 8px;
-                letter-spacing: 2px;
-                text-shadow: 0 0 12px #00ffff, 2px 2px 4px #000;
-            ">
-                PISTOL
-            </div>
             <div style="
                 font-size: 48px;
                 color: #fff;
                 text-shadow: 0 0 15px #fff, 3px 3px 6px #000;
                 font-weight: bold;
+                background: rgba(0, 0, 0, 0.7);
+                padding: 12px 20px;
+                border-radius: 6px;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                box-shadow: 
+                    0 0 20px rgba(0, 0, 0, 0.8),
+                    0 0 10px rgba(255, 255, 255, 0.2),
+                    inset 0 0 15px rgba(0, 0, 0, 0.5);
+                display: inline-block;
             ">
                 <span id="current-ammo">12</span> / <span id="reserve-ammo">60</span>
             </div>
@@ -169,7 +169,7 @@ export function createUI() {
                 margin-top: 10px;
                 font-size: 14px;
             ">
-                <span id="weapon-slot-1" style="margin-left: 8px; padding: 4px 8px; border-radius: 3px; border: 1px solid #00ffff; background: rgba(0,255,255,0.1);">
+                <span id="weapon-slot-1" style="margin-left: 8px; padding: 4px 8px; border-radius: 3px; border: 1px solid #999999; background: rgba(153,153,153,0.1);">
                     1 • PISTOL
                 </span>
                 <span id="weapon-slot-2" style="margin-left: 8px; padding: 4px 8px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.3); opacity: 0.7;">
@@ -209,18 +209,18 @@ export function createUI() {
             font-family: 'Courier New', monospace;
             font-size: 18px;
             font-weight: bold;
-            color: #00ffff;
+                    color: #999999;
             background: rgba(0, 0, 0, 0.8);
-            border: 2px solid #00ffff;
+                border: 2px solid #999999;
             border-radius: 4px;
             cursor: pointer;
             z-index: 100;
-            text-shadow: 0 0 10px #00ffff, 2px 2px 4px #000;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2);
+            text-shadow: 0 0 10px #999999, 2px 2px 4px #000;
+            box-shadow: 0 0 15px rgba(0, 136, 255, 0.5), inset 0 0 10px rgba(0, 136, 255, 0.2);
             transition: all 0.3s;
             pointer-events: auto;
-        " onmouseover="this.style.background='rgba(0, 255, 255, 0.2)'; this.style.boxShadow='0 0 20px rgba(0, 255, 255, 0.8), inset 0 0 15px rgba(0, 255, 255, 0.3)';" 
-           onmouseout="this.style.background='rgba(0, 0, 0, 0.8)'; this.style.boxShadow='0 0 15px rgba(0, 255, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2)';">
+        "            onmouseover="this.style.background='rgba(0, 136, 255, 0.2)'; this.style.boxShadow='0 0 20px rgba(0, 136, 255, 0.8), inset 0 0 15px rgba(0, 136, 255, 0.3)';" 
+           onmouseout="this.style.background='rgba(0, 0, 0, 0.8)'; this.style.boxShadow='0 0 15px rgba(0, 136, 255, 0.5), inset 0 0 10px rgba(0, 136, 255, 0.2)';">
             🚂 NEXT LOCATION
         </button>
         
@@ -283,14 +283,14 @@ export function createUI() {
                 ">
                     MISSION COMPLETE
                 </div>
-                <div style="font-size: 48px; color: #00ffff; margin-bottom: 20px;">
+                <div style="font-size: 48px; color: #999999; margin-bottom: 20px;">
                     RANK: <span id="final-rank">S</span>
                 </div>
                 <div id="final-stats" style="font-size: 24px; color: #fff; line-height: 2; margin-bottom: 40px;"></div>
                 
                 <!-- Leaderboard -->
-                <div style="margin-top: 40px; padding: 20px; background: rgba(0, 255, 255, 0.1); border: 2px solid #00ffff;">
-                    <div style="font-size: 28px; color: #00ffff; margin-bottom: 20px;">BEST SCORES</div>
+                <div style="margin-top: 40px; padding: 20px; background: rgba(0, 136, 255, 0.1); border: 2px solid #999999;">
+                    <div style="font-size: 28px; color: #999999; margin-bottom: 20px;">BEST SCORES</div>
                     <div id="leaderboard" style="font-size: 18px; color: #fff; line-height: 1.8;"></div>
                 </div>
                 
@@ -318,6 +318,10 @@ export function createUI() {
     `;
     
     document.body.appendChild(uiContainer);
+    
+    // Remove weapon-name element if it exists (cleanup)
+    const weaponNameEl = document.getElementById('weapon-name');
+    if (weaponNameEl) weaponNameEl.remove();
     
     // Add click handler for rail movement button
     const railBtn = document.getElementById('rail-movement-btn');
@@ -394,7 +398,7 @@ function updateMiniMap() {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, 150, 150);
     
-    ctx.fillStyle = '#00ffff';
+    ctx.fillStyle = '#999999';
     ctx.beginPath();
     ctx.arc(75, 75, 5, 0, Math.PI * 2);
     ctx.fill();
@@ -448,7 +452,7 @@ export function updateFinalStats() {
         const rankColors = {
             'S': '#ffff00',
             'A': '#00ff00',
-            'B': '#00ffff',
+            'B': '#999999',
             'C': '#ffa500',
             'D': '#ff0000'
         };

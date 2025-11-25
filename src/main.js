@@ -14,10 +14,13 @@ import { PowerUpManager } from './systems/PowerUpManager.js';
 import { PlayerManager } from './systems/PlayerManager.js';
 import ZombieManager from './enemies/ZombieManager.js';
 import { updateRecoil, setRecoilWeapon } from './combat/Recoil.js';
-import { initShootingSystem } from './combat/ShootingSystem.js';
+import { initShootingSystem, updateImpactSpheres } from './combat/ShootingSystem.js';
 import { initHUD, createUI, updateUI, updateFinalStats, saveLeaderboard } from './ui/HUD.js';
 import { WeaponModelManager } from './weapons/WeaponModelManager.js';
 import { RailMovementManager } from './systems/RailMovementManager.js';
+import { CrosshairManager } from './ui/CrosshairManager.js';
+import { MouseLookManager } from './systems/MouseLookManager.js';
+import { SceneCameraManager } from './systems/SceneCameraManager.js';
 
 // ============================================================================
 // THREE.JS SETUP
@@ -77,7 +80,53 @@ railMovementManager.setEnemySpawnCallback((position, type, zombiePath) => {
     // Example: zombieManager.spawnZombieAt(position, type, zombiePath);
 });
 
+/**
+ * Enable free look after rail movement completes
+ * Ensures camera is looking at exact SceneConfig lookAt before enabling free look
+ */
+function enableFreeLookAfterRailMovement() {
+    if (!mouseLookManager) {
+        console.error('❌ MouseLookManager not available');
+        return;
+    }
+    
+    // CRITICAL: Ensure camera is looking at exact SceneConfig lookAt before syncing free look
+    // This ensures the starting direction matches what your partner intended
+    if (currentCameraScene && currentCameraScene.lookAt) {
+        // Reset camera up vector
+        camera.up.set(0, 1, 0);
+        
+        // Set EXACT lookAt from SceneConfig (this is what your partner intended)
+        camera.lookAt(
+            currentCameraScene.lookAt.x,
+            currentCameraScene.lookAt.y,
+            currentCameraScene.lookAt.z
+        );
+        
+        // Force matrix update to ensure rotation is applied
+        camera.updateMatrixWorld(true);
+        
+        console.log('📐 Setting initial direction from SceneConfig:');
+        console.log(`  Position: { x: ${camera.position.x.toFixed(2)}, y: ${camera.position.y.toFixed(2)}, z: ${camera.position.z.toFixed(2)} }`);
+        console.log(`  LookAt: { x: ${currentCameraScene.lookAt.x.toFixed(2)}, y: ${currentCameraScene.lookAt.y.toFixed(2)}, z: ${currentCameraScene.lookAt.z.toFixed(2)} }`);
+        console.log(`  Camera rotation: { x: ${camera.rotation.x.toFixed(4)}, y: ${camera.rotation.y.toFixed(4)}, z: ${camera.rotation.z.toFixed(4)} }`);
+    }
+    
+    // Sync mouse look rotation with camera's exact SceneConfig direction
+    mouseLookManager.updateRotationFromCamera();
+    mouseLookManager.unlock();
+    mouseLookManager.enable();
+    
+    // Clear rail movement flags after a short delay to ensure callback completes
+    const FLAG_CLEAR_DELAY_MS = 100;
+    setTimeout(() => {
+        wasRailMovementActive = false;
+        isRailMovementActive = false;
+    }, FLAG_CLEAR_DELAY_MS);
+}
+
 // Set up path completion callback for zombie spawning when rail path completes
+// This is only called for paths with sceneIndex (from RailPathConfig paths)
 railMovementManager.setPathCompleteCallback((sceneIndex, scene) => {
     console.log(`🎬 Rail path completed - Scene ${sceneIndex + 1}: ${scene.name}`);
     
@@ -98,6 +147,10 @@ railMovementManager.setPathCompleteCallback((sceneIndex, scene) => {
     gameData.currentState = GameState.GAMEPLAY;
     
     console.log(`✅ Scene ${sceneIndex + 1} setup complete - zombies spawned`);
+    
+    // Enable free look after scene setup completes
+    // Use requestAnimationFrame to ensure this happens after camera is fully positioned
+    requestAnimationFrame(enableFreeLookAfterRailMovement);
 });
 
 // Screen shake
@@ -106,6 +159,20 @@ let screenShakeIntensity = 0;
 // Global flag to disable camera breathing/shake during rail movement
 // This is checked directly in camera update functions
 let isRailMovementActive = false;
+let wasRailMovementActive = false; // Track previous state to detect when rail movement ends
+
+// ============================================================================
+// MOUSE LOOK MANAGER
+// ============================================================================
+const mouseLookManager = new MouseLookManager(camera, gameData, GameState);
+mouseLookManager.init();
+
+// ============================================================================
+// SCENE CAMERA MANAGER
+// ============================================================================
+// Handles camera positioning and initial direction for each scene
+// Provides clean integration between scene coordinates and free look system
+const sceneCameraManager = new SceneCameraManager(camera, mouseLookManager);
 
 // ============================================================================
 // SHOOTING SYSTEM
@@ -190,10 +257,7 @@ function switchCurrentWeapon(id) {
         rifle: 'RIFLE'
     }[id] || id.toUpperCase();
     
-    const nameEl = document.getElementById('weapon-name');
-    if (nameEl) {
-        nameEl.textContent = weaponLabel;
-    }
+    // Weapon name display removed - weapon selection shown in slots below ammo counter
     
     // Highlight current slot
     const slot1 = document.getElementById('weapon-slot-1');
@@ -208,9 +272,9 @@ function switchCurrentWeapon(id) {
     });
     const activeSlot = id === 'pistol' ? slot1 : id === 'shotgun' ? slot2 : slot3;
     if (activeSlot) {
-        activeSlot.style.borderColor = '#00ffff';
+        activeSlot.style.borderColor = '#999999';
         activeSlot.style.opacity = '1';
-        activeSlot.style.background = 'rgba(0,255,255,0.15)';
+        activeSlot.style.background = 'rgba(153,153,153,0.15)';
     }
     
     const indicator = document.getElementById('weapon-switch-message');
@@ -227,34 +291,57 @@ function switchCurrentWeapon(id) {
 // ============================================================================
 // CAMERA SYSTEMS
 // ============================================================================
+/**
+ * Update camera breathing effect (subtle position/rotation sway)
+ * Only applies when free look is NOT active (during transitions, locked states)
+ */
 function updateCameraBreathing(elapsedTime) {
+    // Early returns for conditions where breathing should not apply
     if (threeRenderer.isFreeCamera) return;
     if (gameData.currentState !== GameState.GAMEPLAY) return;
     if (screenShakeIntensity > 0.001) return;
     
-    // CRITICAL: Check rail movement first - do NOT override camera during rail movement
-    // Use both the flag and the manager check for redundancy
-    if (isRailMovementActive || (railMovementManager && railMovementManager.isMoving())) {
-        // ABSOLUTELY do nothing - rail movement controls camera
-        // Do not modify camera position, rotation, or lookAt in any way
+    // Do not override camera during rail movement
+    if (isRailMovementActive || (railMovementManager?.isMoving())) {
         return;
     }
     
-    const breathY = Math.sin(elapsedTime * 2.0) * 0.005;
-    const breathX = Math.cos(elapsedTime * 1.5) * 0.003;
-    const swayZ = Math.sin(elapsedTime * 1.8) * 0.002;
+    // Do not modify camera during free look - position should stay at rail endpoint
+    if (mouseLookManager && !mouseLookManager.isLocked) {
+        return;
+    }
     
-    camera.position.x = currentCameraScene.position.x + breathX;
-    camera.position.y = currentCameraScene.position.y + breathY;
-    camera.position.z = currentCameraScene.position.z;
+    // Breathing effect constants
+    const BREATH_FREQUENCY_Y = 2.0;
+    const BREATH_FREQUENCY_X = 1.5;
+    const SWAY_FREQUENCY_Z = 1.8;
+    const BREATH_AMPLITUDE_Y = 0.005;
+    const BREATH_AMPLITUDE_X = 0.003;
+    const SWAY_AMPLITUDE_Z = 0.002;
     
-    camera.lookAt(
-        currentCameraScene.lookAt.x,
-        currentCameraScene.lookAt.y,
-        currentCameraScene.lookAt.z
-    );
+    // Calculate breathing offsets
+    const breathY = Math.sin(elapsedTime * BREATH_FREQUENCY_Y) * BREATH_AMPLITUDE_Y;
+    const breathX = Math.cos(elapsedTime * BREATH_FREQUENCY_X) * BREATH_AMPLITUDE_X;
+    const swayZ = Math.sin(elapsedTime * SWAY_FREQUENCY_Z) * SWAY_AMPLITUDE_Z;
     
-    camera.rotation.z = swayZ;
+    // Apply breathing to camera position (only when using scene position)
+    if (currentCameraScene?.position) {
+        camera.position.set(
+            currentCameraScene.position.x + breathX,
+            currentCameraScene.position.y + breathY,
+            currentCameraScene.position.z
+        );
+    }
+    
+    // Apply lookAt and roll sway only when mouse look is locked
+    if (mouseLookManager?.isLocked && currentCameraScene?.lookAt) {
+        camera.lookAt(
+            currentCameraScene.lookAt.x,
+            currentCameraScene.lookAt.y,
+            currentCameraScene.lookAt.z
+        );
+        camera.rotation.z = swayZ;
+    }
 }
 
 function updateScreenShake() {
@@ -289,6 +376,9 @@ function updateScreenShake() {
 function startRailMovement() {
     // Set global flag before starting movement
     isRailMovementActive = true;
+    wasRailMovementActive = true;
+    // Disable free look during rail movement
+    sceneCameraManager.disableFreeLook();
     railMovementManager.moveToNextPath();
 }
 window.startRailMovement = startRailMovement;
@@ -329,9 +419,29 @@ window.isRailMovementActive = false; // Initialize global flag
     camera: [
         // IMPORTANT: These run AFTER tween updates, but check railMovementManager.isMoving()
         // to prevent overriding the rail movement camera position
+        // Camera position updates first (breathing, shake)
         (elapsedTime) => updateCameraBreathing(elapsedTime),
-        (elapsedTime, deltaTime) => updateRecoil(deltaTime, camera, threeRenderer.BASE_FOV),
         () => updateScreenShake(),
+        // Mouse look rotation (runs after position updates, before recoil)
+        (elapsedTime, deltaTime) => {
+            if (mouseLookManager && !threeRenderer.isFreeCamera) {
+                // Check rail movement status from both local flag and manager
+                const isRailActive = isRailMovementActive || (railMovementManager && railMovementManager.isMoving());
+                
+                // Track rail movement state (callback handles enabling free look)
+                if (isRailActive) {
+                    wasRailMovementActive = true;
+                }
+                
+                // Update mouse look if not locked and not in rail movement
+                // The callback will enable free look after rail movement completes
+                if (!isRailActive) {
+                    mouseLookManager.update(deltaTime);
+                }
+            }
+        },
+        // Recoil modifies rotation after mouse look
+        (elapsedTime, deltaTime) => updateRecoil(deltaTime, camera, threeRenderer.BASE_FOV),
         (elapsedTime, deltaTime) => {
             // Update weapon models to follow camera
             if (weaponModelManager) {
@@ -350,11 +460,18 @@ window.isRailMovementActive = false; // Initialize global flag
         }
     ],
     ui: [
+        (deltaTime) => {
+            // Update crosshair position (smooth interpolation)
+            if (crosshairManager && gameData.currentState === GameState.GAMEPLAY) {
+                crosshairManager.update(deltaTime);
+            }
+        },
         () => powerUpManager.updateUI(),
-        () => {
-            // Update impact spheres if needed
-            const impactSpheres = [];
-            // TODO: Integrate impact spheres update
+        (deltaTime) => {
+            // Update impact spheres (fade out and scale up)
+            if (gameData.currentState === GameState.GAMEPLAY) {
+                updateImpactSpheres(deltaTime);
+            }
         }
     ]
 });
@@ -451,6 +568,10 @@ function advanceToNextSceneWithRail() {
         
         // Set state back to gameplay
         gameData.currentState = GameState.GAMEPLAY;
+        
+        // Enable free look after scene setup completes
+        // Use requestAnimationFrame to ensure this happens after camera is fully positioned
+        requestAnimationFrame(enableFreeLookAfterRailMovement);
     });
     
     if (!movementStarted) {
@@ -470,11 +591,20 @@ function transitionToNextScene() {
     powerUpManager.clear();
 
     // Camera start/end
+    // Convert plain objects to THREE.Vector3 (they're {x, y, z} objects, not Vector3 instances)
     const startPos = camera.position.clone();
-    const endPos = currentCameraScene.position.clone();
+    const endPos = new THREE.Vector3(
+        currentCameraScene.position.x,
+        currentCameraScene.position.y,
+        currentCameraScene.position.z
+    );
 
     const startLookAt = camera.getWorldDirection(new THREE.Vector3()).add(camera.position);
-    const endLookAt = currentCameraScene.lookAt.clone();
+    const endLookAt = new THREE.Vector3(
+        currentCameraScene.lookAt.x,
+        currentCameraScene.lookAt.y,
+        currentCameraScene.lookAt.z
+    );
 
     // Temporarily disable camera overrides during transition
     const prevScreenShake = screenShakeIntensity;
@@ -496,9 +626,10 @@ function transitionToNextScene() {
             camera.lookAt(startLookAt);
         })
         .onComplete(() => {
-            camera.up.set(0, 1, 0); // ADD THIS LINE
-            camera.lookAt(endLookAt);
-            camera.updateMatrixWorld(true); // ADD THIS LINE
+            // Camera is now at the new scene position
+            // Set initial direction and enable free look using SceneCameraManager
+            // This ensures camera faces zombies (from lookAt) then enables free look
+            sceneCameraManager.setSceneCamera(currentCameraScene);
             
             gameData.currentState = GameState.GAMEPLAY;
             screenShakeIntensity = prevScreenShake; // restore shake
@@ -596,31 +727,12 @@ function startGame() {
 // This must happen BEFORE setting game state to GAMEPLAY to prevent camera breathing from overriding
 currentCameraScene = CAMERA_SCENES[0];
 
-// ALWAYS reset the up vector first
-camera.up.set(0, 1, 0);
+// Reset rail movement state
+railMovementManager.reset();
 
-// Set camera position
-camera.position.set(
-    currentCameraScene.position.x,
-    currentCameraScene.position.y,
-    currentCameraScene.position.z
-);
-
-// Reset camera rotation before lookAt to prevent upside down issues
-camera.rotation.set(0, 0, 0);
-camera.rotation.order = 'YXZ'; // Changed from 'XYZ' to 'YXZ'
-
-camera.lookAt(
-    currentCameraScene.lookAt.x,
-    currentCameraScene.lookAt.y,
-    currentCameraScene.lookAt.z
-);
-
-// Force camera matrix update
-camera.updateMatrixWorld(true);
-    
-    // Reset rail movement state
-    railMovementManager.reset();
+// Set camera position and initial direction from scene config, then enable free look
+// This uses SceneCameraManager which handles everything cleanly and modularly
+sceneCameraManager.setSceneCamera(currentCameraScene);
     
     // Now set game state to GAMEPLAY after camera is positioned
     gameData.currentState = GameState.GAMEPLAY;
@@ -808,9 +920,10 @@ async function loadWarehouseInterior(onComplete) {
 import { shoot as shootWeapon } from './combat/ShootingSystem.js';
 
 window.addEventListener('click', (event) => {
-    const mouseX = (event.clientX / window.innerWidth) * 2 - 1;
-    const mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
-    shootWeapon(mouseX, mouseY, currentWeaponId);
+    // Use CrosshairManager's tracked mouse position instead of click position
+    // This ensures shooting accuracy matches where the crosshair is pointing
+    const mousePos = crosshairManager.getNormalizedMousePosition();
+    shootWeapon(mousePos.x, mousePos.y, currentWeaponId);
 });
 
 window.addEventListener('keydown', (event) => {
@@ -869,6 +982,12 @@ window.addEventListener('keydown', (event) => {
 // INITIALIZATION
 // ============================================================================
 createUI();
+
+// ============================================================================
+// CROSSHAIR MANAGER
+// ============================================================================
+const crosshairManager = new CrosshairManager();
+crosshairManager.init('crosshair');
 
 // Load factory scene on startup
 sceneLoader.loadFactoryScene(scene, (factoryModel) => {

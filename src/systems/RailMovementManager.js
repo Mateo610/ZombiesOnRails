@@ -54,8 +54,9 @@ export class RailMovementManager {
         this.exactTargetLookAt = null;
         this.onMovementComplete = null;
         
-        // Callback for when a path completes (for zombie spawning)
-        this.onPathComplete = null;
+        // Callbacks
+        this.onEnemySpawn = null;
+        this.onPathComplete = null; // Callback for when a path completes (for zombie spawning)
     }
     
     /**
@@ -210,7 +211,8 @@ export class RailMovementManager {
                 console.log('✅ Position matches exactly');
             }
             
-            // Fire completion callback if provided
+            // Fire completion callback if provided (for moveToScenePosition)
+            // This handles scene setup and free look enabling
             if (this.onMovementComplete && typeof this.onMovementComplete === 'function') {
                 this.onMovementComplete();
             }
@@ -268,6 +270,7 @@ export class RailMovementManager {
                 }
                 
                 // Fire path completion callback for zombie spawning
+                // This handles scene setup and free look enabling for RailPathConfig paths
                 if (this.onPathComplete && typeof this.onPathComplete === 'function') {
                     this.onPathComplete(sceneIndex, scene);
                 }
@@ -337,6 +340,11 @@ export class RailMovementManager {
         
         // Reset spawned enemies for next path
         this.spawnedEnemies.clear();
+        
+        // Callbacks are handled in the specific completion branches above:
+        // - onMovementComplete for moveToScenePosition (exact target paths)
+        // - onPathComplete for RailPathConfig paths with sceneIndex
+        // No general onComplete callback needed - each path type handles its own completion
     }
     
     /**
@@ -714,7 +722,9 @@ export class RailMovementManager {
     }
     
     /**
+    /**
      * Set callback for path completion (for zombie spawning)
+     * This is called when a RailPathConfig path with sceneIndex completes
      * @param {Function} callback - (sceneIndex, scene) => void
      */
     setPathCompleteCallback(callback) {

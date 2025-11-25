@@ -48,8 +48,8 @@ export class UIManager {
             pointer-events: none;
             z-index: 10;
             font-family: 'Courier New', monospace;
-            color: #00ffff;
-            text-shadow: 0 0 10px #00ffff, 2px 2px 4px #000;
+            color: #999999;
+            text-shadow: 0 0 10px #999999, 2px 2px 4px #000;
         `;
         
         hud.innerHTML = `
@@ -104,15 +104,15 @@ export class UIManager {
                     MISSION COMPLETE
                 </div>
                 
-                <div style="background: rgba(255, 255, 255, 0.1); padding: 40px; border: 3px solid #00ffff; box-shadow: 0 0 20px #00ffff;">
-                    <div style="font-size: 48px; color: #00ffff; margin-bottom: 20px;">
+                <div style="background: rgba(255, 255, 255, 0.1); padding: 40px; border: 3px solid #999999; box-shadow: 0 0 20px #999999;">
+                    <div style="font-size: 48px; color: #999999; margin-bottom: 20px;">
                         RANK: <span id="final-rank" style="color: #ffff00;">S</span>
                     </div>
                     
                     <div style="font-size: 24px; color: #fff; line-height: 2;">
-                        <div>Zombies Eliminated: <span id="final-zombies" style="color: #00ffff;">0</span></div>
-                        <div>Accuracy: <span id="final-accuracy" style="color: #00ffff;">0%</span></div>
-                        <div>Time: <span id="final-time" style="color: #00ffff;">0s</span></div>
+                        <div>Zombies Eliminated: <span id="final-zombies" style="color: #999999;">0</span></div>
+                        <div>Accuracy: <span id="final-accuracy" style="color: #999999;">0%</span></div>
+                        <div>Time: <span id="final-time" style="color: #999999;">0s</span></div>
                         <div style="margin-top: 20px; font-size: 32px; color: #ffff00;">
                             FINAL SCORE: <span id="final-score">0</span>
                         </div>
@@ -173,7 +173,7 @@ export class UIManager {
         
         menu.innerHTML = `
             <div style="text-align: center;">
-                <div style="font-size: 64px; color: #00ffff; text-shadow: 0 0 20px #00ffff; margin-bottom: 40px;">
+                <div style="font-size: 64px; color: #999999; text-shadow: 0 0 20px #999999; margin-bottom: 40px;">
                     PAUSED
                 </div>
                 <div style="font-size: 24px; color: #fff; line-height: 2;">
@@ -272,7 +272,7 @@ export class UIManager {
         const rankColors = {
             'S': '#ffff00',
             'A': '#00ff00',
-            'B': '#00ffff',
+            'B': '#999999',
             'C': '#ffa500',
             'D': '#ff0000'
         };
