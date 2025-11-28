@@ -13,6 +13,7 @@ import { SceneLoader } from './core/SceneLoader.js';
 import { PowerUpManager } from './systems/PowerUpManager.js';
 import { PlayerManager } from './systems/PlayerManager.js';
 import ZombieManager from './enemies/ZombieManager.js';
+import Zombie from './enemies/Zombie.js';
 import { updateRecoil, setRecoilWeapon } from './combat/Recoil.js';
 import { initShootingSystem } from './combat/ShootingSystem.js';
 import { initHUD, createUI, updateUI, updateFinalStats, saveLeaderboard } from './ui/HUD.js';
@@ -247,14 +248,14 @@ renderManager.setUpdateCallbacks({
     gameplay: [
         (deltaTime) => {
             if (gameData.currentState === GameState.GAMEPLAY) {
-                // Zombies disabled in orbit mode for exploration
-                // zombieManager.update(
-                //     deltaTime,
-                //     gameData.slowMoActive,
-                //     gameData.currentState,
-                //     GameState.GAMEPLAY,
-                //     onSceneCleared
-                // );
+                // Enable zombie updates for model inspection
+                zombieManager.update(
+                    deltaTime,
+                    gameData.slowMoActive,
+                    gameData.currentState,
+                    GameState.GAMEPLAY,
+                    onSceneCleared
+                );
                 playerManager.updateComboTimer(deltaTime);
                 powerUpManager.update(deltaTime);
                 powerUpManager.updateTimers(deltaTime);
@@ -287,9 +288,35 @@ let warehouseLoaded = false;
 let isFirstGameStart = true;
 
 function spawnSceneZombies() {
-    // Zombies disabled in orbit mode for exploration
-    console.log(`🎬 Zombie spawning disabled in orbit mode`);
-    // zombieManager.spawnSceneZombies(currentCameraScene.spawnPoints);
+    // Spawn one of each zombie type for inspection
+    console.log(`🎬 Spawning test zombies for model inspection`);
+    
+    // Clear any existing zombies
+    zombieManager.clearZombies();
+    
+    // Spawn one of each type at different positions
+    const spawnPositions = [
+        { x: 0, y: 0, z: -5, type: 'walker' },
+        { x: 3, y: 0, z: -5, type: 'runner' },
+        { x: -3, y: 0, z: -5, type: 'crawler' }
+    ];
+    
+    spawnPositions.forEach((spawn, index) => {
+        setTimeout(() => {
+            const zombie = new Zombie(
+                new THREE.Vector3(spawn.x, spawn.y, spawn.z),
+                spawn.type,
+                scene,
+                camera,
+                gameData,
+                (amount) => playerManager.damage(amount),
+                () => playerManager.incrementCombo()
+            );
+            zombieManager.getZombies().push(zombie);
+            console.log(`✅ Spawned ${spawn.type} at (${spawn.x}, ${spawn.y}, ${spawn.z})`);
+        }, index * 500);
+    });
+    
     updateUI();
 }
 
@@ -451,7 +478,7 @@ function startGame() {
     gameData.slowMoTimer = 0;
     gameData.startTime = Date.now();
     
-    // Camera setup (only if not in free camera mode)
+    // Camera setup for model inspection
     currentCameraScene = CAMERA_SCENES[0];
     if (!threeRenderer.isFreeCamera) {
         const isCameraAtOrigin = camera.position.x === 0 && 
@@ -470,12 +497,17 @@ function startGame() {
                 currentCameraScene.lookAt.z
             );
         }
+    } else {
+        // Position camera for model inspection (orbit mode)
+        camera.position.set(0, 2, 5);
+        threeRenderer.controls.target.set(0, 0, -5);
+        threeRenderer.controls.update();
     }
     
     // Clear any existing zombies (disabled in orbit mode)
     zombieManager.clearZombies();
     
-    // Spawn entities (zombies disabled in orbit mode)
+    // Spawn entities for model inspection
     if (factorySceneLoaded || gameData.currentScene > 0) {
         spawnSceneZombies();
         powerUpManager.spawnScenePowerUps(gameData.currentScene);
@@ -1008,6 +1040,15 @@ window.addEventListener('keydown', (event) => {
             threeRenderer.toggleAxesHelper();
             break;
         
+        case 'z':
+            // Force respawn zombies with new scale (for testing)
+            console.log('🔄 Respawning zombies with new scale...');
+            zombieManager.clearZombies();
+            setTimeout(() => {
+                spawnSceneZombies();
+            }, 100);
+            break;
+        
         case '1':
             switchCurrentWeapon('pistol');
             break;
@@ -1074,6 +1115,10 @@ sceneLoader.loadFactoryScene(scene, (factoryModel) => {
             currentCameraScene = CAMERA_SCENES[0];
             // Pre-render setup: ensure scene is ready before showing
             renderManager.prepareSceneForDisplay();
+            // Auto-start game for model inspection
+            setTimeout(() => {
+                startGame();
+            }, 1000);
         }
     } else {
         // Fallback ground on load failure
@@ -1100,26 +1145,25 @@ sceneLoader.loadWarehouseInterior(scene, () => {
 });
 
 console.log('✅ Game Initialized (Orbit Controls Enabled)');
-console.log('⚠️ Zombies are DISABLED in orbit mode for exploration');
+console.log('🎬 MODEL INSPECTION MODE - One of each zombie type will spawn');
 console.log('Controls:');
 console.log('  SPACE - Start Game');
 console.log('\n═══════════════════════════════════════════════════');
-console.log('🎮 ORBIT MODE - RAIL PATH EDITOR');
+console.log('🎮 ORBIT MODE - MODEL INSPECTOR');
 console.log('═══════════════════════════════════════════════════');
-console.log('  Left Click (on object) - Place rail point');
-console.log('  Right Click (on object) - Teleport camera');
-console.log('  Shift + Click (on object) - Teleport camera');
-console.log('  Double Click - Output coordinates to console');
-console.log('  C - Clear all rail points');
-console.log('  E - Export rail path coordinates');
 console.log('  Mouse Drag - Rotate Camera (Orbit Controls)');
 console.log('  Mouse Wheel - Zoom');
 console.log('  Right Click + Drag - Pan');
-console.log('  W/A/S/D - Move camera (in free camera mode)');
-console.log('  R - Reload / Restart');
+console.log('  W/A/S/D - Move camera');
 console.log('  H - Toggle Helpers');
-console.log('\n📍 Rail points are shown as GREEN spheres');
-console.log('📍 Rail path is shown as CYAN line connecting points');
+console.log('  Z - Respawn zombies (to test new scale)');
+console.log('  C - Clear all rail points (if any)');
+console.log('  E - Export rail path coordinates (if any)');
+console.log('\n🧟 Zombies spawned:');
+console.log('  - Walker (red) at (0, 0, -5)');
+console.log('  - Runner (orange) at (3, 0, -5)');
+console.log('  - Crawler/Spider (green) at (-3, 0, -5)');
+console.log('\n💡 Use orbit controls to inspect models and check scaling');
 console.log('═══════════════════════════════════════════════════\n');
 
 // Note: Scene pre-rendering happens before revealing to ensure renderer readiness

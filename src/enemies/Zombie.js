@@ -12,8 +12,13 @@ export const ZOMBIE_TYPES = {
         damage: 10,
         points: 100,
         color: 0xff0000,
-        scale: 1.0,
-        // modelPath: '/models/zombies/zombie/source/scene.glb'
+        scale: 1,
+        modelPath: '/models/zombies/walker/scene.glb',
+        animations: {
+            move: 'walk',
+            attack: 'attack',
+            die: 'death'
+        }
     },
     runner: {
         name: 'Runner',
@@ -22,8 +27,13 @@ export const ZOMBIE_TYPES = {
         damage: 15,
         points: 150,
         color: 0xff6600,
-        scale: 0.9,
-        // modelPath: '/models/zombies/zombie/source/scene.glb'
+        scale: 1,
+        modelPath: '/models/zombies/runner/scene.glb',
+        animations: {
+            move: 'run',
+            attack: 'attack',
+            die: 'death'
+        }
     },
     tank: {
         name: 'Tank',
@@ -32,8 +42,14 @@ export const ZOMBIE_TYPES = {
         damage: 25,
         points: 200,
         color: 0x660000,
-        scale: 1.3,
-        // modelPath: '/models/zombies/bloated/source/scene.glb'
+        scale: 1,
+        // Tank uses walker model as fallback (no specific tank model provided)
+        modelPath: '/models/zombies/walker/scene.glb',
+        animations: {
+            move: 'walk',
+            attack: 'attack',
+            die: 'death'
+        }
     },
     crawler: {
         name: 'Crawler',
@@ -42,8 +58,13 @@ export const ZOMBIE_TYPES = {
         damage: 5,
         points: 75,
         color: 0x00ff00,
-        scale: 0.5,
-        // modelPath: '/models/zombies/zombie/source/scene.glb'
+        scale: 1,
+        modelPath: '/models/zombies/spider/scene.glb',
+        animations: {
+            move: 'Armature|run',
+            attack: 'Armature|attack',
+            die: 'Armature|die'
+        }
     }
 };
 
@@ -83,8 +104,7 @@ export default class Zombie {
         });
         this.mesh = new THREE.Mesh(geometry, material);
         this.mesh.position.copy(position);
-        this.mesh.position.y = (this.type === 'crawler' ? 0.25 : 0.75) * this.config.scale;
-        this.mesh.scale.setScalar(this.config.scale);
+        this.mesh.position.y = (this.type === 'crawler' ? 0.25 : 0.75);
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
         this.isPlaceholder = true;
@@ -111,6 +131,12 @@ export default class Zombie {
         this.scuttleTime = 0;
         this.baseX = this.mesh.position.x;
         
+        // Animation
+        this.mixer = null;
+        this.animations = {};
+        this.currentAnimationAction = null;
+        this.currentAnimationName = null;
+        
         this.mesh.userData.zombie = this;
         this.mesh.userData.isZombie = true;
         
@@ -127,9 +153,23 @@ export default class Zombie {
      */
     async loadModel() {
         try {
-            console.log(`📦 Loading zombie model: ${this.config.modelPath}`);
+            // Check if modelPath is configured
+            if (!this.config.modelPath) {
+                console.error(`❌ No modelPath configured for ${this.config.name} (type: ${this.type})`);
+                return;
+            }
+            
+            console.log(`📦 Loading zombie model: ${this.config.modelPath} for ${this.config.name}`);
             const gltf = await gltfLoader.loadAsync(this.config.modelPath);
-            const model = gltf.scene.clone();
+            
+            // FIX: Use gltf.scene directly, don't clone
+            const model = gltf.scene;
+            
+            // Apply scale directly from config (like the working example)
+            model.scale.setScalar(this.config.scale);
+            
+            console.log(`   ✅ Applied scale to GLB model: ${this.config.scale} (from config)`);
+            console.log(`   ✅ Model scale values: x=${model.scale.x}, y=${model.scale.y}, z=${model.scale.z}`);
             
             // Enable shadows on all meshes
             model.traverse((child) => {
@@ -157,7 +197,7 @@ export default class Zombie {
                             child.material.needsUpdate = true;
                             if (!child.material.emissive) child.material.emissive = new THREE.Color(0x000000);
                             if (child.material.color) {
-                                if (child.material.color.r < 0.1 && child.material.color.g < 0.1 && child.material.color.b < 0.1) {
+                                if (child.material.color.r < 0.1 && child.material.g < 0.1 && child.material.color.b < 0.1) {
                                     child.material.color.multiplyScalar(2);
                                 }
                             }
@@ -171,36 +211,76 @@ export default class Zombie {
                 }
             });
             
-            // Get model bounding box to determine proper scale
-            const box = new THREE.Box3().setFromObject(model);
-            const size = box.getSize(new THREE.Vector3());
-            const maxDimension = Math.max(size.x, size.y, size.z);
+            // Get bounding box AFTER scaling to determine proper positioning
+            const scaledBox = new THREE.Box3().setFromObject(model);
+            const scaledSize = scaledBox.getSize(new THREE.Vector3());
+            const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+            const scaledMaxDimension = Math.max(scaledSize.x, scaledSize.y, scaledSize.z);
             
-            // Calculate scale based on expected zombie height (roughly 1.8 units)
-            // If model is very large or very small, adjust scale accordingly
-            let calculatedScale = this.config.scale;
-            if (maxDimension > 0) {
-                // If model is larger than 10 units, scale it down
-                if (maxDimension > 10) {
-                    calculatedScale = (this.config.scale * 1.8) / maxDimension;
-                } else if (maxDimension < 0.5) {
-                    // If model is very small, scale it up
-                    calculatedScale = (this.config.scale * 1.8) / maxDimension;
+            console.log(`   ✅ Scaled model size: ${scaledMaxDimension.toFixed(4)} units`);
+            
+            // Store the old position before replacing mesh
+            const oldPosition = this.mesh.position.clone();
+            const oldRotation = this.mesh.rotation.y;
+            
+            // Position model at the same location as placeholder
+            // Adjust Y so the bottom of the model is at ground level
+            const groundY = oldPosition.y;
+            const modelBottomY = scaledCenter.y - (scaledSize.y / 2);
+            
+            // Set position - use the spawn position, not the placeholder position
+            model.position.set(
+                oldPosition.x,
+                groundY - modelBottomY, // Adjust so bottom sits on ground
+                oldPosition.z
+            );
+            model.rotation.y = oldRotation;
+            
+            console.log(`   📍 Spawn position: x=${oldPosition.x.toFixed(2)}, y=${oldPosition.y.toFixed(2)}, z=${oldPosition.z.toFixed(2)}`);
+            console.log(`   📍 Model position: x=${model.position.x.toFixed(2)}, y=${model.position.y.toFixed(2)}, z=${model.position.z.toFixed(2)}`);
+            console.log(`   Model scale: x=${model.scale.x.toFixed(4)}, y=${model.scale.y.toFixed(4)}, z=${model.scale.z.toFixed(4)}`);
+            
+            // Setup animations
+            if (gltf.animations && gltf.animations.length > 0) {
+                this.mixer = new THREE.AnimationMixer(model);
+                
+                // Create animation actions for each configured animation
+                const animConfig = this.config.animations;
+                const availableAnimations = gltf.animations.map(clip => clip.name);
+                console.log(`🎬 Available animations for ${this.config.name}:`, availableAnimations);
+                
+                // Find and create actions for move, attack, and die animations
+                ['move', 'attack', 'die'].forEach(animType => {
+                    const animName = animConfig[animType];
+                    const clip = gltf.animations.find(a => a.name === animName);
+                    
+                    if (clip) {
+                        const action = this.mixer.clipAction(clip);
+                        action.setLoop(animType === 'die' ? THREE.LoopOnce : THREE.LoopRepeat);
+                        action.clampWhenFinished = animType === 'die';
+                        this.animations[animType] = action;
+                        console.log(`✅ Found ${animType} animation: "${animName}"`);
+                    } else {
+                        console.warn(`⚠️ Animation "${animName}" not found for ${this.config.name}`);
+                    }
+                });
+                
+                // Start with move animation if available
+                if (this.animations.move) {
+                    this.playAnimation('move');
                 }
+            } else {
+                console.warn(`⚠️ No animations found in model for ${this.config.name}`);
             }
-            
-            // Position and scale model
-            model.position.copy(this.mesh.position);
-            model.scale.setScalar(calculatedScale);
-            model.rotation.y = this.mesh.rotation.y;
-            
-            console.log(`📏 ${this.config.name} model size: ${maxDimension.toFixed(2)}, applied scale: ${calculatedScale.toFixed(2)}`);
             
             // Replace placeholder with model
             const oldMesh = this.mesh;
             this.mesh = model;
             this.mesh.userData.zombie = this;
             this.mesh.userData.isZombie = true;
+            
+            // Ensure model is visible
+            this.mesh.visible = true;
             
             // Remove placeholder and add model
             this.scene.remove(oldMesh);
@@ -209,15 +289,54 @@ export default class Zombie {
             this.scene.add(this.mesh);
             
             this.isPlaceholder = false;
-            console.log(`✅ Loaded GLB model for ${this.config.name}`);
+            console.log(`✅ Loaded GLB model for ${this.config.name} - model visible: ${this.mesh.visible}, scale: ${this.mesh.scale.x}`);
         } catch (error) {
             console.error(`❌ Failed to load zombie model for ${this.config.name}:`, error);
+            console.error(`   Model path attempted: ${this.config.modelPath}`);
+            console.error(`   Error details:`, error.message || error);
             // Keep placeholder mesh if loading fails
         }
     }
     
+    /**
+     * Play a specific animation
+     * @param {string} animType - 'move', 'attack', or 'die'
+     */
+    playAnimation(animType) {
+        if (!this.mixer) return;
+        
+        // Allow die animation to play even when dead
+        if (this.isDead && animType !== 'die') return;
+        
+        const action = this.animations[animType];
+        if (!action) return;
+        
+        // Don't restart the same animation if it's already playing
+        if (this.currentAnimationName === animType && action.isRunning()) {
+            return;
+        }
+        
+        // Fade out current animation
+        if (this.currentAnimationAction && this.currentAnimationAction !== action) {
+            this.currentAnimationAction.fadeOut(0.2);
+        }
+        
+        // Fade in new animation
+        action.reset();
+        action.fadeIn(0.2);
+        action.play();
+        
+        this.currentAnimationAction = action;
+        this.currentAnimationName = animType;
+    }
+    
     update(deltaTime, slowMoActive) {
         if (this.isDead) return;
+        
+        // Update animation mixer
+        if (this.mixer) {
+            this.mixer.update(deltaTime);
+        }
         
         // Update hit flash
         if (this.hitFlashTimer > 0) {
@@ -283,6 +402,11 @@ export default class Zombie {
             // Face direction
             const angle = Math.atan2(direction.x, direction.z);
             this.mesh.rotation.y = angle;
+            
+            // Play movement animation when moving
+            if (!this.isAttacking) {
+                this.playAnimation('move');
+            }
         }
     }
     
@@ -292,19 +416,24 @@ export default class Zombie {
         this.isAttacking = true;
         console.log(`💥 ${this.config.name} attacking! Damage: ${this.config.damage}`);
         
+        // Play attack animation
+        this.playAnimation('attack');
+        
         // Deal damage to player
         this.damagePlayer(this.config.damage);
         
-        // Attack animation - lunge forward
-        const originalZ = this.mesh.position.z;
-        this.mesh.position.z += 0.3;
+        // Reset attack state after animation duration
+        // Get animation duration if available, otherwise use default
+        const attackAction = this.animations.attack;
+        const duration = attackAction ? attackAction.getClip().duration : 0.5;
         
         setTimeout(() => {
-            if (this.mesh) {
-                this.mesh.position.z = originalZ;
+            if (this.mesh && !this.isDead) {
+                this.isAttacking = false;
+                // Resume movement animation after attack
+                this.playAnimation('move');
             }
-            this.isAttacking = false;
-        }, 500);
+        }, duration * 1000);
     }
     
     takeDamage(amount, isHeadshot = false) {
@@ -354,31 +483,82 @@ export default class Zombie {
         
         console.log(`💀 ${this.config.name} killed! ${wasHeadshot ? 'HEADSHOT! ' : ''}+${points} points`);
         
-        // Death animation
-        const startY = this.mesh.position.y;
-        const duration = 1000;
-        const startTime = Date.now();
-        
-        const animate = () => {
-            const elapsed = Date.now() - startTime;
-            const progress = Math.min(elapsed / duration, 1);
+        // Play death animation
+        const dieAction = this.animations.die;
+        if (dieAction) {
+            this.playAnimation('die');
             
-            this.mesh.position.y = startY * (1 - progress);
-            this.mesh.rotation.x = progress * Math.PI / 2;
-            this.mesh.material.opacity = 1 - progress;
-            this.mesh.material.transparent = true;
+            // Get animation duration and remove zombie after it completes
+            const duration = dieAction.getClip().duration;
             
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            } else {
+            // Listen for animation finish event
+            dieAction.addEventListener('finished', () => {
                 this.remove();
-            }
-        };
-        
-        animate();
+            });
+            
+            // Fallback timeout in case event doesn't fire
+            setTimeout(() => {
+                if (this.mesh) {
+                    this.remove();
+                }
+            }, duration * 1000 + 500);
+        } else {
+            // Fallback death animation if no die animation exists
+            const startY = this.mesh.position.y;
+            const duration = 1000;
+            const startTime = Date.now();
+            
+            const animate = () => {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                this.mesh.position.y = startY * (1 - progress);
+                this.mesh.rotation.x = progress * Math.PI / 2;
+                
+                // Handle opacity for both placeholder and model
+                if (this.isPlaceholder) {
+                    this.mesh.material.opacity = 1 - progress;
+                    this.mesh.material.transparent = true;
+                } else {
+                    this.mesh.traverse((child) => {
+                        if (child.isMesh && child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(mat => {
+                                    if (mat) {
+                                        mat.opacity = 1 - progress;
+                                        mat.transparent = true;
+                                    }
+                                });
+                            } else {
+                                child.material.opacity = 1 - progress;
+                                child.material.transparent = true;
+                            }
+                        }
+                    });
+                }
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    this.remove();
+                }
+            };
+            
+            animate();
+        }
     }
     
     remove() {
+        // Stop all animations
+        if (this.mixer) {
+            Object.values(this.animations).forEach(action => {
+                if (action) {
+                    action.stop();
+                }
+            });
+            this.mixer = null;
+        }
+        
         this.scene.remove(this.mesh);
         
         if (this.isPlaceholder) {
@@ -407,5 +587,3 @@ export default class Zombie {
         }
     }
 }
-
-

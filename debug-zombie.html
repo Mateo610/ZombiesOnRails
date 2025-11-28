@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Model Debug</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: monospace;
+            z-index: 100;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <div>Zombie Model Debug</div>
+        <div id="status">Loading...</div>
+    </div>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x222222);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+        camera.position.set(0, 0, 10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Orbit controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 10, 5);
+        scene.add(directionalLight);
+
+        // Load model
+        const loader = new GLTFLoader();
+        const modelPath = '/models/zombies/walker/scene.glb';
+
+        document.getElementById('status').textContent = `Loading: ${modelPath}...`;
+
+        loader.load(
+            modelPath,
+            (gltf) => {
+                console.log('✅ Model loaded successfully');
+                const model = gltf.scene;
+                
+                scene.add(model);
+                
+                document.getElementById('status').textContent = `Model loaded! Use mouse to orbit.`;
+                
+                console.log('Model added to scene');
+                console.log('Model position:', model.position);
+                console.log('Model scale:', model.scale);
+                console.log('Model children:', model.children.length);
+
+                // Setup animations if available
+                if (gltf.animations && gltf.animations.length > 0) {
+                    console.log('Animations found:', gltf.animations.map(a => a.name));
+                    const mixer = new THREE.AnimationMixer(model);
+                    const action = mixer.clipAction(gltf.animations[0]);
+                    action.play();
+
+                    const clock = new THREE.Clock();
+                    function animate() {
+                        requestAnimationFrame(animate);
+                        mixer.update(clock.getDelta());
+                        controls.update();
+                        renderer.render(scene, camera);
+                    }
+                    animate();
+                } else {
+                    function animate() {
+                        requestAnimationFrame(animate);
+                        controls.update();
+                        renderer.render(scene, camera);
+                    }
+                    animate();
+                }
+            },
+            (progress) => {
+                const percent = (progress.loaded / progress.total * 100).toFixed(1);
+                document.getElementById('status').textContent = `Loading: ${percent}%`;
+            },
+            (error) => {
+                console.error('❌ Error loading model:', error);
+                document.getElementById('status').textContent = `Error: ${error.message}`;
+            }
+        );
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
