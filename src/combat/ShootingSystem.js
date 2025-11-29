@@ -93,11 +93,15 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
             gameData.shotsHit++;
             const zombie = hitObject.userData.zombie;
             
-            // Headshot logic
-            const zombieHeight = zombie.mesh.scale.y * (zombie.type === 'crawler' ? 0.5 : 1.5);
-            const hitHeight = hitPoint.y - (zombie.mesh.position.y - zombieHeight / 2);
-            const headshotThreshold = zombie.type === 'crawler' ? 0.9 : 0.7;
-            const isHeadshot = hitHeight > zombieHeight * headshotThreshold;
+            const bbox = new THREE.Box3().setFromObject(zombie.mesh);
+            const modelHeight = bbox.max.y - bbox.min.y;
+            const modelTop = bbox.max.y;
+
+            // Headshot if hit is in top 20% (1/5th) of the model
+            const headshotThreshold = modelTop - (modelHeight * 0.2);
+            const isHeadshot = hitPoint.y >= headshotThreshold;
+
+            console.log(`Hit at Y: ${hitPoint.y.toFixed(2)}, Headshot threshold: ${headshotThreshold.toFixed(2)}, Top: ${modelTop.toFixed(2)}`);
             
             const baseDamage = 50;
             const damageAmount = gameData.doubleDamageActive ? baseDamage * 2 : baseDamage;

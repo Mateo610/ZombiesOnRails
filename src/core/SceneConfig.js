@@ -12,7 +12,7 @@ export const CAMERA_SCENES = [
         lookAt: { x: 8.71, y: 1, z: 3.17 },
         transitionDuration: 3000, // Optional: duration in ms for rail movement transition
         spawnPoints: [
-            { x: 6.75, y: 0.00, z: 10.49, type: 'walker' },
+            { x: 6.75, y: 0.00, z: 10.49, type: 'runner' },
             { x: 6.75, y: 0.00, z: 11.49, type: 'walker' },
             { x: 6.75, y: 0.00, z: 12.49, type: 'walker' }
         ]
