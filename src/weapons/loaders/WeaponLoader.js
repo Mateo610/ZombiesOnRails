@@ -31,7 +31,14 @@ export class WeaponLoader {
 
                 return { weaponId, model };
             } catch (error) {
-                console.error(`❌ Failed to load weapon model ${weaponId}:`, error);
+                // Check if it's a 404/file not found error
+                if (error.message && error.message.includes('<!DOCTYPE')) {
+                    console.error(`❌ Failed to load weapon model ${weaponId}: File not found at path "${path}"`);
+                    console.error(`   Checked path: ${path}`);
+                    console.error(`   Make sure the file exists in the public/models/guns/ directory`);
+                } else {
+                    console.error(`❌ Failed to load weapon model ${weaponId}:`, error);
+                }
                 return { weaponId, model: null };
             }
         });

@@ -4,7 +4,7 @@
  */
 
 export const WEAPON_PATHS = {
-    pistol: '/models/guns/pistol1.glb',
+    pistol: '/models/guns/pistola1.glb',  // Fixed: was pistol1.glb, actual file is pistola1.glb
     shotgun: '/models/guns/shotgun.glb',
     rifle: '/models/guns/ak-47.glb'
 };

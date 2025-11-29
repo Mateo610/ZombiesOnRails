@@ -217,8 +217,9 @@ export default class Zombie {
                 
                 const animConfig = this.config.animations;
                 const availableAnimations = gltf.animations.map(clip => clip.name);
-                console.log(`🎬 Available animations for ${this.config.name}:`, availableAnimations);
-                console.log(`   Looking for animations:`, animConfig);
+                
+                // Only log animation details if animations are missing (for debugging)
+                let hasAllAnimations = true;
                 
                 ['move', 'attack', 'die'].forEach(animType => {
                     const animName = animConfig[animType];
@@ -228,10 +229,8 @@ export default class Zombie {
                     
                     // If not found, try case-insensitive and partial matches
                     if (!clip && animType === 'die') {
-                        console.log(`   Searching for death animation...`);
                         clip = gltf.animations.find(a => {
                             const lower = a.name.toLowerCase();
-                            console.log(`      Checking: "${a.name}"`);
                             return lower.includes('death') || 
                                    lower.includes('die') ||
                                    lower.includes('killed') ||
@@ -244,11 +243,19 @@ export default class Zombie {
                         action.setLoop(animType === 'die' ? THREE.LoopOnce : THREE.LoopRepeat);
                         action.clampWhenFinished = animType === 'die';
                         this.animations[animType] = action;
-                        console.log(`✅ Found ${animType} animation: "${clip.name}" (duration: ${clip.duration.toFixed(2)}s, tracks: ${clip.tracks.length})`);
                     } else {
-                        console.warn(`⚠️ Animation "${animName}" not found for ${this.config.name}`);
+                        hasAllAnimations = false;
+                        // Only warn if it's a critical animation (move or die)
+                        if (animType === 'move' || animType === 'die') {
+                            console.warn(`⚠️ Animation "${animName}" not found for ${this.config.name}`);
+                        }
                     }
                 });
+                
+                // Log animation summary only if there are issues
+                if (!hasAllAnimations) {
+                    console.log(`🎬 ${this.config.name} animations:`, availableAnimations);
+                }
                 
                 // Start with move animation if available
                 if (this.animations.move) {
@@ -284,7 +291,11 @@ export default class Zombie {
      */
     playAnimation(animType) {
         if (!this.mixer) {
-            console.warn(`⚠️ No mixer available for ${this.config.name}`);
+            // Only warn once per zombie instance, not every frame
+            if (!this._mixerWarningShown) {
+                console.warn(`⚠️ No mixer available for ${this.config.name} - animations disabled`);
+                this._mixerWarningShown = true;
+            }
             return;
         }
         

@@ -28,8 +28,8 @@ export const CAMERA_SCENES = [
     },
     {
         name: "3",
-        position: { x: 2.54, y: 1, z: 3.49 },
-        lookAt: { x: 0.64, y: 1, z: 6.74 },
+        position: { x: 2.54, y: 1.6, z: 3.49 }, // Fixed: y was 1, changed to 1.6 to match player height
+        lookAt: { x: 0.64, y: 1.5, z: 6.74 },
         transitionDuration: 3000, // Optional: duration in ms for rail movement transition
         spawnPoints: [
             { x: 3.00, y: 0, z: 6.61, type: 'walker' },
@@ -40,8 +40,8 @@ export const CAMERA_SCENES = [
     },
     {
         name: "Warehouse Interior",
-        position: { x: 0, y: 1.6, z: 0 },
-        lookAt: { x: 0, y: 1.5, z: -10 },
+        position: { x: 0.95, y: 0.28, z: 1.02 },
+        lookAt: { x: -3.41, y: 1.10, z: -7.94 },
         transitionDuration: 3000, // Optional: duration in ms for rail movement transition
         spawnPoints: [
             { x: -2, y: 0, z: -8, type: 'runner' },
@@ -51,6 +51,15 @@ export const CAMERA_SCENES = [
             { x: 3, y: 0, z: -8, type: 'runner' },
             { x: -1, y: 0, z: -14, type: 'walker' },
             { x: 1, y: 0, z: -16, type: 'tank' }
+        ]
+    },
+    {
+        name: "Warehouse Interior - Final",
+        position: { x: 0.13, y: 0.29, z: 0.22 },
+        lookAt: { x: -9.40, y: 0.43, z: -2.82 },
+        transitionDuration: 3000, // Optional: duration in ms for rail movement transition
+        spawnPoints: [
+            // Zombies not implemented yet - will be added later
         ]
     }
 ];

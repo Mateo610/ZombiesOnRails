@@ -462,8 +462,18 @@ window.isRailMovementActive = false; // Initialize global flag
     ui: [
         (deltaTime) => {
             // Update crosshair position (smooth interpolation)
-            if (crosshairManager && gameData.currentState === GameState.GAMEPLAY) {
+            // Only show crosshair during gameplay, not on start screen
+            if (crosshairManager && gameData.currentState === GameState.GAMEPLAY && gameData.gameStarted) {
                 crosshairManager.update(deltaTime);
+                // Show crosshair
+                if (crosshairManager.crosshairElement) {
+                    crosshairManager.crosshairElement.style.display = 'block';
+                }
+            } else {
+                // Hide crosshair on start screen
+                if (crosshairManager && crosshairManager.crosshairElement) {
+                    crosshairManager.crosshairElement.style.display = 'none';
+                }
             }
         },
         () => powerUpManager.updateUI(),
@@ -492,23 +502,30 @@ function spawnSceneZombies() {
 function onSceneCleared() {
     console.log(`✅ Scene ${gameData.currentScene + 1} cleared!`);
     
-    // Check if this is the last scene (Scene 3, index 2 - Warehouse Interior is index 3)
+    // For scene 2 (index 2, which is Scene 3), transition to warehouse interior (index 3)
+    if (gameData.currentScene === 2) {
+        console.log('🚪 Scene 3 cleared! Transitioning to warehouse interior...');
+        
+        // Ensure warehouse is loaded
+        if (!warehouseLoaded) {
+            loadWarehouseInterior(() => {
+                // After warehouse loads, transition to warehouse interior using rail movement
+                advanceToNextSceneWithRail();
+            });
+        } else {
+            // Warehouse already loaded, just transition
+            advanceToNextSceneWithRail();
+        }
+        return;
+    }
+    
+    // Check if this is the last scene (Warehouse Interior Final is index 4, which is the last scene)
     if (gameData.currentScene >= CAMERA_SCENES.length - 1) {
         completeMission();
         return;
     }
     
-    // For scene 2 (index 2, which is Scene 3), load warehouse before transitioning
-    if (gameData.currentScene === 2 && !warehouseLoaded) {
-        console.log('🚪 Scene 3 cleared! Loading warehouse interior...');
-        loadWarehouseInterior(() => {
-            // After warehouse loads, transition to warehouse interior using rail movement
-            advanceToNextSceneWithRail();
-        });
-        return;
-    }
-    
-    // For all other scenes, use rail movement to transition
+    // For all other scenes (including first warehouse interior), use rail movement to transition
     advanceToNextSceneWithRail();
 }
 
@@ -702,8 +719,19 @@ function startGame() {
         startPrompt.classList.remove('visible');
     }
     
-    gameData.gameStarted = true;
+    // Start in normal mode (factory exterior, scene 0)
+    // Show factory exterior, hide warehouse
+    if (sceneLoader.currentSceneModel) {
+        sceneLoader.currentSceneModel.visible = true;
+    }
+    if (sceneLoader.warehouseModel) {
+        sceneLoader.warehouseModel.visible = false;
+    }
+    // Set to first scene (index 0)
     gameData.currentScene = 0;
+    currentCameraScene = CAMERA_SCENES[0];
+    
+    gameData.gameStarted = true;
     
     // Initialize weapon ammo for starting weapon (pistol)
     const pistolConfig = WEAPON_AMMO_CONFIG['pistol'];
@@ -725,7 +753,7 @@ function startGame() {
     
 // Camera setup - ALWAYS reset to exact scene position on game start
 // This must happen BEFORE setting game state to GAMEPLAY to prevent camera breathing from overriding
-currentCameraScene = CAMERA_SCENES[0];
+// currentCameraScene is already set above based on toggle selection (factory interior or exterior)
 
 // Reset rail movement state
 railMovementManager.reset();
@@ -750,6 +778,7 @@ sceneCameraManager.setSceneCamera(currentCameraScene);
     renderManager.updateCallbacks.freeCamera.enabled = false;
     
     // Spawn entities
+    // Check if factory scene is loaded OR if we're past the first scene
     if (factorySceneLoaded || gameData.currentScene > 0) {
         spawnSceneZombies();
         powerUpManager.spawnScenePowerUps(gameData.currentScene);
@@ -946,6 +975,7 @@ window.addEventListener('keydown', (event) => {
             break;
             
         case 'c':
+        case 'C':
             const isFree = threeRenderer.toggleFreeCamera();
             renderManager.updateCallbacks.freeCamera.enabled = isFree;
             if (!isFree) {
@@ -959,6 +989,89 @@ window.addEventListener('keydown', (event) => {
                     currentCameraScene.lookAt.y,
                     currentCameraScene.lookAt.z
                 );
+            }
+            break;
+            
+        case 'i':
+        case 'I':
+            // Shortcut to jump to warehouse interior scene for testing
+            if (gameData.currentState === GameState.GAMEPLAY) {
+                console.log('🏭 Shortcut: Jumping to Warehouse Interior scene');
+                
+                // Set to warehouse interior scene (index 3)
+                gameData.currentScene = 3;
+                currentCameraScene = CAMERA_SCENES[3];
+                
+                // Show warehouse, hide factory exterior
+                if (sceneLoader.warehouseModel) {
+                    sceneLoader.showWarehouse();
+                    // Set ground from warehouse
+                    sceneLoader.warehouseModel.traverse((child) => {
+                        if (child.isMesh) {
+                            const name = child.name.toLowerCase();
+                            if (name.includes('ground') || name.includes('floor')) {
+                                child.name = 'ground';
+                                child.receiveShadow = true;
+                                threeRenderer.setGround(child);
+                            }
+                        }
+                    });
+                }
+                if (sceneLoader.currentSceneModel) {
+                    sceneLoader.currentSceneModel.visible = false;
+                }
+                
+                // Set camera to warehouse interior position and enable free look
+                sceneCameraManager.setSceneCamera(currentCameraScene);
+                
+                // Disable orbit controls - use mouse look instead
+                threeRenderer.isFreeCamera = false;
+                threeRenderer.controls.enabled = false;
+                renderManager.updateCallbacks.freeCamera.enabled = false;
+                
+                // Ensure crosshair is visible
+                if (crosshairManager && crosshairManager.crosshairElement) {
+                    crosshairManager.crosshairElement.style.display = 'block';
+                }
+                
+                // Clear zombies and don't spawn new ones for testing
+                zombieManager.clearZombies();
+                
+                console.log('✅ Jumped to Warehouse Interior - Free look enabled');
+                console.log('💡 Move mouse to look around, click to shoot');
+                console.log('💡 Press C to toggle orbit controls (for positioning)');
+                console.log('💡 Press M to mark current position and look-at for SceneConfig');
+            }
+            break;
+            
+        case 'm':
+        case 'M':
+            // Mark current camera position and look-at direction for SceneConfig
+            if (gameData.currentState === GameState.GAMEPLAY) {
+                const pos = camera.position.clone();
+                const direction = new THREE.Vector3();
+                camera.getWorldDirection(direction);
+                
+                // Calculate look-at point (position + direction * some distance)
+                // Use a reasonable distance like 10 units
+                const lookAtDistance = 10;
+                const lookAt = pos.clone().add(direction.multiplyScalar(lookAtDistance));
+                
+                // Output in a clean, copy-paste friendly format
+                console.log('\n═══════════════════════════════════════════════════════');
+                console.log('📍 MARKED POSITION FOR SCENECONFIG');
+                console.log('═══════════════════════════════════════════════════════\n');
+                console.log('Copy this into SceneConfig.js:\n');
+                console.log('{');
+                console.log(`    name: "Warehouse Interior",`);
+                console.log(`    position: { x: ${pos.x.toFixed(2)}, y: ${pos.y.toFixed(2)}, z: ${pos.z.toFixed(2)} },`);
+                console.log(`    lookAt: { x: ${lookAt.x.toFixed(2)}, y: ${lookAt.y.toFixed(2)}, z: ${lookAt.z.toFixed(2)} },`);
+                console.log(`    transitionDuration: 3000,`);
+                console.log(`    spawnPoints: [`);
+                console.log(`        // Add spawn points here`);
+                console.log(`    ]`);
+                console.log('}\n');
+                console.log('═══════════════════════════════════════════════════════\n');
             }
             break;
             
@@ -1047,9 +1160,10 @@ sceneLoader.loadFactoryScene(scene, (factoryModel) => {
     }
 });
 
-// Preload warehouse
+// Preload warehouse (this is used when factory interior toggle is checked)
 sceneLoader.loadWarehouseInterior(scene, () => {
     console.log('✅ Warehouse preloaded');
+    warehouseLoaded = true;
 });
 
 console.log('✅ Game Initialized');
@@ -1058,6 +1172,8 @@ console.log('  SPACE - Start Game');
 console.log('  Click - Shoot');
 console.log('  R - Reload / Restart');
 console.log('  C - Toggle Camera');
+console.log('  I - Jump to Warehouse Interior (testing)');
+console.log('  M - Mark Position (for SceneConfig)');
 console.log('  H - Toggle Helpers');
 
 // Note: Scene pre-rendering happens before revealing to ensure renderer readiness
