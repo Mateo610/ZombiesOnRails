@@ -39,18 +39,41 @@ export const CAMERA_SCENES = [
         ]
     },
     {
+        name: "Turn Around",
+        position: { x: 2.54, y: 1.6, z: 3.49 }, // Turn around location
+        lookAt: { x: -6.18, y: 1.0, z: 3.77 }, // Looking toward next location
+        transitionDuration: 3000,
+        spawnPoints: [
+            // TODO: Add spawn points for turn around scene
+        ]
+    },
+    {
+        name: "Mid Street",
+        position: { x: -6.18, y: 1.01, z: 3.77 },
+        lookAt: { x: -6.18, y: 1.00, z: 3.88 },
+        transitionDuration: 3000,
+        spawnPoints: [
+            // Zombie spawn point - path to player to be determined
+            { x: -0.38, y: 0.00, z: 14.45, type: 'walker' }
+        ]
+    },
+    {
+        name: "Front of Door Pivot",
+        position: { x: -7.79, y: 0.99, z: 6.17 },
+        lookAt: { x: -7.88, y: 0.99, z: 6.14 },
+        transitionDuration: 3000,
+        spawnPoints: [
+            // Final exterior location before interior - look at pivot (minimal movement)
+            // No zombies - this is transition point to interior
+        ]
+    },
+    {
         name: "Warehouse Interior",
         position: { x: 0.95, y: 0.28, z: 1.02 },
         lookAt: { x: -3.41, y: 1.10, z: -7.94 },
         transitionDuration: 3000, // Optional: duration in ms for rail movement transition
         spawnPoints: [
-            { x: -2, y: 0, z: -8, type: 'runner' },
-            { x: 2, y: 0, z: -12, type: 'walker' },
-            { x: 0, y: 0, z: -15, type: 'tank' },
-            { x: -3, y: 0, z: -10, type: 'crawler' },
-            { x: 3, y: 0, z: -8, type: 'runner' },
-            { x: -1, y: 0, z: -14, type: 'walker' },
-            { x: 1, y: 0, z: -16, type: 'tank' }
+            // No zombies for now
         ]
     },
     {

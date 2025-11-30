@@ -17,7 +17,7 @@ export const GameState = {
 export const gameData = {
     currentState: GameState.LOADING,
     currentScene: 0,
-    totalScenes: 5, // Scene 1, Scene 2, Scene 3, Warehouse Interior, Warehouse Interior Final
+    totalScenes: 8, // Scene 1, Scene 2, Scene 3, Turn Around, Mid Street, Front of Door Pivot, Warehouse Interior, Warehouse Interior Final
     gameStarted: false,
     
     // Player stats

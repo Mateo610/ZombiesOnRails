@@ -136,10 +136,11 @@ export class SceneLoader {
                 }
             });
             
-            // Initially hide warehouse (will be shown when door opens)
+            // Initially hide warehouse (will be shown when transitioning to interior scenes)
             this.warehouseModel.visible = false;
             scene.add(this.warehouseModel);
             this.isWarehouseLoaded = true;
+            console.log(`✅ Warehouse model added to scene at position: (${this.warehouseModel.position.x.toFixed(2)}, ${this.warehouseModel.position.y.toFixed(2)}, ${this.warehouseModel.position.z.toFixed(2)})`);
             
             console.log('✅ Warehouse interior loaded and scaled');
             if (onComplete) onComplete(this.warehouseModel);
@@ -247,7 +248,13 @@ export class SceneLoader {
     showWarehouse() {
         if (this.warehouseModel) {
             this.warehouseModel.visible = true;
-            console.log('🚪 Warehouse interior revealed');
+            // Ensure all children are also visible
+            this.warehouseModel.traverse((child) => {
+                child.visible = true;
+            });
+            console.log('🚪 Warehouse interior revealed - visible:', this.warehouseModel.visible);
+        } else {
+            console.error('❌ Cannot show warehouse - model is null!');
         }
     }
 

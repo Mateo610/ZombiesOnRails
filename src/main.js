@@ -134,6 +134,55 @@ railMovementManager.setPathCompleteCallback((sceneIndex, scene) => {
     gameData.currentScene = sceneIndex;
     currentCameraScene = scene;
     
+    // Ensure warehouse is visible ONLY for interior scenes (index 6 and 7)
+    // Exterior scenes should use factory exterior model
+    if (sceneIndex >= SCENE_INDICES.INTERIOR_START) {
+        if (sceneLoader.warehouseModel) {
+            // Explicitly set warehouse visible and ensure it's in scene
+            sceneLoader.warehouseModel.visible = true;
+            if (!scene.children.includes(sceneLoader.warehouseModel)) {
+                console.log('⚠️ Warehouse model not in scene, adding...');
+                scene.add(sceneLoader.warehouseModel);
+            }
+            sceneLoader.warehouseModel.traverse((child) => {
+                child.visible = true;
+            });
+            console.log(`✅ Warehouse model visible: ${sceneLoader.warehouseModel.visible}`);
+            
+            // Ensure factory exterior is hidden
+            if (sceneLoader.currentSceneModel) {
+                sceneLoader.currentSceneModel.visible = false;
+                console.log(`✅ Factory exterior hidden: ${!sceneLoader.currentSceneModel.visible}`);
+            }
+        } else {
+            console.error(`❌ Warehouse model is null at interior scene (index ${sceneIndex})! Attempting emergency load...`);
+            // Emergency load if model is null - reset flag and load
+            warehouseLoaded = false; // Reset flag to allow reload
+            loadWarehouseInterior(() => {
+                if (sceneLoader.warehouseModel) {
+                    sceneLoader.warehouseModel.visible = true;
+                    sceneLoader.warehouseModel.traverse((child) => {
+                        child.visible = true;
+                    });
+                    if (sceneLoader.currentSceneModel) {
+                        sceneLoader.currentSceneModel.visible = false;
+                    }
+                    console.log('✅ Emergency warehouse load successful');
+                } else {
+                    console.error('❌ Emergency warehouse load failed!');
+                }
+            });
+        }
+    } else {
+        // Exterior scenes - ensure factory is visible and warehouse is hidden
+        if (sceneLoader.currentSceneModel) {
+            sceneLoader.currentSceneModel.visible = true;
+        }
+        if (sceneLoader.warehouseModel) {
+            sceneLoader.warehouseModel.visible = false;
+        }
+    }
+    
     // Clear existing zombies and power-ups
     zombieManager.clearZombies();
     powerUpManager.clear();
@@ -374,6 +423,12 @@ function updateScreenShake() {
 
 // Expose rail movement function globally for button
 function startRailMovement() {
+    // At Scene 6, use fade-to-black transition instead of rail movement
+    if (gameData.currentScene === SCENE_INDICES.FRONT_OF_DOOR_PIVOT) {
+        onSceneCleared(); // Triggers fade-to-black and jump to interior
+        return;
+    }
+    
     // Set global flag before starting movement
     isRailMovementActive = true;
     wasRailMovementActive = true;
@@ -489,33 +544,163 @@ window.isRailMovementActive = false; // Initialize global flag
 // ============================================================================
 // SCENE MANAGEMENT
 // ============================================================================
+// Scene index constants for clarity
+const SCENE_INDICES = {
+    FRONT_OF_DOOR_PIVOT: 5,      // Scene 6 - triggers interior transition
+    WAREHOUSE_INTERIOR: 6,        // Scene 7 - first interior scene
+    WAREHOUSE_INTERIOR_FINAL: 7,  // Scene 8 - final interior scene
+    INTERIOR_START: 6             // First interior scene index
+};
+
 let factorySceneLoaded = false;
 let warehouseLoaded = false;
+let warehouseLoading = false; // Track if warehouse is currently being loaded
 let isFirstGameStart = true;
 
+/**
+ * Setup warehouse model visibility and hide factory exterior
+ * @param {boolean} setGround - Whether to set ground from warehouse model
+ */
+function setupWarehouseVisibility(setGround = true) {
+    if (!sceneLoader.warehouseModel) return;
+    
+    // Show warehouse and ensure it's in scene
+    sceneLoader.warehouseModel.visible = true;
+    if (!scene.children.includes(sceneLoader.warehouseModel)) {
+        scene.add(sceneLoader.warehouseModel);
+    }
+    sceneLoader.warehouseModel.traverse((child) => {
+        child.visible = true;
+    });
+    
+    // Hide factory exterior
+    if (sceneLoader.currentSceneModel) {
+        sceneLoader.currentSceneModel.visible = false;
+    }
+    
+    // Set ground from warehouse if requested
+    if (setGround) {
+        sceneLoader.warehouseModel.traverse((child) => {
+            if (child.isMesh) {
+                const name = child.name.toLowerCase();
+                if (name.includes('ground') || name.includes('floor')) {
+                    child.name = 'ground';
+                    child.receiveShadow = true;
+                    threeRenderer.setGround(child);
+                }
+            }
+        });
+    }
+}
+
+/**
+ * Stop rail movement completely
+ */
+function stopRailMovement() {
+    if (railMovementManager) {
+        railMovementManager.stop();
+    }
+    isRailMovementActive = false;
+}
+
 function spawnSceneZombies() {
+    // Skip spawning zombies for interior scenes
+    if (gameData.currentScene >= SCENE_INDICES.INTERIOR_START) {
+        return;
+    }
+    
     console.log(`🎬 Spawning zombies for Scene ${gameData.currentScene + 1}: ${currentCameraScene.name}`);
     zombieManager.spawnSceneZombies(currentCameraScene.spawnPoints);
     updateUI();
 }
 
-function onSceneCleared() {
-    console.log(`✅ Scene ${gameData.currentScene + 1} cleared!`);
+/**
+ * Quick fade to black, load warehouse, then directly set camera to Scene 7 (no rail movement)
+ */
+function fadeToBlackAndJumpToInterior() {
+    const fadeOverlay = document.getElementById('fade-transition');
+    if (!fadeOverlay) {
+        console.error('❌ Fade transition overlay not found!');
+        return;
+    }
     
-    // For scene 2 (index 2, which is Scene 3), transition to warehouse interior (index 3)
-    if (gameData.currentScene === 2) {
-        console.log('🚪 Scene 3 cleared! Transitioning to warehouse interior...');
-        
-        // Ensure warehouse is loaded
-        if (!warehouseLoaded) {
+    // Quick fade in black overlay
+    fadeOverlay.style.transition = 'opacity 0.3s ease-in-out';
+    fadeOverlay.classList.add('active');
+    
+    // Wait for fade in, then load warehouse and jump to Scene 7
+    setTimeout(() => {
+        // Load warehouse if needed
+        if (!warehouseLoaded || !sceneLoader.warehouseModel) {
             loadWarehouseInterior(() => {
-                // After warehouse loads, transition to warehouse interior using rail movement
-                advanceToNextSceneWithRail();
+                setupWarehouseVisibility();
+                jumpToInteriorScene();
             });
         } else {
-            // Warehouse already loaded, just transition
-            advanceToNextSceneWithRail();
+            // Warehouse already loaded, just setup visibility
+            setupWarehouseVisibility();
+            jumpToInteriorScene();
         }
+    }, 300); // Wait for fade in to complete
+}
+
+/**
+ * Jump directly to Scene 7 (Warehouse Interior) without rail movement
+ */
+function jumpToInteriorScene() {
+    // Stop any existing rail movement
+    stopRailMovement();
+    
+    // Set to Scene 7 (Warehouse Interior)
+    gameData.currentScene = SCENE_INDICES.WAREHOUSE_INTERIOR;
+    currentCameraScene = CAMERA_SCENES[SCENE_INDICES.WAREHOUSE_INTERIOR];
+    
+    // Set camera directly to interior position (no rail movement, no interpolation)
+    camera.position.set(
+        currentCameraScene.position.x,
+        currentCameraScene.position.y,
+        currentCameraScene.position.z
+    );
+    
+    // Set camera look-at direction
+    const lookAtPos = new THREE.Vector3(
+        currentCameraScene.lookAt.x,
+        currentCameraScene.lookAt.y,
+        currentCameraScene.lookAt.z
+    );
+    camera.lookAt(lookAtPos);
+    camera.updateMatrixWorld();
+    camera.updateProjectionMatrix();
+    
+    // Clear zombies and power-ups (no spawning for interior scenes)
+    zombieManager.clearZombies();
+    powerUpManager.clear();
+    
+    // Update UI and show scene title
+    updateUI();
+    showSceneTitle();
+    
+    // Set game state back to gameplay
+    gameData.currentState = GameState.GAMEPLAY;
+    
+    // Enable free look after everything is set up
+    sceneCameraManager.setSceneCamera(currentCameraScene);
+    
+    // Fade back in quickly
+    const fadeOverlay = document.getElementById('fade-transition');
+    if (fadeOverlay) {
+        setTimeout(() => {
+            fadeOverlay.classList.remove('active');
+        }, 50);
+    }
+}
+
+function onSceneCleared() {
+    // For Front of Door Pivot (Scene 6), fade to black and jump directly to interior
+    if (gameData.currentScene === SCENE_INDICES.FRONT_OF_DOOR_PIVOT) {
+        stopRailMovement();
+        gameData.currentState = GameState.SCENE_TRANSITION;
+        fadeToBlackAndJumpToInterior();
         return;
     }
     
@@ -539,12 +724,19 @@ function advanceToNextSceneWithRail() {
         return;
     }
     
+    // Get the next scene
+    const nextSceneIndex = gameData.currentScene + 1;
+    
+    // Skip rail movement for transition from Scene 6 to Scene 7 (uses fade-to-black instead)
+    if (gameData.currentScene === SCENE_INDICES.FRONT_OF_DOOR_PIVOT && 
+        nextSceneIndex === SCENE_INDICES.WAREHOUSE_INTERIOR) {
+        return;
+    }
+    
     // Set transition state
     gameData.currentState = GameState.SCENE_TRANSITION;
     console.log(`🎥 Advancing from Scene ${gameData.currentScene + 1} to Scene ${gameData.currentScene + 2} using rail movement...`);
     
-    // Get the next scene
-    const nextSceneIndex = gameData.currentScene + 1;
     const nextScene = CAMERA_SCENES[nextSceneIndex];
     
     if (!nextScene) {
@@ -556,6 +748,80 @@ function advanceToNextSceneWithRail() {
     // Clear zombies and power-ups before transition
     zombieManager.clearZombies();
     powerUpManager.clear();
+    
+    // Show/hide appropriate scene models based on next scene
+    // Warehouse interior scenes need warehouse model visible
+    if (nextSceneIndex >= SCENE_INDICES.INTERIOR_START) {
+        
+        // Ensure warehouse is loaded - check both flag AND model existence
+        if (!warehouseLoaded || !sceneLoader.warehouseModel) {
+            console.log('⚠️ Warehouse not loaded yet, loading now...');
+            loadWarehouseInterior(() => {
+                // After warehouse loads, show it and continue with transition
+                if (sceneLoader.warehouseModel) {
+                    sceneLoader.showWarehouse();
+                    // Set ground from warehouse
+                    sceneLoader.warehouseModel.traverse((child) => {
+                        if (child.isMesh) {
+                            const name = child.name.toLowerCase();
+                            if (name.includes('ground') || name.includes('floor')) {
+                                child.name = 'ground';
+                                child.receiveShadow = true;
+                                threeRenderer.setGround(child);
+                            }
+                        }
+                    });
+                }
+            });
+        } else if (sceneLoader.warehouseModel) {
+            // Warehouse is loaded - ensure it's visible
+            sceneLoader.warehouseModel.visible = true;
+            
+            // Ensure it's in the scene
+            if (!scene.children.includes(sceneLoader.warehouseModel)) {
+                console.log('⚠️ Warehouse model not in scene, adding it...');
+                scene.add(sceneLoader.warehouseModel);
+            }
+            
+            console.log(`✅ Warehouse model visible: ${sceneLoader.warehouseModel.visible}, in scene: ${scene.children.includes(sceneLoader.warehouseModel)}`);
+            
+            // Set ground from warehouse
+            sceneLoader.warehouseModel.traverse((child) => {
+                if (child.isMesh) {
+                    const name = child.name.toLowerCase();
+                    if (name.includes('ground') || name.includes('floor')) {
+                        child.name = 'ground';
+                        child.receiveShadow = true;
+                        threeRenderer.setGround(child);
+                    }
+                }
+            });
+        } else {
+            console.error('❌ Warehouse model not available! Cannot show interior.');
+            // Try to load it as fallback
+            loadWarehouseInterior(() => {
+                if (sceneLoader.warehouseModel) {
+                    sceneLoader.warehouseModel.visible = true;
+                    if (sceneLoader.currentSceneModel) {
+                        sceneLoader.currentSceneModel.visible = false;
+                    }
+                }
+            });
+        }
+        // Hide factory exterior
+        if (sceneLoader.currentSceneModel) {
+            sceneLoader.currentSceneModel.visible = false;
+            console.log('✅ Factory exterior hidden');
+        }
+    } else {
+        // Transitioning to factory exterior scenes - show factory, hide warehouse
+        if (sceneLoader.currentSceneModel) {
+            sceneLoader.currentSceneModel.visible = true;
+        }
+        if (sceneLoader.warehouseModel) {
+            sceneLoader.warehouseModel.visible = false;
+        }
+    }
     
     // Start rail movement to exact scene position
     const movementStarted = railMovementManager.moveToScenePosition(nextScene, () => {
@@ -577,6 +843,50 @@ function advanceToNextSceneWithRail() {
         console.log(`  Expected: { x: ${expectedPos.x.toFixed(3)}, y: ${expectedPos.y.toFixed(3)}, z: ${expectedPos.z.toFixed(3)} }`);
         console.log(`  Actual:   { x: ${actualPos.x.toFixed(3)}, y: ${actualPos.y.toFixed(3)}, z: ${actualPos.z.toFixed(3)} }`);
         console.log(`  Match: ${posMatch ? '✅ YES' : '❌ NO'}`);
+        
+        // CRITICAL: Ensure warehouse is visible for interior scenes (index 6 and 7)
+        // Force visibility AFTER rail movement completes to ensure interior model shows
+        if (nextSceneIndex >= SCENE_INDICES.INTERIOR_START) {
+            if (sceneLoader.warehouseModel) {
+                // Force visibility - set on model and all children
+                sceneLoader.warehouseModel.visible = true;
+                sceneLoader.warehouseModel.traverse((child) => {
+                    if (child.isMesh || child.isGroup || child.isObject3D) {
+                        child.visible = true;
+                    }
+                });
+                
+                // Ensure warehouse is in scene
+                if (!scene.children.includes(sceneLoader.warehouseModel)) {
+                    console.log('⚠️ Warehouse not in scene, adding...');
+                    scene.add(sceneLoader.warehouseModel);
+                }
+                
+                // CRITICAL: Force factory exterior to be hidden
+                if (sceneLoader.currentSceneModel) {
+                    sceneLoader.currentSceneModel.visible = false;
+                    sceneLoader.currentSceneModel.traverse((child) => {
+                        if (child.isMesh || child.isGroup || child.isObject3D) {
+                            child.visible = false;
+                        }
+                    });
+                }
+                
+                console.log(`✅ Warehouse FORCED visible: ${sceneLoader.warehouseModel.visible}`);
+                console.log(`✅ Factory exterior FORCED hidden: ${sceneLoader.currentSceneModel ? !sceneLoader.currentSceneModel.visible : 'N/A'}`);
+            } else {
+                console.error(`❌ CRITICAL: Warehouse model is null at interior scene!`);
+                // Emergency load
+                loadWarehouseInterior(() => {
+                    if (sceneLoader.warehouseModel) {
+                        sceneLoader.warehouseModel.visible = true;
+                        if (sceneLoader.currentSceneModel) {
+                            sceneLoader.currentSceneModel.visible = false;
+                        }
+                    }
+                });
+            }
+        }
         
         // Spawn zombies and power-ups for new scene
         spawnSceneZombies();
@@ -908,39 +1218,59 @@ function createDamageNumber(position, damage, isHeadshot) {
 }
 
 async function loadWarehouseInterior(onComplete) {
-    if (warehouseLoaded) {
+    // Check if already loaded by verifying the model exists
+    if (warehouseLoaded && sceneLoader.warehouseModel) {
+        console.log('✅ Warehouse already loaded');
         if (onComplete) onComplete();
         return;
     }
     
-    warehouseLoaded = true;
+    // Reset flag if loading failed previously
+    if (warehouseLoaded && !sceneLoader.warehouseModel) {
+        console.log('⚠️ Warehouse flag set but model is null - resetting and reloading...');
+        warehouseLoaded = false;
+    }
     
-    await sceneLoader.loadWarehouseInterior(scene, (warehouseModel) => {
-        if (warehouseModel) {
-            const message = document.createElement('div');
-            message.style.cssText = `
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                font-family: 'Courier New', monospace;
-                font-size: 36px;
-                color: #ffff00;
-                text-shadow: 0 0 20px #ffff00, 4px 4px 8px #000;
-                z-index: 200;
-                pointer-events: none;
-            `;
-            message.textContent = 'WAREHOUSE ACCESSED';
-            document.body.appendChild(message);
-            
-            setTimeout(() => {
-                message.remove();
+    console.log('📦 Loading warehouse interior model...');
+    // DO NOT set warehouseLoaded = true here - only set it AFTER successful load
+    
+    try {
+        await sceneLoader.loadWarehouseInterior(scene, (warehouseModel) => {
+            if (warehouseModel && sceneLoader.warehouseModel) {
+                console.log('✅ Warehouse model loaded successfully');
+                warehouseLoaded = true; // Only set flag AFTER successful load
+                
+                const message = document.createElement('div');
+                message.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-family: 'Courier New', monospace;
+                    font-size: 36px;
+                    color: #ffff00;
+                    text-shadow: 0 0 20px #ffff00, 4px 4px 8px #000;
+                    z-index: 200;
+                    pointer-events: none;
+                `;
+                message.textContent = 'WAREHOUSE ACCESSED';
+                document.body.appendChild(message);
+                
+                setTimeout(() => {
+                    message.remove();
+                    if (onComplete) onComplete();
+                }, 2000);
+            } else {
+                console.error('❌ Warehouse model failed to load - resetting flag');
+                warehouseLoaded = false; // Reset flag on failure
                 if (onComplete) onComplete();
-            }, 2000);
-        } else {
-            if (onComplete) onComplete();
-        }
-    });
+            }
+        });
+    } catch (error) {
+        console.error('❌ Error loading warehouse interior:', error);
+        warehouseLoaded = false; // Reset flag on error
+        if (onComplete) onComplete();
+    }
 }
 
 // ============================================================================
@@ -978,7 +1308,14 @@ window.addEventListener('keydown', (event) => {
         case 'C':
             const isFree = threeRenderer.toggleFreeCamera();
             renderManager.updateCallbacks.freeCamera.enabled = isFree;
+            
+            // Show/hide crosshair based on camera mode
+            if (crosshairManager && crosshairManager.crosshairElement) {
+                crosshairManager.crosshairElement.style.display = isFree ? 'none' : 'block';
+            }
+            
             if (!isFree) {
+                // Exiting orbit controls - reset to scene position
                 camera.position.set(
                     currentCameraScene.position.x,
                     currentCameraScene.position.y,
@@ -989,6 +1326,26 @@ window.addEventListener('keydown', (event) => {
                     currentCameraScene.lookAt.y,
                     currentCameraScene.lookAt.z
                 );
+                
+                // Restore original fog distance
+                if (threeRenderer.scene.fog) {
+                    threeRenderer.scene.fog.far = 200; // Restore normal fog distance
+                }
+                
+                console.log('🎥 Orbit controls disabled - returned to game camera');
+            } else {
+                // Entering orbit controls - set target to current camera position for free movement
+                // This allows panning anywhere without being locked to a specific orbit point
+                threeRenderer.controls.target.copy(camera.position);
+                
+                // Disable or extend fog for better exploration (reduce visual barriers)
+                if (threeRenderer.scene.fog) {
+                    threeRenderer.scene.fog.far = 500; // Extend fog distance significantly
+                }
+                
+                threeRenderer.controls.update();
+                console.log('🎥 Orbit controls enabled - use mouse to navigate, M to mark position');
+                console.log('💡 Right-click drag to pan, scroll to zoom, no movement limits');
             }
             break;
             
@@ -996,74 +1353,77 @@ window.addEventListener('keydown', (event) => {
         case 'I':
             // Shortcut to jump to warehouse interior scene for testing
             if (gameData.currentState === GameState.GAMEPLAY) {
-                console.log('🏭 Shortcut: Jumping to Warehouse Interior scene');
-                
-                // Set to warehouse interior scene (index 3)
-                gameData.currentScene = 3;
-                currentCameraScene = CAMERA_SCENES[3];
-                
-                // Show warehouse, hide factory exterior
-                if (sceneLoader.warehouseModel) {
-                    sceneLoader.showWarehouse();
-                    // Set ground from warehouse
-                    sceneLoader.warehouseModel.traverse((child) => {
-                        if (child.isMesh) {
-                            const name = child.name.toLowerCase();
-                            if (name.includes('ground') || name.includes('floor')) {
-                                child.name = 'ground';
-                                child.receiveShadow = true;
-                                threeRenderer.setGround(child);
-                            }
+                // Ensure warehouse is loaded first
+                if (!warehouseLoaded || !sceneLoader.warehouseModel) {
+                    loadWarehouseInterior(() => {
+                        gameData.currentScene = SCENE_INDICES.WAREHOUSE_INTERIOR;
+                        currentCameraScene = CAMERA_SCENES[SCENE_INDICES.WAREHOUSE_INTERIOR];
+                        setupWarehouseVisibility();
+                        sceneCameraManager.setSceneCamera(currentCameraScene);
+                        zombieManager.clearZombies();
+                        spawnSceneZombies();
+                        
+                        // Disable orbit controls, enable free look
+                        threeRenderer.isFreeCamera = false;
+                        threeRenderer.controls.enabled = false;
+                        renderManager.updateCallbacks.freeCamera.enabled = false;
+                        if (crosshairManager && crosshairManager.crosshairElement) {
+                            crosshairManager.crosshairElement.style.display = 'block';
                         }
                     });
+                } else {
+                    // Warehouse already loaded, jump directly
+                    gameData.currentScene = SCENE_INDICES.WAREHOUSE_INTERIOR;
+                    currentCameraScene = CAMERA_SCENES[SCENE_INDICES.WAREHOUSE_INTERIOR];
+                    setupWarehouseVisibility();
+                    sceneCameraManager.setSceneCamera(currentCameraScene);
+                    zombieManager.clearZombies();
+                    spawnSceneZombies();
+                    
+                    // Disable orbit controls, enable free look
+                    threeRenderer.isFreeCamera = false;
+                    threeRenderer.controls.enabled = false;
+                    renderManager.updateCallbacks.freeCamera.enabled = false;
+                    if (crosshairManager && crosshairManager.crosshairElement) {
+                        crosshairManager.crosshairElement.style.display = 'block';
+                    }
                 }
-                if (sceneLoader.currentSceneModel) {
-                    sceneLoader.currentSceneModel.visible = false;
-                }
-                
-                // Set camera to warehouse interior position and enable free look
-                sceneCameraManager.setSceneCamera(currentCameraScene);
-                
-                // Disable orbit controls - use mouse look instead
-                threeRenderer.isFreeCamera = false;
-                threeRenderer.controls.enabled = false;
-                renderManager.updateCallbacks.freeCamera.enabled = false;
-                
-                // Ensure crosshair is visible
-                if (crosshairManager && crosshairManager.crosshairElement) {
-                    crosshairManager.crosshairElement.style.display = 'block';
-                }
-                
-                // Clear zombies and don't spawn new ones for testing
-                zombieManager.clearZombies();
-                
-                console.log('✅ Jumped to Warehouse Interior - Free look enabled');
-                console.log('💡 Move mouse to look around, click to shoot');
-                console.log('💡 Press C to toggle orbit controls (for positioning)');
-                console.log('💡 Press M to mark current position and look-at for SceneConfig');
             }
             break;
             
         case 'm':
         case 'M':
             // Mark current camera position and look-at direction for SceneConfig
-            if (gameData.currentState === GameState.GAMEPLAY) {
+            // Works in both gameplay and orbit controls mode
+            if (gameData.currentState === GameState.GAMEPLAY || threeRenderer.isFreeCamera) {
                 const pos = camera.position.clone();
                 const direction = new THREE.Vector3();
                 camera.getWorldDirection(direction);
                 
                 // Calculate look-at point (position + direction * some distance)
-                // Use a reasonable distance like 10 units
-                const lookAtDistance = 10;
-                const lookAt = pos.clone().add(direction.multiplyScalar(lookAtDistance));
+                // Use orbit controls target if available, otherwise use direction
+                let lookAt;
+                if (threeRenderer.isFreeCamera && threeRenderer.controls && threeRenderer.controls.target) {
+                    // Use orbit controls target for more accurate look-at
+                    lookAt = threeRenderer.controls.target.clone();
+                } else {
+                    // Use camera direction
+                    const lookAtDistance = 10;
+                    lookAt = pos.clone().add(direction.multiplyScalar(lookAtDistance));
+                }
+                
+                // Get current scene name for context
+                const sceneName = currentCameraScene ? currentCameraScene.name : 'Unknown Scene';
+                const sceneNumber = gameData.currentScene + 1;
                 
                 // Output in a clean, copy-paste friendly format
                 console.log('\n═══════════════════════════════════════════════════════');
                 console.log('📍 MARKED POSITION FOR SCENECONFIG');
                 console.log('═══════════════════════════════════════════════════════\n');
+                console.log(`Scene: ${sceneNumber} (${sceneName})`);
                 console.log('Copy this into SceneConfig.js:\n');
                 console.log('{');
-                console.log(`    name: "Warehouse Interior",`);
+                console.log(`    name: "${sceneName}",`);
                 console.log(`    position: { x: ${pos.x.toFixed(2)}, y: ${pos.y.toFixed(2)}, z: ${pos.z.toFixed(2)} },`);
                 console.log(`    lookAt: { x: ${lookAt.x.toFixed(2)}, y: ${lookAt.y.toFixed(2)}, z: ${lookAt.z.toFixed(2)} },`);
                 console.log(`    transitionDuration: 3000,`);
@@ -1160,21 +1520,23 @@ sceneLoader.loadFactoryScene(scene, (factoryModel) => {
     }
 });
 
-// Preload warehouse (this is used when factory interior toggle is checked)
-sceneLoader.loadWarehouseInterior(scene, () => {
-    console.log('✅ Warehouse preloaded');
-    warehouseLoaded = true;
-});
+// Warehouse will be loaded on-demand when transitioning to interior scenes (index 7+)
+// Do NOT preload to avoid crashes when loading at wrong time (e.g., during Turn Around scene)
 
 console.log('✅ Game Initialized');
 console.log('Controls:');
 console.log('  SPACE - Start Game');
 console.log('  Click - Shoot');
 console.log('  R - Reload / Restart');
-console.log('  C - Toggle Camera');
+console.log('  C - Toggle Orbit Controls (for navigation/marking)');
 console.log('  I - Jump to Warehouse Interior (testing)');
-console.log('  M - Mark Position (for SceneConfig)');
+console.log('  M - Mark Position (for SceneConfig) - works in orbit mode');
 console.log('  H - Toggle Helpers');
+console.log('');
+console.log('Orbit Controls:');
+console.log('  Mouse Drag - Rotate camera');
+console.log('  Scroll - Zoom in/out');
+console.log('  Right-click Drag - Pan camera');
 
 // Note: Scene pre-rendering happens before revealing to ensure renderer readiness
 // This prevents startup glitch by ensuring textures are uploaded to GPU first

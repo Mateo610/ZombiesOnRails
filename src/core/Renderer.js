@@ -9,7 +9,9 @@ export class Renderer {
     constructor() {
         // Scene setup
         this.scene = new THREE.Scene();
-        this.scene.fog = new THREE.Fog(0x1a1a2e, 10, 50);
+        // Fog settings - extended range for exploration (start at 10, full fog at 200)
+        // This allows viewing much further while still having atmospheric fog
+        this.scene.fog = new THREE.Fog(0x1a1a2e, 10, 200);
         
         // Renderer setup
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -27,7 +29,7 @@ export class Renderer {
             this.BASE_FOV,
             window.innerWidth / window.innerHeight,
             0.1,
-            1000
+            2000  // Increased far plane to match extended fog distance
         );
         // Set camera to initial position immediately to prevent glitch
         this.camera.position.set(0, 1.6, 5);
@@ -39,9 +41,38 @@ export class Renderer {
         // Lighting setup
         this.setupLighting();
         
-        // Controls
+        // Controls - Enhanced orbit controls for better navigation
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.05;
+        
+        // Rotation settings
+        this.controls.rotateSpeed = 1.0;
+        this.controls.autoRotate = false;
+        
+        // Zoom settings - no limits for free exploration
+        this.controls.zoomSpeed = 1.2;
+        this.controls.minDistance = 0.1; // Very close
+        // Remove maxDistance constraint entirely - set to a very large number
+        // Infinity causes issues, so use a very large number instead
+        this.controls.maxDistance = 10000; // Allow movement anywhere in the scene
+        
+        // Pan settings - much faster panning for better exploration
+        this.controls.panSpeed = 3.0; // Increased for faster movement past boundaries
+        this.controls.enablePan = true;
+        
+        // Keyboard panning
+        this.controls.enableKeys = true;
+        this.controls.keyPanSpeed = 10.0; // Faster keyboard panning
+        
+        // Rotation limits (prevent camera flipping)
+        this.controls.minPolarAngle = 0; // Allow looking straight up
+        this.controls.maxPolarAngle = Math.PI; // Allow looking straight down
+        
+        // Screen space panning (better for scene exploration)
+        this.controls.screenSpacePanning = true;
+        this.controls.keyPanSpeed = 7.0; // Keyboard pan speed
+        
         this.isFreeCamera = false;
         this.controls.enabled = this.isFreeCamera;
         

@@ -361,6 +361,13 @@ export class RailMovementManager {
         console.log('  - paths.length:', this.paths.length);
         console.log('  - paths available:', this.paths.map((p, i) => `${i}:${p.id} -> scene ${p.sceneIndex}`).join(', '));
         
+        // CRITICAL: Skip rail movement for transition from Scene 6 (index 5) to Scene 7 (index 6)
+        // This transition should use fade-to-black and direct camera jump instead
+        if (this.gameData.currentScene === 5) {
+            console.log('⚠️ Rail movement: Skipping rail movement for Scene 6 to Scene 7 transition (uses fade-to-black)');
+            return false;
+        }
+        
         // Check if game is in gameplay state
         if (this.gameData.currentState !== this.GameState.GAMEPLAY) {
             console.log('⚠️ Rail movement: Game not in gameplay state. Current:', this.gameData.currentState);
