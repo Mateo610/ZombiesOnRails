@@ -59,6 +59,9 @@ export const gameData = {
     // Leaderboard (localStorage)
     bestScore: 0,
     bestAccuracy: 0,
-    bestTime: 0
+    bestTime: 0,
+    
+    // Difficulty setting
+    difficulty: 'medium' // 'easy', 'medium', 'hard'
 };
 

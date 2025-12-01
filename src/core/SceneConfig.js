@@ -82,7 +82,13 @@ export const CAMERA_SCENES = [
         lookAt: { x: -9.40, y: 0.43, z: -2.82 },
         transitionDuration: 3000, // Optional: duration in ms for rail movement transition
         spawnPoints: [
-            // Zombies not implemented yet - will be added later
+            // Final boss wave - multiple zombies from different directions
+            { x: -5.0, y: 0.0, z: -3.0, type: 'runner' },
+            { x: -7.0, y: 0.0, z: -2.0, type: 'runner' },
+            { x: -6.0, y: 0.0, z: -5.0, type: 'walker' },
+            { x: -8.0, y: 0.0, z: -4.0, type: 'walker' },
+            { x: -4.0, y: 0.0, z: -4.0, type: 'walker' },
+            { x: -9.0, y: 0.0, z: -3.0, type: 'runner' }
         ]
     }
 ];

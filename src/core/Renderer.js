@@ -78,8 +78,9 @@ export class Renderer {
         
         // Scene objects
         this.ground = null;
-        this.axesHelper = new THREE.AxesHelper(5);
-        this.scene.add(this.axesHelper);
+        // Axes helper removed for production (was used for debugging)
+        // this.axesHelper = new THREE.AxesHelper(5);
+        // this.scene.add(this.axesHelper);
         
         // Window resize handler (will be set up with renderManager reference in main.js)
         this.resizeHandler = null;
@@ -135,10 +136,7 @@ export class Renderer {
                 renderManager.handleResize();
             }
             
-            // Update orbit controls if enabled
-            if (this.controls) {
-                this.controls.handleResize();
-            }
+            // OrbitControls automatically handle resize - no manual update needed
         };
         
         window.addEventListener('resize', this.resizeHandler);
@@ -151,7 +149,8 @@ export class Renderer {
     }
     
     toggleAxesHelper() {
-        this.axesHelper.visible = !this.axesHelper.visible;
+        // Axes helper removed for production
+        // this.axesHelper.visible = !this.axesHelper.visible;
     }
     
     setGround(groundMesh) {

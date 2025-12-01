@@ -47,6 +47,7 @@ export function createUI() {
             color: #999999;
             z-index: 10;
             pointer-events: none;
+            display: none;
         ">
             <!-- Player Stats Panel -->
             <div style="
@@ -204,6 +205,7 @@ export function createUI() {
                 z-index: 10;
                 pointer-events: none;
                 font-family: 'Courier New', monospace;
+                display: none;
             ">
                 <div id="powerup-message" style="
                     background: rgba(255, 255, 0, 0.15);
@@ -250,6 +252,7 @@ export function createUI() {
             color: #fff;
             text-shadow: 0 0 15px #fff, 3px 3px 6px #000;
             font-weight: bold;
+            display: none;
         ">
             <span id="current-ammo">12</span> / <span id="reserve-ammo">60</span>
         </div>
@@ -334,7 +337,7 @@ export function createUI() {
             bottom: 40px;
             left: 50%;
             transform: translateX(-50%);
-            display: flex;
+            display: none;
             gap: 12px;
             align-items: center;
             justify-content: center;
@@ -386,6 +389,246 @@ export function createUI() {
                 transition: opacity 0.3s ease-out, transform 0.3s ease-out;
                 opacity: 1;
             ">♥</div>
+        </div>
+        
+        <!-- Settings Gear Icon Button -->
+        <button id="settings-btn" style="
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: none;
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            font-weight: bold;
+            color: #999999;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #999999;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 100;
+            text-shadow: 0 0 10px #999999, 2px 2px 4px #000;
+            box-shadow: 0 0 15px rgba(153, 153, 153, 0.5), inset 0 0 10px rgba(153, 153, 153, 0.2);
+            transition: all 0.3s;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        " onmouseover="this.style.background='rgba(153, 153, 153, 0.3)'; this.style.boxShadow='0 0 20px rgba(153, 153, 153, 0.8), inset 0 0 15px rgba(153, 153, 153, 0.3)';" 
+           onmouseout="this.style.background='rgba(0, 0, 0, 0.8)'; this.style.boxShadow='0 0 15px rgba(153, 153, 153, 0.5), inset 0 0 10px rgba(153, 153, 153, 0.2)';">
+            ⚙️
+        </button>
+        
+        <!-- Settings Menu -->
+        <div id="settings-menu" style="
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            width: 300px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid rgba(153, 153, 153, 0.6);
+            border-radius: 8px;
+            padding: 20px;
+            z-index: 101;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(-10px) scale(0.95);
+            transition: all 0.3s ease-out;
+            box-shadow: 
+                0 0 30px rgba(0, 0, 0, 0.9),
+                inset 0 0 20px rgba(0, 0, 0, 0.5);
+            font-family: 'Courier New', monospace;
+            display: none;
+        ">
+            <div style="
+                font-size: 20px;
+                color: #ffffff;
+                margin-bottom: 20px;
+                text-align: center;
+                letter-spacing: 2px;
+                text-shadow: 0 0 10px #ffffff;
+            ">SETTINGS</div>
+            
+            <!-- Music Toggle -->
+            <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 15px;
+                padding: 12px;
+                background: rgba(153, 153, 153, 0.1);
+                border-radius: 6px;
+                border: 1px solid rgba(153, 153, 153, 0.3);
+            ">
+                <div style="
+                    font-size: 14px;
+                    color: #cccccc;
+                    letter-spacing: 1px;
+                ">MUSIC</div>
+                <label style="
+                    position: relative;
+                    display: inline-block;
+                    width: 50px;
+                    height: 26px;
+                    cursor: pointer;
+                ">
+                    <input type="checkbox" id="music-toggle" checked style="
+                        opacity: 0;
+                        width: 0;
+                        height: 0;
+                    ">
+                    <span id="music-toggle-slider" style="
+                        position: absolute;
+                        cursor: pointer;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background-color: rgba(153, 153, 153, 0.3);
+                        transition: 0.3s;
+                        border-radius: 26px;
+                        border: 1px solid rgba(153, 153, 153, 0.5);
+                    ">
+                        <span id="music-toggle-knob" style="
+                            position: absolute;
+                            content: '';
+                            height: 20px;
+                            width: 20px;
+                            left: 3px;
+                            bottom: 2px;
+                            background-color: #999999;
+                            transition: 0.3s;
+                            border-radius: 50%;
+                            box-shadow: 0 0 8px rgba(153, 153, 153, 0.5);
+                        "></span>
+                    </span>
+                </label>
+            </div>
+            
+            <!-- Music Selection -->
+            <div style="
+                margin-bottom: 15px;
+                padding: 12px;
+                background: rgba(153, 153, 153, 0.1);
+                border-radius: 6px;
+                border: 1px solid rgba(153, 153, 153, 0.3);
+            ">
+                <div style="
+                    font-size: 14px;
+                    color: #cccccc;
+                    letter-spacing: 1px;
+                    margin-bottom: 8px;
+                ">MUSIC TRACK</div>
+                <select id="music-selector" style="
+                    width: 100%;
+                    padding: 8px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 13px;
+                    color: #ffffff;
+                    background: rgba(0, 0, 0, 0.6);
+                    border: 1px solid rgba(153, 153, 153, 0.5);
+                    border-radius: 4px;
+                    cursor: pointer;
+                    outline: none;
+                ">
+                    <option value="main">Main Theme</option>
+                    <option value="alternative">KSHERWOODOPS</option>
+                    <option value="boss">Boss Fight</option>
+                </select>
+            </div>
+            
+            <!-- Music Volume Slider -->
+            <div style="
+                margin-bottom: 15px;
+                padding: 12px;
+                background: rgba(153, 153, 153, 0.1);
+                border-radius: 6px;
+                border: 1px solid rgba(153, 153, 153, 0.3);
+            ">
+                <div style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 8px;
+                ">
+                    <div style="
+                        font-size: 14px;
+                        color: #cccccc;
+                        letter-spacing: 1px;
+                    ">MUSIC VOLUME</div>
+                    <div id="music-volume-value" style="
+                        font-size: 13px;
+                        color: #ffffff;
+                        font-weight: bold;
+                        min-width: 40px;
+                        text-align: right;
+                    ">40%</div>
+                </div>
+                <input type="range" id="music-volume-slider" min="0" max="100" value="40" style="
+                    width: 100%;
+                    height: 6px;
+                    background: rgba(153, 153, 153, 0.3);
+                    border-radius: 3px;
+                    outline: none;
+                    cursor: pointer;
+                    -webkit-appearance: none;
+                ">
+                <style>
+                    #music-volume-slider::-webkit-slider-thumb {
+                        -webkit-appearance: none;
+                        appearance: none;
+                        width: 16px;
+                        height: 16px;
+                        background: #999999;
+                        border-radius: 50%;
+                        cursor: pointer;
+                        box-shadow: 0 0 8px rgba(153, 153, 153, 0.5);
+                        transition: all 0.2s;
+                    }
+                    #music-volume-slider::-webkit-slider-thumb:hover {
+                        background: #0088ff;
+                        box-shadow: 0 0 12px rgba(0, 136, 255, 0.8);
+                        transform: scale(1.2);
+                    }
+                    #music-volume-slider::-moz-range-thumb {
+                        width: 16px;
+                        height: 16px;
+                        background: #999999;
+                        border-radius: 50%;
+                        cursor: pointer;
+                        border: none;
+                        box-shadow: 0 0 8px rgba(153, 153, 153, 0.5);
+                        transition: all 0.2s;
+                    }
+                    #music-volume-slider::-moz-range-thumb:hover {
+                        background: #0088ff;
+                        box-shadow: 0 0 12px rgba(0, 136, 255, 0.8);
+                        transform: scale(1.2);
+                    }
+                </style>
+            </div>
+            
+            <!-- Close Button -->
+            <button id="settings-close-btn" style="
+                width: 100%;
+                padding: 10px;
+                margin-top: 10px;
+                font-family: 'Courier New', monospace;
+                font-size: 14px;
+                font-weight: bold;
+                color: #999999;
+                background: rgba(153, 153, 153, 0.1);
+                border: 1px solid rgba(153, 153, 153, 0.3);
+                border-radius: 4px;
+                cursor: pointer;
+                transition: all 0.3s;
+                letter-spacing: 1px;
+            " onmouseover="this.style.background='rgba(153, 153, 153, 0.2)'; this.style.borderColor='rgba(153, 153, 153, 0.5)';" 
+               onmouseout="this.style.background='rgba(153, 153, 153, 0.1)'; this.style.borderColor='rgba(153, 153, 153, 0.3)';">
+                CLOSE
+            </button>
         </div>
         
         <!-- Rail Movement Button -->
@@ -454,39 +697,136 @@ export function createUI() {
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.95);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.98) 0%, rgba(20, 20, 40, 0.98) 100%);
             display: none;
             justify-content: center;
             align-items: center;
             z-index: 100;
             font-family: 'Courier New', monospace;
+            overflow-y: auto;
+            animation: fadeIn 0.5s ease-in;
         ">
-            <div style="text-align: center;">
+            <div style="
+                text-align: center;
+                max-width: 900px;
+                width: 90%;
+                padding: 40px;
+            ">
+                <!-- Title -->
                 <div style="
-                    font-size: 72px;
+                    font-size: 84px;
                     color: #ffff00;
-                    text-shadow: 0 0 30px #ffff00;
-                    margin-bottom: 40px;
+                    text-shadow: 
+                        0 0 20px #ffff00,
+                        0 0 40px #ffff00,
+                        0 0 60px #ffff00;
+                    margin-bottom: 20px;
                     animation: pulse 1.5s infinite;
+                    letter-spacing: 4px;
                 ">
                     MISSION COMPLETE
                 </div>
-                <div style="font-size: 48px; color: #999999; margin-bottom: 20px;">
-                    RANK: <span id="final-rank">S</span>
+                
+                <!-- Rank Badge -->
+                <div style="
+                    font-size: 56px;
+                    color: #999999;
+                    margin-bottom: 50px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 20px;
+                ">
+                    <span style="font-size: 32px; color: #666;">RANK:</span>
+                    <span id="final-rank" style="
+                        font-size: 72px;
+                        font-weight: bold;
+                        text-shadow: 0 0 20px currentColor;
+                        padding: 10px 30px;
+                        border: 3px solid currentColor;
+                        border-radius: 8px;
+                        background: rgba(0, 0, 0, 0.5);
+                    ">S</span>
                 </div>
-                <div id="final-stats" style="font-size: 24px; color: #fff; line-height: 2; margin-bottom: 40px;"></div>
+                
+                <!-- Detailed Stats Breakdown -->
+                <div style="
+                    background: rgba(0, 0, 0, 0.6);
+                    border: 2px solid rgba(153, 153, 153, 0.5);
+                    border-radius: 12px;
+                    padding: 30px;
+                    margin-bottom: 30px;
+                    box-shadow: 
+                        0 0 30px rgba(0, 0, 0, 0.8),
+                        inset 0 0 20px rgba(0, 0, 0, 0.5);
+                ">
+                    <div style="
+                        font-size: 32px;
+                        color: #00ccff;
+                        margin-bottom: 25px;
+                        text-shadow: 0 0 10px #00ccff;
+                        letter-spacing: 2px;
+                    ">
+                        RUN BREAKDOWN
+                    </div>
+                    <div id="final-stats" style="
+                        font-size: 22px;
+                        color: #fff;
+                        line-height: 2.2;
+                        text-align: left;
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 15px 30px;
+                    "></div>
+                </div>
+                
+                <!-- Final Score Highlight -->
+                <div id="final-score-display" style="
+                    font-size: 48px;
+                    margin: 30px 0;
+                    color: #ffff00;
+                    text-shadow: 
+                        0 0 20px #ffff00,
+                        0 0 40px #ffff00;
+                    font-weight: bold;
+                    letter-spacing: 3px;
+                    animation: scoreGlow 2s infinite;
+                "></div>
                 
                 <!-- Leaderboard -->
-                <div style="margin-top: 40px; padding: 20px; background: rgba(0, 136, 255, 0.1); border: 2px solid #999999;">
-                    <div style="font-size: 28px; color: #999999; margin-bottom: 20px;">BEST SCORES</div>
-                    <div id="leaderboard" style="font-size: 18px; color: #fff; line-height: 1.8;"></div>
+                <div style="
+                    margin-top: 40px;
+                    padding: 25px;
+                    background: rgba(0, 136, 255, 0.15);
+                    border: 2px solid rgba(0, 136, 255, 0.5);
+                    border-radius: 12px;
+                    box-shadow: 0 0 20px rgba(0, 136, 255, 0.3);
+                ">
+                    <div style="
+                        font-size: 32px;
+                        color: #00ccff;
+                        margin-bottom: 20px;
+                        text-shadow: 0 0 10px #00ccff;
+                        letter-spacing: 2px;
+                    ">
+                        BEST SCORES
+                    </div>
+                    <div id="leaderboard" style="
+                        font-size: 18px;
+                        color: #fff;
+                        line-height: 2;
+                        text-align: left;
+                    "></div>
                 </div>
                 
+                <!-- Restart Prompt -->
                 <div style="
-                    font-size: 24px;
+                    font-size: 28px;
                     color: #ff1493;
-                    margin-top: 60px;
+                    margin-top: 50px;
                     animation: blink 1.5s infinite;
+                    text-shadow: 0 0 10px #ff1493;
+                    letter-spacing: 2px;
                 ">
                     Press R to Restart
                 </div>
@@ -494,6 +834,10 @@ export function createUI() {
         </div>
         
         <style>
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
             @keyframes pulse {
                 0%, 100% { opacity: 1; transform: scale(1); }
                 50% { opacity: 0.7; transform: scale(1.05); }
@@ -501,6 +845,21 @@ export function createUI() {
             @keyframes blink {
                 0%, 100% { opacity: 1; }
                 50% { opacity: 0.3; }
+            }
+            @keyframes scoreGlow {
+                0%, 100% { 
+                    text-shadow: 
+                        0 0 20px #ffff00,
+                        0 0 40px #ffff00;
+                    transform: scale(1);
+                }
+                50% { 
+                    text-shadow: 
+                        0 0 30px #ffff00,
+                        0 0 60px #ffff00,
+                        0 0 80px #ffff00;
+                    transform: scale(1.05);
+                }
             }
             @keyframes scoreIncrease {
                 0% { transform: scale(1); }
@@ -531,10 +890,23 @@ export function createUI() {
                 50% { transform: scale(1.5); opacity: 0.7; }
                 100% { transform: scale(0); opacity: 0; }
             }
+            /* Settings toggle switch styles */
+            #music-toggle-slider {
+                transition: background-color 0.3s, border-color 0.3s;
+            }
+            #music-toggle-knob {
+                transition: left 0.3s, background-color 0.3s, box-shadow 0.3s;
+            }
         </style>
     `;
     
     document.body.appendChild(uiContainer);
+    
+    // Setup settings menu functionality
+    setupSettingsMenu();
+    
+    // Setup start screen menu
+    setupStartScreen();
     
     // Remove weapon-name element if it exists (cleanup)
     const weaponNameEl = document.getElementById('weapon-name');
@@ -553,6 +925,186 @@ export function createUI() {
             }
         });
     }
+}
+
+/**
+ * Setup settings menu functionality
+ */
+function setupSettingsMenu() {
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsMenu = document.getElementById('settings-menu');
+    const settingsCloseBtn = document.getElementById('settings-close-btn');
+    const musicToggle = document.getElementById('music-toggle');
+    const musicToggleKnob = document.getElementById('music-toggle-knob');
+    const musicToggleSlider = document.getElementById('music-toggle-slider');
+    
+    let isMenuOpen = false;
+    
+    // Open/close settings menu
+    function toggleSettingsMenu() {
+        isMenuOpen = !isMenuOpen;
+        
+        if (isMenuOpen) {
+            settingsMenu.style.display = 'block';
+            settingsMenu.style.pointerEvents = 'auto';
+            requestAnimationFrame(() => {
+                settingsMenu.style.opacity = '1';
+                settingsMenu.style.transform = 'translateY(0) scale(1)';
+            });
+        } else {
+            settingsMenu.style.opacity = '0';
+            settingsMenu.style.transform = 'translateY(-10px) scale(0.95)';
+            setTimeout(() => {
+                settingsMenu.style.display = 'none';
+                settingsMenu.style.pointerEvents = 'none';
+            }, 300);
+        }
+    }
+    
+    // Toggle music on/off
+    function toggleMusic(enabled) {
+        // Import soundManager dynamically to avoid circular dependencies
+        import('../systems/SoundManager.js').then(({ soundManager }) => {
+            soundManager.setMusicEnabled(enabled);
+        }).catch(err => {
+            console.warn('Failed to toggle music:', err);
+        });
+    }
+    
+    // Change music track
+    function changeMusicTrack(trackType) {
+        console.log('🎵 Changing music track to:', trackType);
+        // Import soundManager dynamically to avoid circular dependencies
+        import('../systems/SoundManager.js').then(({ soundManager }) => {
+            console.log('🎵 SoundManager loaded, musicEnabled:', soundManager.musicEnabled);
+            console.log('🎵 Available themes:', {
+                main: !!soundManager.mainTheme,
+                boss: !!soundManager.bossTheme,
+                alternative: !!soundManager.alternativeTheme
+            });
+            if (soundManager.musicEnabled) {
+                soundManager.playMusic(trackType);
+            } else {
+                console.warn('⚠️ Music is disabled, enabling it first');
+                soundManager.setMusicEnabled(true);
+                soundManager.playMusic(trackType);
+            }
+        }).catch(err => {
+            console.error('❌ Failed to change music track:', err);
+        });
+    }
+    
+    // Update toggle visual state
+    function updateToggleVisual(enabled) {
+        if (enabled) {
+            musicToggleSlider.style.backgroundColor = 'rgba(0, 136, 255, 0.5)';
+            musicToggleSlider.style.borderColor = 'rgba(0, 136, 255, 0.8)';
+            musicToggleKnob.style.left = 'calc(100% - 23px)';
+            musicToggleKnob.style.backgroundColor = '#0088ff';
+            musicToggleKnob.style.boxShadow = '0 0 12px rgba(0, 136, 255, 0.8)';
+        } else {
+            musicToggleSlider.style.backgroundColor = 'rgba(153, 153, 153, 0.3)';
+            musicToggleSlider.style.borderColor = 'rgba(153, 153, 153, 0.5)';
+            musicToggleKnob.style.left = '3px';
+            musicToggleKnob.style.backgroundColor = '#999999';
+            musicToggleKnob.style.boxShadow = '0 0 8px rgba(153, 153, 153, 0.5)';
+        }
+    }
+    
+    // Event listeners
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleSettingsMenu();
+        });
+    }
+    
+    if (settingsCloseBtn) {
+        settingsCloseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleSettingsMenu();
+        });
+    }
+    
+    if (musicToggle) {
+        // Initialize toggle state (music enabled by default)
+        musicToggle.checked = true;
+        updateToggleVisual(true);
+        
+        musicToggle.addEventListener('change', (e) => {
+            const enabled = e.target.checked;
+            updateToggleVisual(enabled);
+            toggleMusic(enabled);
+        });
+    }
+    
+    // Music selector dropdown
+    const musicSelector = document.getElementById('music-selector');
+    if (musicSelector) {
+        // Function to update selector to match current music
+        function updateMusicSelector() {
+            import('../systems/SoundManager.js').then(({ soundManager }) => {
+                const currentType = soundManager.getCurrentMusicType();
+                musicSelector.value = currentType;
+            }).catch(() => {
+                // Default to main if can't load
+                musicSelector.value = 'main';
+            });
+        }
+        
+        // Initialize with current music type
+        updateMusicSelector();
+        
+        // Update selector periodically to sync with automatic scene changes
+        setInterval(updateMusicSelector, 1000);
+        
+        musicSelector.addEventListener('change', (e) => {
+            const trackType = e.target.value;
+            changeMusicTrack(trackType);
+        });
+    }
+    
+    // Music volume slider
+    const musicVolumeSlider = document.getElementById('music-volume-slider');
+    const musicVolumeValue = document.getElementById('music-volume-value');
+    if (musicVolumeSlider && musicVolumeValue) {
+        // Initialize volume slider with current volume
+        import('../systems/SoundManager.js').then(({ soundManager }) => {
+            // Get current volume (default is 0.4 = 40%)
+            const currentVolume = soundManager.mainTheme ? soundManager.mainTheme.volume : 0.4;
+            const volumePercent = Math.round(currentVolume * 100);
+            musicVolumeSlider.value = volumePercent;
+            musicVolumeValue.textContent = volumePercent + '%';
+        }).catch(() => {
+            // Default to 40% if can't load
+            musicVolumeSlider.value = 40;
+            musicVolumeValue.textContent = '40%';
+        });
+        
+        // Update volume when slider changes
+        musicVolumeSlider.addEventListener('input', (e) => {
+            const volumePercent = parseInt(e.target.value);
+            const volume = volumePercent / 100; // Convert to 0.0-1.0 range
+            
+            // Update display
+            musicVolumeValue.textContent = volumePercent + '%';
+            
+            // Update actual music volume
+            import('../systems/SoundManager.js').then(({ soundManager }) => {
+                soundManager.setMusicVolume(volume);
+            }).catch(err => {
+                console.warn('Failed to update music volume:', err);
+            });
+        });
+    }
+    
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (isMenuOpen && settingsMenu && !settingsMenu.contains(e.target) && 
+            settingsBtn && !settingsBtn.contains(e.target)) {
+            toggleSettingsMenu();
+        }
+    });
 }
 
 export function updateUI() {
@@ -814,17 +1366,121 @@ export function updateFinalStats() {
     
     const minutes = Math.floor(gameData.currentTime / 60);
     const seconds = Math.floor(gameData.currentTime % 60);
+    const timeFormatted = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     
     const rank = calculateRank();
     
+    // Calculate headshot percentage
+    const headshotPercentage = gameData.totalZombiesKilled > 0
+        ? Math.round((gameData.headshotKills / gameData.totalZombiesKilled) * 100)
+        : 0;
+    
+    // Calculate average score per zombie
+    const avgScorePerZombie = gameData.totalZombiesKilled > 0
+        ? Math.round(gameData.score / gameData.totalZombiesKilled)
+        : 0;
+    
+    // Calculate shots per kill
+    const shotsPerKill = gameData.totalZombiesKilled > 0
+        ? (gameData.shotsFired / gameData.totalZombiesKilled).toFixed(1)
+        : '0.0';
+    
     const statsHTML = `
-        <div>Zombies Killed: ${gameData.totalZombiesKilled}</div>
-        <div>Headshots: ${gameData.headshotKills}</div>
-        <div>Accuracy: ${accuracy}%</div>
-        <div>Max Combo: x${gameData.maxCombo}</div>
-        <div>Time: ${minutes}:${seconds.toString().padStart(2, '0')}</div>
-        <div style="font-size: 32px; margin-top: 20px; color: #ffff00;">
-            FINAL SCORE: ${gameData.score}
+        <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            border-left: 3px solid #00ccff;
+        ">
+            <span style="color: #999;">Zombies Eliminated:</span>
+            <span style="color: #fff; font-weight: bold; font-size: 24px;">${gameData.totalZombiesKilled}</span>
+        </div>
+        <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            border-left: 3px solid #ff0000;
+        ">
+            <span style="color: #999;">Headshots:</span>
+            <span style="color: #ff0000; font-weight: bold; font-size: 24px;">${gameData.headshotKills} <span style="font-size: 18px; color: #999;">(${headshotPercentage}%)</span></span>
+        </div>
+        <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            border-left: 3px solid #00ff00;
+        ">
+            <span style="color: #999;">Accuracy:</span>
+            <span style="color: #00ff00; font-weight: bold; font-size: 24px;">${accuracy}%</span>
+        </div>
+        <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            border-left: 3px solid #ffaa00;
+        ">
+            <span style="color: #999;">Max Combo:</span>
+            <span style="color: #ffaa00; font-weight: bold; font-size: 24px;">x${gameData.maxCombo}</span>
+        </div>
+        <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            border-left: 3px solid #00ccff;
+        ">
+            <span style="color: #999;">Time:</span>
+            <span style="color: #fff; font-weight: bold; font-size: 24px;">${timeFormatted}</span>
+        </div>
+        <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            border-left: 3px solid #999;
+        ">
+            <span style="color: #999;">Shots Fired:</span>
+            <span style="color: #fff; font-weight: bold; font-size: 24px;">${gameData.shotsFired}</span>
+        </div>
+        <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            border-left: 3px solid #999;
+        ">
+            <span style="color: #999;">Shots Per Kill:</span>
+            <span style="color: #fff; font-weight: bold; font-size: 24px;">${shotsPerKill}</span>
+        </div>
+        <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            border-left: 3px solid #999;
+        ">
+            <span style="color: #999;">Avg Score/Zombie:</span>
+            <span style="color: #fff; font-weight: bold; font-size: 24px;">${avgScorePerZombie}</span>
         </div>
     `;
     
@@ -842,6 +1498,12 @@ export function updateFinalStats() {
             'D': '#ff0000'
         };
         document.getElementById('final-rank').style.color = rankColors[rank];
+        
+        // Update final score display
+        const finalScoreEl = document.getElementById('final-score-display');
+        if (finalScoreEl) {
+            finalScoreEl.textContent = `FINAL SCORE: ${gameData.score.toLocaleString()}`;
+        }
     }
     
     updateLeaderboard();
@@ -904,6 +1566,89 @@ function updateLeaderboard() {
     }
     
     document.getElementById('leaderboard').innerHTML = html;
+}
+
+/**
+ * Setup start screen menu functionality
+ */
+function setupStartScreen() {
+    const playButton = document.getElementById('play-button');
+    const difficultySelector = document.getElementById('difficulty-selector');
+    const difficultyButtons = document.querySelectorAll('.difficulty-button');
+    const confirmButton = document.getElementById('confirm-button');
+    const startScreen = document.getElementById('start-screen');
+    
+    // Set default difficulty to medium (which is pre-selected)
+    gameData.difficulty = 'medium';
+    
+    // Handle difficulty selection
+    difficultyButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Remove selected class from all buttons
+            difficultyButtons.forEach(btn => btn.classList.remove('selected'));
+            // Add selected class to clicked button
+            button.classList.add('selected');
+            // Update gameData difficulty
+            const difficulty = button.getAttribute('data-difficulty');
+            gameData.difficulty = difficulty;
+            console.log(`🎮 Difficulty set to: ${difficulty}`);
+            
+            // Show confirm button when a difficulty is selected
+            if (confirmButton) {
+                confirmButton.classList.add('visible');
+            }
+        });
+    });
+    
+    // Handle confirm button click - start the game
+    if (confirmButton) {
+        confirmButton.addEventListener('click', () => {
+            // Hide start screen
+            if (startScreen) {
+                startScreen.classList.add('hidden');
+                setTimeout(() => {
+                    startScreen.style.display = 'none';
+                }, 500);
+            }
+            
+            // Trigger game start
+            if (window.startGameFromMenu) {
+                window.startGameFromMenu();
+            }
+        });
+    }
+    
+    // Handle play button click - show difficulty selector
+    if (playButton) {
+        playButton.addEventListener('click', () => {
+            // Hide play button and show difficulty selector
+            playButton.style.display = 'none';
+            if (difficultySelector) {
+                difficultySelector.classList.add('visible');
+                // Show confirm button since medium is pre-selected
+                if (confirmButton) {
+                    confirmButton.classList.add('visible');
+                }
+            }
+        });
+    }
+}
+
+/**
+ * Show all game UI elements
+ */
+export function showGameUI() {
+    const hudLeft = document.getElementById('hud-left');
+    const powerupIndicators = document.getElementById('powerup-indicators');
+    const ammoDisplay = document.getElementById('ammo-display');
+    const healthHearts = document.getElementById('health-hearts');
+    const settingsBtn = document.getElementById('settings-btn');
+    
+    if (hudLeft) hudLeft.style.display = 'block';
+    if (powerupIndicators) powerupIndicators.style.display = 'block';
+    if (ammoDisplay) ammoDisplay.style.display = 'block';
+    if (healthHearts) healthHearts.style.display = 'flex';
+    if (settingsBtn) settingsBtn.style.display = 'block';
 }
 
 

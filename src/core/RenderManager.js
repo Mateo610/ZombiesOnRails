@@ -94,13 +94,13 @@ export class RenderManager {
             loadingOverlay.classList.add('fade-out');
             setTimeout(() => {
                 loadingOverlay.remove();
+                // Show start screen after loading is complete
+                const startScreen = document.getElementById('start-screen');
+                if (startScreen) {
+                    startScreen.style.display = 'flex';
+                }
                 // Show canvas now that scene is fully ready
                 this.renderer.domElement.classList.add('visible');
-                // Show start prompt
-                const startPrompt = document.getElementById('start-prompt');
-                if (startPrompt) {
-                    startPrompt.classList.add('visible');
-                }
             }, 800);
         }
     }
