@@ -41,7 +41,7 @@ export const CAMERA_SCENES = [
     {
         name: "Turn Around",
         position: { x: 2.54, y: 1.6, z: 3.49 }, // Turn around location
-        lookAt: { x: -6.18, y: 1.0, z: 3.77 }, // Looking toward next location
+        lookAt: { x: 2.26, y: 1.0, z: -5.23 }, // Rotated 270 degrees to the right (another 90 degrees from 180)
         transitionDuration: 3000,
         spawnPoints: [
             // TODO: Add spawn points for turn around scene

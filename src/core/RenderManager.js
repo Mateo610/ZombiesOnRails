@@ -16,6 +16,10 @@ export class RenderManager {
         this.renderLoopActive = false;
         this.sceneLoader = null;
         
+        // Post-processing
+        this.composer = null;
+        this.usePostProcessing = () => true; // Default callback that returns true
+        
         // Update callbacks
         this.updateCallbacks = {
             tween: null,
@@ -24,6 +28,13 @@ export class RenderManager {
             camera: [],
             ui: []
         };
+    }
+    
+    setComposer(composer, usePostProcessingCallback) {
+        this.composer = composer;
+        if (usePostProcessingCallback) {
+            this.usePostProcessing = usePostProcessingCallback;
+        }
     }
     
     setSceneLoader(sceneLoader) {
@@ -134,11 +145,31 @@ export class RenderManager {
             this.updateCallbacks.ui.forEach(callback => callback());
         }
         
-        this.renderer.render(this.scene, this.camera);
+        // Render with post-processing if enabled, otherwise use standard renderer
+        if (this.composer && this.usePostProcessing()) {
+            this.composer.render();
+        } else {
+            this.renderer.render(this.scene, this.camera);
+        }
     }
     
     isReady() {
         return this.isSceneReady;
+    }
+    
+    /**
+     * Handle window resize - update composer size if post-processing is enabled
+     */
+    handleResize() {
+        if (this.composer) {
+            this.composer.setSize(window.innerWidth, window.innerHeight);
+            // Update bloom pass resolution if it exists
+            this.composer.passes.forEach(pass => {
+                if (pass && pass.resolution) {
+                    pass.resolution.set(window.innerWidth, window.innerHeight);
+                }
+            });
+        }
     }
 }
 

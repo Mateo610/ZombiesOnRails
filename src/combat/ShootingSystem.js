@@ -61,7 +61,7 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
     // Play shot sound (can overlap for rapid firing)
     soundManager.playShot(currentWeaponId);
     
-    triggerMuzzleFlash();
+    triggerMuzzleFlash(currentWeaponId);
     if (onScreenShake) onScreenShake();
     applyWeaponRecoil(currentWeaponId);
     
@@ -118,7 +118,7 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
             if (result.killed) {
                 if (result.headshot) {
                     gameData.headshotKills++;
-                    if (showHeadshotIndicatorFn) showHeadshotIndicatorFn();
+                    // Headshot indicator removed - damage number already shows "HEADSHOT"
                 }
                 zombieManager.incrementSceneZombiesKilled();
             } else {
@@ -136,10 +136,48 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
     if (updateUIFn) updateUIFn();
 }
 
-function triggerMuzzleFlash() {
+function triggerMuzzleFlash(weaponId = 'pistol') {
     if (!muzzleFlash) return;
-    muzzleFlash.style.opacity = '1';
-    setTimeout(() => muzzleFlash.style.opacity = '0', 50);
+    
+    // Weapon-specific flash intensity and color
+    const flashConfig = {
+        pistol: { intensity: 0.6, duration: 80, color: 'rgba(255, 255, 200, 0.8)' },
+        shotgun: { intensity: 1.0, duration: 120, color: 'rgba(255, 200, 150, 1.0)' },
+        rifle: { intensity: 0.8, duration: 100, color: 'rgba(255, 220, 180, 0.9)' }
+    };
+    
+    const config = flashConfig[weaponId] || flashConfig.pistol;
+    
+    // Update flash color and intensity based on weapon
+    muzzleFlash.style.background = `radial-gradient(circle, ${config.color} 0%, rgba(255, 200, 100, ${config.intensity * 0.7}) 50%, transparent 100%)`;
+    
+    // Enhanced muzzle flash with smooth animation
+    muzzleFlash.style.opacity = config.intensity.toString();
+    muzzleFlash.style.transform = 'scale(1)';
+    
+    // Use requestAnimationFrame for smoother animation
+    const startTime = Date.now();
+    const duration = config.duration;
+    
+    const animateFlash = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        if (progress < 1) {
+            // Fade out smoothly with exponential decay for more realistic flash
+            const opacity = config.intensity * Math.pow(1 - progress, 2);
+            const scale = 1 + (progress * 0.2); // Slight scale increase as it fades
+            muzzleFlash.style.opacity = opacity.toString();
+            muzzleFlash.style.transform = `scale(${scale})`;
+            requestAnimationFrame(animateFlash);
+        } else {
+            // Ensure it's fully hidden
+            muzzleFlash.style.opacity = '0';
+            muzzleFlash.style.transform = 'scale(1)';
+        }
+    };
+    
+    requestAnimationFrame(animateFlash);
 }
 
 export function createImpactSphere(hitPoint) {

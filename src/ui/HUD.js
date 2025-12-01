@@ -38,83 +38,193 @@ export function createUI() {
             z-index: 5;
         "></div>
         
-        <!-- HUD -->
-        <div id="hud" style="
+        <!-- HUD - Left Panel (Primary Stats) -->
+        <div id="hud-left" style="
             position: fixed;
             top: 20px;
             left: 20px;
             font-family: 'Courier New', monospace;
             color: #999999;
-            text-shadow: 0 0 10px #999999, 2px 2px 4px #000;
-            font-size: 18px;
             z-index: 10;
             pointer-events: none;
         ">
-            <!-- Health Bar -->
-            <div style="margin-bottom: 15px;">
-                <div style="margin-bottom: 5px;">HEALTH</div>
-                <div style="width: 200px; height: 30px; background: rgba(0,0,0,0.7); border: 2px solid #999999; position: relative;">
-                    <div id="health-bar" style="
-                        width: 100%;
-                        height: 100%;
-                        background: linear-gradient(90deg, #00ff00, #ffff00, #ff0000);
-                        transition: width 0.3s;
-                    "></div>
+            <!-- Player Stats Panel -->
+            <div style="
+                background: rgba(0, 0, 0, 0.75);
+                border: 2px solid rgba(153, 153, 153, 0.5);
+                border-radius: 8px;
+                padding: 15px;
+                box-shadow: 
+                    0 0 20px rgba(0, 0, 0, 0.8),
+                    inset 0 0 15px rgba(0, 0, 0, 0.5);
+                margin-bottom: 15px;
+            ">
+                
+                <!-- Mission Progress Group -->
+                <div style="
+                    border-top: 1px solid rgba(153, 153, 153, 0.3);
+                    padding-top: 12px;
+                    margin-top: 12px;
+                ">
+                    <!-- Overall Mission Progress Bar -->
+                    <div style="margin-bottom: 12px;">
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            margin-bottom: 6px;
+                        ">
+                            <span style="font-size: 12px; color: #aaaaaa; letter-spacing: 1px;">MISSION PROGRESS</span>
+                            <span id="mission-percentage" style="
+                                font-size: 12px; 
+                                color: #ffffff; 
+                                font-weight: bold;
+                                text-shadow: 0 0 8px #ffffff;
+                            ">0%</span>
+                        </div>
+                        <div style="
+                            width: 100%;
+                            height: 8px;
+                            background: rgba(0, 0, 0, 0.8);
+                            border: 1px solid rgba(153, 153, 153, 0.5);
+                            border-radius: 4px;
+                            overflow: hidden;
+                            position: relative;
+                        ">
+                            <div id="mission-progress-bar" style="
+                                width: 0%;
+                                height: 100%;
+                                background: linear-gradient(90deg, #0088ff, #00aaff, #00ccff);
+                                box-shadow: 0 0 10px rgba(0, 136, 255, 0.8);
+                                transition: width 0.5s ease-out;
+                            "></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Scene Progress Indicators -->
+                    <div style="margin-bottom: 10px;">
+                        <div style="
+                            font-size: 11px;
+                            color: #aaaaaa;
+                            letter-spacing: 1px;
+                            margin-bottom: 6px;
+                        ">SCENES:</div>
+                        <div id="scene-indicators" style="
+                            display: flex;
+                            gap: 4px;
+                            flex-wrap: wrap;
+                        ">
+                            <!-- Scene indicators will be dynamically generated -->
+                        </div>
+                    </div>
+                    
+                    <!-- Current Scene & Zombies -->
                     <div style="
-                        position: absolute;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%);
-                        color: #fff;
+                        border-top: 1px solid rgba(153, 153, 153, 0.2);
+                        padding-top: 10px;
+                        margin-top: 10px;
+                    ">
+                        <div style="margin-bottom: 6px; font-size: 13px; color: #aaaaaa;">
+                            <span style="letter-spacing: 1px;">CURRENT SCENE:</span> 
+                            <span id="scene-number" style="color: #ffffff; font-weight: bold;">1</span>/
+                            <span id="total-scenes" style="color: #cccccc;">3</span>
+                        </div>
+                        <div style="font-size: 13px; color: #aaaaaa;">
+                            <span style="letter-spacing: 1px;">ZOMBIES:</span> 
+                            <span id="zombies-killed" style="color: #ffffff; font-weight: bold;">0</span>/
+                            <span id="zombies-total" style="color: #cccccc;">5</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Score & Time Panel -->
+            <div style="
+                background: rgba(0, 0, 0, 0.6);
+                border: 1px solid rgba(153, 153, 153, 0.3);
+                border-radius: 6px;
+                padding: 10px 15px;
+                margin-top: 15px;
+                box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            ">
+                <div style="margin-bottom: 6px; font-size: 13px; color: #aaaaaa;">
+                    <span style="letter-spacing: 1px;">SCORE:</span> 
+                    <span id="score" style="
+                        color: #ffffff; 
                         font-weight: bold;
-                        text-shadow: 2px 2px 4px #000;
-                    " id="health-text">100/100</div>
+                        font-size: 16px;
+                        transition: transform 0.2s ease-out, color 0.2s ease-out;
+                    ">0</span>
+                </div>
+                <div style="margin-bottom: 6px; font-size: 13px; color: #aaaaaa;">
+                    <span style="letter-spacing: 1px;">TIME:</span> 
+                    <span id="time" style="color: #ffffff; font-weight: bold;">0:00</span>
+                </div>
+                <div style="font-size: 13px; color: #aaaaaa;">
+                    <span style="letter-spacing: 1px;">ACCURACY:</span> 
+                    <span id="accuracy" style="color: #ffffff; font-weight: bold;">0%</span>
                 </div>
             </div>
             
-            <!-- Scene Progress -->
-            <div style="margin-bottom: 10px;">
-                SCENE: <span id="scene-number">1</span>/<span id="total-scenes">3</span>
-            </div>
-            
-            <!-- Zombies -->
-            <div style="margin-bottom: 10px;">
-                ZOMBIES: <span id="zombies-killed">0</span>/<span id="zombies-total">5</span>
-            </div>
-            
-            <!-- Combo -->
-            <div id="combo-display" style="margin-bottom: 10px; display: none;">
-                <div style="font-size: 24px; color: #ffff00; text-shadow: 0 0 15px #ffff00;">
-                    COMBO x<span id="combo-count">0</span>
+            <!-- Combo Display (Below Score/Time/Accuracy) -->
+            <div id="combo-display" style="
+                background: rgba(0, 0, 0, 0.6);
+                border: 1px solid rgba(255, 0, 0, 0.3);
+                border-radius: 6px;
+                padding: 10px 15px;
+                margin-top: 15px;
+                box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+                display: none;
+                opacity: 0;
+                transform: scale(0.8);
+                transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+            ">
+                <div id="combo-text" style="
+                    font-size: 13px; 
+                    color: #ff0000; 
+                    text-shadow: 0 0 10px #ff0000, 2px 2px 4px #000;
+                    transition: transform 0.2s ease-out;
+                    margin-bottom: 6px;
+                    letter-spacing: 1px;
+                ">
+                    <span style="letter-spacing: 1px;">HEADSHOT COMBO:</span> 
+                    <span id="combo-count" style="color: #ffffff; font-weight: bold; font-size: 16px;">0</span>
                 </div>
-                <div style="width: 150px; height: 5px; background: rgba(0,0,0,0.7); border: 1px solid #ffff00;">
-                    <div id="combo-timer-bar" style="width: 100%; height: 100%; background: #ffff00; transition: width 0.1s;"></div>
+                <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.8); border: 1px solid #ff0000; border-radius: 3px; overflow: hidden;">
+                    <div id="combo-timer-bar" style="width: 100%; height: 100%; background: #ff0000; transition: width 0.1s ease-out; box-shadow: 0 0 8px #ff0000;"></div>
                 </div>
             </div>
+        </div>
             
-            <!-- Score -->
-            <div style="margin-bottom: 10px;">
-                SCORE: <span id="score">0</span>
-            </div>
-            
-            <!-- Time -->
-            <div>
-                TIME: <span id="time">0:00</span>
-            </div>
-            
-            <!-- Power-Up Indicators -->
-            <div id="powerup-indicators" style="margin-top: 10px;">
+            <!-- Power-Up Indicators Panel -->
+            <div id="powerup-indicators" style="
+                position: fixed;
+                top: 20px;
+                right: 280px;
+                z-index: 10;
+                pointer-events: none;
+                font-family: 'Courier New', monospace;
+            ">
                 <div id="powerup-message" style="
-                    margin-top: 5px;
-                    font-size: 20px;
+                    background: rgba(255, 255, 0, 0.15);
+                    border: 2px solid rgba(255, 255, 0, 0.5);
+                    border-radius: 6px;
+                    padding: 10px 15px;
+                    font-size: 18px;
                     color: #ffff00;
                     text-shadow: 0 0 15px #ffff00, 2px 2px 4px #000;
                     display: none;
+                    box-shadow: 0 0 20px rgba(255, 255, 0, 0.3);
+                    margin-bottom: 10px;
                 "></div>
                 <div id="powerup-timers" style="
-                    margin-top: 5px;
-                    font-size: 14px;
+                    background: rgba(0, 0, 0, 0.6);
+                    border: 1px solid rgba(153, 153, 153, 0.3);
+                    border-radius: 6px;
+                    padding: 8px 12px;
+                    font-size: 13px;
                     color: #ffffff;
+                    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
                 ">
                     <span id="double-damage-timer" style="display: none; margin-right: 10px;"></span>
                     <span id="slow-mo-timer" style="display: none;"></span>
@@ -122,22 +232,12 @@ export function createUI() {
             </div>
         </div>
         
-        <!-- Mini Map -->
-        <div id="mini-map" style="
-            position: fixed;
-            bottom: 150px;
-            right: 20px;
-            width: 150px;
-            height: 150px;
-            background: rgba(0, 0, 0, 0.8);
-                border: 2px solid #999999;
-            z-index: 10;
-            pointer-events: none;
-        ">
+        <!-- Mini Map (Hidden - kept for JavaScript compatibility) -->
+        <div id="mini-map" style="display: none;">
             <canvas id="mini-map-canvas" width="150" height="150"></canvas>
         </div>
         
-        <!-- Ammo Display -->
+        <!-- Ammo Counter (moved down to where weapon slots were) -->
         <div id="ammo-display" style="
             position: fixed;
             bottom: 40px;
@@ -146,58 +246,146 @@ export function createUI() {
             text-align: right;
             z-index: 10;
             pointer-events: none;
+            font-size: 48px;
+            color: #fff;
+            text-shadow: 0 0 15px #fff, 3px 3px 6px #000;
+            font-weight: bold;
         ">
-            <div style="
-                font-size: 48px;
-                color: #fff;
-                text-shadow: 0 0 15px #fff, 3px 3px 6px #000;
-                font-weight: bold;
-                background: rgba(0, 0, 0, 0.7);
-                padding: 12px 20px;
-                border-radius: 6px;
-                border: 2px solid rgba(255, 255, 255, 0.3);
-                box-shadow: 
-                    0 0 20px rgba(0, 0, 0, 0.8),
-                    0 0 10px rgba(255, 255, 255, 0.2),
-                    inset 0 0 15px rgba(0, 0, 0, 0.5);
-                display: inline-block;
-            ">
-                <span id="current-ammo">12</span> / <span id="reserve-ammo">60</span>
-            </div>
-            <!-- Weapon Slots -->
-            <div id="weapon-slots" style="
-                margin-top: 10px;
-                font-size: 14px;
-            ">
-                <span id="weapon-slot-1" style="margin-left: 8px; padding: 4px 8px; border-radius: 3px; border: 1px solid #999999; background: rgba(153,153,153,0.1);">
-                    1 • PISTOL
-                </span>
-                <span id="weapon-slot-2" style="margin-left: 8px; padding: 4px 8px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.3); opacity: 0.7;">
-                    2 • SHOTGUN
-                </span>
-                <span id="weapon-slot-3" style="margin-left: 8px; padding: 4px 8px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.3); opacity: 0.7;">
-                    3 • RIFLE
-                </span>
-            </div>
+            <span id="current-ammo">12</span> / <span id="reserve-ammo">60</span>
+        </div>
+            
+            <!-- Circular Reload Progress Indicator -->
             <div id="reload-indicator" style="
-                font-size: 24px;
-                color: #ffff00;
-                text-shadow: 0 0 10px #ffff00;
-                margin-top: 10px;
+                margin-top: 15px;
                 display: none;
+                position: relative;
+                width: 60px;
+                height: 60px;
+                margin-left: auto;
+                margin-right: 0;
             ">
-                RELOADING...
+                <svg width="60" height="60" style="transform: rotate(-90deg);">
+                    <!-- Background circle -->
+                    <circle
+                        cx="30"
+                        cy="30"
+                        r="25"
+                        fill="none"
+                        stroke="rgba(153, 153, 153, 0.3)"
+                        stroke-width="4"
+                    ></circle>
+                    <!-- Progress circle -->
+                    <circle
+                        id="reload-progress-circle"
+                        cx="30"
+                        cy="30"
+                        r="25"
+                        fill="none"
+                        stroke="#ffff00"
+                        stroke-width="4"
+                        stroke-linecap="round"
+                        stroke-dasharray="157"
+                        stroke-dashoffset="157"
+                        style="
+                            filter: drop-shadow(0 0 8px #ffff00);
+                            transition: stroke-dashoffset 0.1s linear;
+                        "
+                    ></circle>
+                </svg>
+                <div style="
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-size: 12px;
+                    color: #ffff00;
+                    text-shadow: 0 0 8px #ffff00;
+                    font-weight: bold;
+                " id="reload-text">R</div>
             </div>
             
             <!-- Weapon Switch Message -->
             <div id="weapon-switch-message" style="
-                margin-top: 10px;
-                font-size: 20px;
-                color: #ffff00;
-                text-shadow: 0 0 12px #ffff00, 2px 2px 4px #000;
+                position: fixed;
+                bottom: 200px;
+                right: 40px;
+                background: rgba(0, 0, 0, 0.85);
+                border: 2px solid rgba(153, 153, 153, 0.6);
+                border-radius: 8px;
+                padding: 12px 20px;
+                font-size: 18px;
+                color: #ffffff;
+                text-shadow: 0 0 10px #ffffff, 2px 2px 4px #000;
                 opacity: 0;
-                transition: opacity 0.3s;
+                transform: translateY(20px) scale(0.9);
+                transition: all 0.3s ease-out;
+                pointer-events: none;
+                z-index: 15;
+                box-shadow: 
+                    0 0 20px rgba(0, 0, 0, 0.8),
+                    inset 0 0 15px rgba(0, 0, 0, 0.5);
+                display: none;
             "></div>
+        </div>
+        
+        <!-- Health Hearts (Bottom Center) -->
+        <div id="health-hearts" style="
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            pointer-events: none;
+        ">
+            <div class="heart" data-heart="1" style="
+                width: 40px;
+                height: 40px;
+                color: #ff0000;
+                font-size: 40px;
+                text-shadow: 0 0 10px #ff0000, 2px 2px 4px #000;
+                transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+                opacity: 1;
+            ">♥</div>
+            <div class="heart" data-heart="2" style="
+                width: 40px;
+                height: 40px;
+                color: #ff0000;
+                font-size: 40px;
+                text-shadow: 0 0 10px #ff0000, 2px 2px 4px #000;
+                transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+                opacity: 1;
+            ">♥</div>
+            <div class="heart" data-heart="3" style="
+                width: 40px;
+                height: 40px;
+                color: #ff0000;
+                font-size: 40px;
+                text-shadow: 0 0 10px #ff0000, 2px 2px 4px #000;
+                transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+                opacity: 1;
+            ">♥</div>
+            <div class="heart" data-heart="4" style="
+                width: 40px;
+                height: 40px;
+                color: #ff0000;
+                font-size: 40px;
+                text-shadow: 0 0 10px #ff0000, 2px 2px 4px #000;
+                transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+                opacity: 1;
+            ">♥</div>
+            <div class="heart" data-heart="5" style="
+                width: 40px;
+                height: 40px;
+                color: #ff0000;
+                font-size: 40px;
+                text-shadow: 0 0 10px #ff0000, 2px 2px 4px #000;
+                transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+                opacity: 1;
+            ">♥</div>
         </div>
         
         <!-- Rail Movement Button -->
@@ -314,6 +502,35 @@ export function createUI() {
                 0%, 100% { opacity: 1; }
                 50% { opacity: 0.3; }
             }
+            @keyframes scoreIncrease {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.2); color: #ffff00; }
+                100% { transform: scale(1); }
+            }
+            @keyframes ammoDecrease {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.1); }
+                100% { transform: scale(1); }
+            }
+            @keyframes comboAppear {
+                0% { opacity: 0; transform: scale(0.8) translateY(-10px); }
+                100% { opacity: 1; transform: scale(1) translateY(0); }
+            }
+            @keyframes weaponSwitch {
+                0% { transform: translateX(0) scale(1); }
+                50% { transform: translateX(-5px) scale(1.05); }
+                100% { transform: translateX(0) scale(1); }
+            }
+            @keyframes weaponSwitchSlide {
+                0% { opacity: 0; transform: translateY(20px) scale(0.9); }
+                50% { opacity: 1; transform: translateY(0) scale(1.05); }
+                100% { opacity: 0; transform: translateY(-20px) scale(0.9); }
+            }
+            @keyframes heartLoss {
+                0% { transform: scale(1); opacity: 1; }
+                50% { transform: scale(1.5); opacity: 0.7; }
+                100% { transform: scale(0); opacity: 0; }
+            }
         </style>
     `;
     
@@ -339,35 +556,173 @@ export function createUI() {
 }
 
 export function updateUI() {
-    // Health
-    const healthPercent = (gameData.health / gameData.maxHealth) * 100;
-    document.getElementById('health-bar').style.width = healthPercent + '%';
-    document.getElementById('health-text').textContent = `${gameData.health}/${gameData.maxHealth}`;
+    // Health Hearts (5 hearts = 100 health, each heart = 20 health)
+    const hearts = document.querySelectorAll('.heart');
+    const healthPerHeart = gameData.maxHealth / 5; // 20 health per heart
+    const fullHearts = Math.floor(gameData.health / healthPerHeart);
+    const hasPartialHeart = (gameData.health % healthPerHeart) > 0;
+    
+    hearts.forEach((heart, index) => {
+        const heartNumber = index + 1;
+        const wasVisible = heart.style.opacity !== '0' && heart.style.opacity !== '';
+        
+        if (heartNumber <= fullHearts) {
+            // Full heart - visible
+            heart.style.opacity = '1';
+            heart.style.transform = 'scale(1)';
+            heart.style.animation = '';
+        } else if (heartNumber === fullHearts + 1 && hasPartialHeart) {
+            // Partial heart - show but dimmed
+            heart.style.opacity = '0.5';
+            heart.style.transform = 'scale(0.9)';
+            heart.style.animation = '';
+        } else {
+            // Empty heart - hidden
+            if (wasVisible) {
+                // Animate heart loss
+                heart.style.animation = 'heartLoss 0.4s ease-out forwards';
+            } else {
+                heart.style.opacity = '0';
+                heart.style.transform = 'scale(0)';
+                heart.style.animation = '';
+            }
+        }
+    });
+    
+    // Mission Progress Indicators
+    const missionProgressBar = document.getElementById('mission-progress-bar');
+    const missionPercentage = document.getElementById('mission-percentage');
+    const sceneIndicatorsContainer = document.getElementById('scene-indicators');
+    
+    // Calculate mission completion percentage
+    // A scene is "complete" when we've moved past it (currentScene > sceneIndex)
+    // For percentage, use: completedScenes / totalScenes * 100
+    // Current scene contributes partial progress based on zombie kills
+    const completedScenes = Math.max(0, gameData.currentScene);
+    const currentScene = getCurrentCameraScene();
+    const totalZombies = currentScene ? currentScene.spawnPoints.length : 0;
+    const zombies = zombieManager.getZombies();
+    const aliveZombies = zombies.filter(z => !z.isDead).length;
+    const zombiesKilled = Math.max(0, totalZombies - aliveZombies);
+    
+    // Current scene progress (0-1) based on zombie kills
+    const currentSceneProgress = totalZombies > 0 ? zombiesKilled / totalZombies : 1;
+    
+    // Overall mission percentage
+    const totalProgress = (completedScenes + currentSceneProgress) / gameData.totalScenes;
+    const percentage = Math.min(100, Math.floor(totalProgress * 100));
+    
+    // Update progress bar
+    missionProgressBar.style.width = `${totalProgress * 100}%`;
+    missionPercentage.textContent = `${percentage}%`;
+    
+    // Update scene indicators
+    if (sceneIndicatorsContainer) {
+        // Clear existing indicators
+        sceneIndicatorsContainer.innerHTML = '';
+        
+        // Generate indicators for each scene
+        for (let i = 0; i < gameData.totalScenes; i++) {
+            const indicator = document.createElement('div');
+            indicator.style.cssText = `
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                transition: all 0.3s ease-out;
+                position: relative;
+            `;
+            
+            if (i < gameData.currentScene) {
+                // Completed scene - green checkmark
+                indicator.style.background = '#00ff00';
+                indicator.style.boxShadow = '0 0 8px #00ff00, inset 0 0 4px rgba(0,255,0,0.5)';
+                indicator.title = `Scene ${i + 1} - Completed`;
+                indicator.innerHTML = '✓';
+                indicator.style.fontSize = '8px';
+                indicator.style.color = '#000';
+                indicator.style.display = 'flex';
+                indicator.style.alignItems = 'center';
+                indicator.style.justifyContent = 'center';
+                indicator.style.fontWeight = 'bold';
+            } else if (i === gameData.currentScene) {
+                // Current scene - pulsing cyan/blue
+                indicator.style.background = '#00ccff';
+                indicator.style.boxShadow = '0 0 12px #00ccff, 0 0 20px #00ccff';
+                indicator.style.animation = 'pulse 1.5s infinite';
+                indicator.style.width = '12px';
+                indicator.style.height = '12px';
+                indicator.title = `Scene ${i + 1} - In Progress (${zombiesKilled}/${totalZombies})`;
+            } else {
+                // Upcoming scene - gray
+                indicator.style.background = 'rgba(153, 153, 153, 0.3)';
+                indicator.style.border = '1px solid rgba(153, 153, 153, 0.5)';
+                indicator.title = `Scene ${i + 1} - Upcoming`;
+            }
+            
+            sceneIndicatorsContainer.appendChild(indicator);
+        }
+    }
     
     // Scene
     document.getElementById('scene-number').textContent = gameData.currentScene + 1;
     document.getElementById('total-scenes').textContent = gameData.totalScenes;
     
     // Zombies
-    const currentScene = getCurrentCameraScene();
-    const totalZombies = currentScene.spawnPoints.length;
-    const zombies = zombieManager.getZombies();
-    const aliveZombies = zombies.filter(z => !z.isDead).length;
-    document.getElementById('zombies-killed').textContent = totalZombies - aliveZombies;
+    document.getElementById('zombies-killed').textContent = zombiesKilled;
     document.getElementById('zombies-total').textContent = totalZombies;
     
-    // Combo
+    // Combo with smooth animations
+    const comboDisplay = document.getElementById('combo-display');
+    const comboText = document.getElementById('combo-text');
+    const comboCount = document.getElementById('combo-count');
+    
     if (gameData.currentCombo > 0) {
-        document.getElementById('combo-display').style.display = 'block';
-        document.getElementById('combo-count').textContent = gameData.currentCombo;
+        // Show combo with smooth fade-in and scale
+        if (comboDisplay.style.display === 'none' || comboDisplay.style.opacity === '0') {
+            comboDisplay.style.display = 'block';
+            // Trigger animation
+            requestAnimationFrame(() => {
+                comboDisplay.style.opacity = '1';
+                comboDisplay.style.transform = 'scale(1)';
+            });
+        }
+        
+        // Update combo count with scale animation
+        const oldCombo = parseInt(comboCount.textContent) || 0;
+        if (gameData.currentCombo !== oldCombo) {
+            comboText.style.transform = 'scale(1.2)';
+            setTimeout(() => {
+                comboText.style.transform = 'scale(1)';
+            }, 200);
+        }
+        
+        comboCount.textContent = gameData.currentCombo;
         const timerPercent = (gameData.comboTimer / gameData.comboDecayTime) * 100;
         document.getElementById('combo-timer-bar').style.width = timerPercent + '%';
     } else {
-        document.getElementById('combo-display').style.display = 'none';
+        // Hide combo with smooth fade-out
+        if (comboDisplay.style.opacity !== '0') {
+            comboDisplay.style.opacity = '0';
+            comboDisplay.style.transform = 'scale(0.8)';
+            setTimeout(() => {
+                comboDisplay.style.display = 'none';
+            }, 300);
+        }
     }
     
-    // Score
-    document.getElementById('score').textContent = gameData.score;
+    // Score with animation when it increases
+    const scoreElement = document.getElementById('score');
+    const oldScore = parseInt(scoreElement.textContent) || 0;
+    if (gameData.score > oldScore) {
+        // Animate score increase
+        scoreElement.style.transform = 'scale(1.15)';
+        scoreElement.style.color = '#ffff00';
+        setTimeout(() => {
+            scoreElement.style.transform = 'scale(1)';
+            scoreElement.style.color = '';
+        }, 300);
+    }
+    scoreElement.textContent = gameData.score;
     
     // Time
     const elapsed = Math.floor(gameData.currentTime);
@@ -375,17 +730,46 @@ export function updateUI() {
     const seconds = elapsed % 60;
     document.getElementById('time').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     
-    // Ammo
-    document.getElementById('current-ammo').textContent = gameData.currentAmmo;
-    document.getElementById('reserve-ammo').textContent = gameData.reserveAmmo;
+    // Accuracy
+    const accuracyElement = document.getElementById('accuracy');
+    if (accuracyElement) {
+        const accuracy = gameData.shotsFired > 0 
+            ? Math.round((gameData.shotsHit / gameData.shotsFired) * 100)
+            : 0;
+        accuracyElement.textContent = `${accuracy}%`;
+    }
     
-    const ammoElement = document.getElementById('current-ammo');
+    // Ammo with smooth color transitions
+    const currentAmmoElement = document.getElementById('current-ammo');
+    const reserveAmmoElement = document.getElementById('reserve-ammo');
+    
+    // Smooth color transition for ammo
+    currentAmmoElement.style.transition = 'color 0.3s ease-out, transform 0.2s ease-out';
+    reserveAmmoElement.style.transition = 'color 0.3s ease-out';
+    
+    const oldAmmo = parseInt(currentAmmoElement.textContent) || 0;
+    
+    // Animate when ammo decreases
+    if (gameData.currentAmmo < oldAmmo && gameData.currentAmmo > 0) {
+        currentAmmoElement.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+            currentAmmoElement.style.transform = 'scale(1)';
+        }, 150);
+    }
+    
+    currentAmmoElement.textContent = gameData.currentAmmo;
+    reserveAmmoElement.textContent = gameData.reserveAmmo;
+    
+    // Color-code ammo with smooth transitions
     if (gameData.currentAmmo === 0) {
-        ammoElement.style.color = '#ff0000';
+        currentAmmoElement.style.color = '#ff0000';
+        currentAmmoElement.style.animation = 'pulse 1s infinite';
     } else if (gameData.currentAmmo <= 3) {
-        ammoElement.style.color = '#ffff00';
+        currentAmmoElement.style.color = '#ffff00';
+        currentAmmoElement.style.animation = '';
     } else {
-        ammoElement.style.color = '#ffffff';
+        currentAmmoElement.style.color = '#ffffff';
+        currentAmmoElement.style.animation = '';
     }
     
     updateMiniMap();
@@ -393,6 +777,7 @@ export function updateUI() {
 
 function updateMiniMap() {
     const canvas = document.getElementById('mini-map-canvas');
+    if (!canvas) return; // Exit early if canvas doesn't exist
     const ctx = canvas.getContext('2d');
     
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';

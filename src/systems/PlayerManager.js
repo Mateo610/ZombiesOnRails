@@ -89,23 +89,65 @@ export class PlayerManager {
         
         gameData.isReloading = true;
         const reloadIndicator = document.getElementById('reload-indicator');
+        const reloadProgressCircle = document.getElementById('reload-progress-circle');
+        const reloadText = document.getElementById('reload-text');
+        
         if (reloadIndicator) {
             reloadIndicator.style.display = 'block';
         }
         
-        setTimeout(() => {
-            const ammoNeeded = gameData.maxAmmo - gameData.currentAmmo;
-            const ammoToReload = Math.min(ammoNeeded, gameData.reserveAmmo);
+        // Initialize progress
+        const circumference = 2 * Math.PI * 25; // radius = 25
+        if (reloadProgressCircle) {
+            reloadProgressCircle.style.strokeDasharray = circumference;
+            reloadProgressCircle.style.strokeDashoffset = circumference;
+        }
+        
+        // Animate progress
+        const startTime = Date.now();
+        const reloadDuration = gameData.reloadTime;
+        
+        const updateProgress = () => {
+            if (!gameData.isReloading) return;
             
-            gameData.currentAmmo += ammoToReload;
-            gameData.reserveAmmo -= ammoToReload;
-            gameData.isReloading = false;
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / reloadDuration, 1);
+            const remaining = 1 - progress;
             
-            if (reloadIndicator) {
-                reloadIndicator.style.display = 'none';
+            // Update circular progress
+            if (reloadProgressCircle) {
+                const offset = circumference * remaining;
+                reloadProgressCircle.style.strokeDashoffset = offset;
             }
-            this.updateUI();
-        }, gameData.reloadTime);
+            
+            // Update text with percentage
+            if (reloadText) {
+                const percentage = Math.floor(progress * 100);
+                reloadText.textContent = percentage < 100 ? percentage + '%' : '✓';
+            }
+            
+            if (progress < 1) {
+                requestAnimationFrame(updateProgress);
+            } else {
+                // Reload complete
+                const ammoNeeded = gameData.maxAmmo - gameData.currentAmmo;
+                const ammoToReload = Math.min(ammoNeeded, gameData.reserveAmmo);
+                
+                gameData.currentAmmo += ammoToReload;
+                gameData.reserveAmmo -= ammoToReload;
+                gameData.isReloading = false;
+                
+                if (reloadIndicator) {
+                    // Brief delay to show completion, then hide
+                    setTimeout(() => {
+                        reloadIndicator.style.display = 'none';
+                    }, 200);
+                }
+                this.updateUI();
+            }
+        };
+        
+        requestAnimationFrame(updateProgress);
     }
     
     resetStats(weaponAmmoConfig = null) {

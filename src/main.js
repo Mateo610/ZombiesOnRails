@@ -21,6 +21,7 @@ import { RailMovementManager } from './systems/RailMovementManager.js';
 import { CrosshairManager } from './ui/CrosshairManager.js';
 import { MouseLookManager } from './systems/MouseLookManager.js';
 import { SceneCameraManager } from './systems/SceneCameraManager.js';
+import { PostProcessingManager } from './systems/PostProcessingManager.js';
 
 // ============================================================================
 // THREE.JS SETUP
@@ -31,12 +32,25 @@ const renderer = threeRenderer.renderer;
 const camera = threeRenderer.camera;
 const clock = threeRenderer.clock;
 
+// Post-processing manager
+let postProcessingManager;
+
 // ============================================================================
 // MANAGERS
 // ============================================================================
 const sceneLoader = new SceneLoader();
 const renderManager = new RenderManager(renderer, scene, camera, clock);
 renderManager.setSceneLoader(sceneLoader);
+
+// Setup post-processing after renderer is ready
+postProcessingManager = new PostProcessingManager(renderer, scene, camera);
+renderManager.setComposer(
+    postProcessingManager.getComposer(), 
+    () => postProcessingManager.isEnabled()
+);
+
+// Setup resize handler (must be after renderManager and postProcessingManager are created)
+threeRenderer.setupResizeHandler(renderManager);
 
 let currentCameraScene = CAMERA_SCENES[0];
 
@@ -306,34 +320,26 @@ function switchCurrentWeapon(id) {
         rifle: 'RIFLE'
     }[id] || id.toUpperCase();
     
-    // Weapon name display removed - weapon selection shown in slots below ammo counter
-    
-    // Highlight current slot
-    const slot1 = document.getElementById('weapon-slot-1');
-    const slot2 = document.getElementById('weapon-slot-2');
-    const slot3 = document.getElementById('weapon-slot-3');
-    const allSlots = [slot1, slot2, slot3];
-    allSlots.forEach(slot => {
-        if (!slot) return;
-        slot.style.borderColor = 'rgba(255,255,255,0.3)';
-        slot.style.opacity = '0.7';
-        slot.style.background = 'rgba(0,0,0,0.3)';
-    });
-    const activeSlot = id === 'pistol' ? slot1 : id === 'shotgun' ? slot2 : slot3;
-    if (activeSlot) {
-        activeSlot.style.borderColor = '#999999';
-        activeSlot.style.opacity = '1';
-        activeSlot.style.background = 'rgba(153,153,153,0.15)';
-    }
-    
+    // Enhanced weapon switch message with better animation
     const indicator = document.getElementById('weapon-switch-message');
     if (indicator) {
-        indicator.textContent = `SWITCHED TO ${weaponLabel}`;
-        indicator.style.opacity = '1';
+        indicator.textContent = `▶ ${weaponLabel}`;
         indicator.style.display = 'block';
+        
+        // Reset and show with animation
+        requestAnimationFrame(() => {
+            indicator.style.opacity = '1';
+            indicator.style.transform = 'translateY(0) scale(1)';
+        });
+        
+        // Hide after delay with fade out
         setTimeout(() => {
             indicator.style.opacity = '0';
-        }, 600);
+            indicator.style.transform = 'translateY(-10px) scale(0.95)';
+            setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 300);
+        }, 1200);
     }
 }
 
@@ -580,16 +586,114 @@ function setupWarehouseVisibility(setGround = true) {
     
     // Set ground from warehouse if requested
     if (setGround) {
+        let foundGround = false;
+        
+        // First, try to find floor by name
         sceneLoader.warehouseModel.traverse((child) => {
             if (child.isMesh) {
                 const name = child.name.toLowerCase();
-                if (name.includes('ground') || name.includes('floor')) {
+                const matName = child.material?.name?.toLowerCase() || '';
+                
+                // Check name, material name, or if mesh is roughly horizontal (floor-like)
+                if (name.includes('ground') || name.includes('floor') || 
+                    matName.includes('ground') || matName.includes('floor')) {
                     child.name = 'ground';
                     child.receiveShadow = true;
+                    
+                    // Ensure material is visible (not transparent)
+                    if (child.material) {
+                        const materials = Array.isArray(child.material) ? child.material : [child.material];
+                        materials.forEach(mat => {
+                            if (mat.transparent && mat.opacity < 0.5) {
+                                mat.transparent = false;
+                                mat.opacity = 1.0;
+                            }
+                            if (mat.visible === false) {
+                                mat.visible = true;
+                            }
+                        });
+                    }
+                    
                     threeRenderer.setGround(child);
+                    foundGround = true;
+                    console.log('✅ Found warehouse floor mesh:', child.name);
                 }
             }
         });
+        
+        // If no ground found, try to find by position (lowest mesh near Y=0)
+        if (!foundGround) {
+            let lowestMesh = null;
+            let lowestY = Infinity;
+            
+            sceneLoader.warehouseModel.traverse((child) => {
+                if (child.isMesh) {
+                    // Get world position
+                    const worldPos = new THREE.Vector3();
+                    child.getWorldPosition(worldPos);
+                    
+                    // Check if this mesh is near ground level and roughly horizontal
+                    if (worldPos.y > -2 && worldPos.y < 2) {
+                        // Check if mesh rotation suggests it's a floor (rotated 90° on X axis)
+                        const rotation = child.rotation.x;
+                        if (Math.abs(rotation + Math.PI / 2) < 0.5 || Math.abs(rotation) < 0.3) {
+                            if (worldPos.y < lowestY) {
+                                lowestY = worldPos.y;
+                                lowestMesh = child;
+                            }
+                        }
+                    }
+                }
+            });
+            
+            if (lowestMesh) {
+                lowestMesh.name = 'ground';
+                lowestMesh.receiveShadow = true;
+                
+                // Ensure material is visible
+                if (lowestMesh.material) {
+                    const materials = Array.isArray(lowestMesh.material) ? lowestMesh.material : [lowestMesh.material];
+                    materials.forEach(mat => {
+                        if (mat.transparent && mat.opacity < 0.5) {
+                            mat.transparent = false;
+                            mat.opacity = 1.0;
+                        }
+                        if (mat.visible === false) {
+                            mat.visible = true;
+                        }
+                    });
+                }
+                
+                threeRenderer.setGround(lowestMesh);
+                foundGround = true;
+                console.log('✅ Found warehouse floor by position:', lowestMesh.name, 'at Y:', lowestY.toFixed(2));
+            }
+        }
+        
+        // If still no ground found, create a fallback floor
+        if (!foundGround) {
+            console.log('⚠️ No floor mesh found in warehouse model, creating fallback floor');
+            const groundGeo = new THREE.PlaneGeometry(50, 50);
+            const groundMat = new THREE.MeshStandardMaterial({ 
+                color: 0x3a3a3a,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            const fallbackGround = new THREE.Mesh(groundGeo, groundMat);
+            fallbackGround.name = 'ground';
+            fallbackGround.rotation.x = -Math.PI / 2;
+            fallbackGround.position.y = 0;
+            fallbackGround.receiveShadow = true;
+            fallbackGround.visible = true;
+            threeRenderer.setGround(fallbackGround);
+        }
+        
+        // Hide the old exterior ground to prevent seeing through
+        const oldGround = scene.getObjectByName('ground');
+        if (oldGround && oldGround.parent !== sceneLoader.warehouseModel) {
+            // Only hide if it's not part of the warehouse model
+            oldGround.visible = false;
+        }
     }
 }
 
@@ -682,6 +786,14 @@ function jumpToInteriorScene() {
     
     // Set game state back to gameplay
     gameData.currentState = GameState.GAMEPLAY;
+    
+    // Enable crosshair
+    if (crosshairManager) {
+        crosshairManager.enable();
+        if (crosshairManager.crosshairElement) {
+            crosshairManager.crosshairElement.style.display = 'block';
+        }
+    }
     
     // Enable free look after everything is set up
     sceneCameraManager.setSceneCamera(currentCameraScene);
@@ -896,9 +1008,23 @@ function advanceToNextSceneWithRail() {
         // Set state back to gameplay
         gameData.currentState = GameState.GAMEPLAY;
         
+        // Enable crosshair for all scenes
+        if (crosshairManager) {
+            crosshairManager.enable();
+            if (crosshairManager.crosshairElement) {
+                crosshairManager.crosshairElement.style.display = 'block';
+            }
+        }
+        
         // Enable free look after scene setup completes
-        // Use requestAnimationFrame to ensure this happens after camera is fully positioned
-        requestAnimationFrame(enableFreeLookAfterRailMovement);
+        // For interior scenes, use SceneCameraManager to ensure proper setup
+        if (nextSceneIndex >= SCENE_INDICES.INTERIOR_START) {
+            // Use SceneCameraManager for interior scenes to ensure free look is properly enabled
+            sceneCameraManager.setInitialDirection(currentCameraScene);
+        } else {
+            // Use requestAnimationFrame to ensure this happens after camera is fully positioned
+            requestAnimationFrame(enableFreeLookAfterRailMovement);
+        }
     });
     
     if (!movementStarted) {
@@ -1051,6 +1177,11 @@ function startGame() {
         gameData.reserveAmmo = pistolConfig.reserveSize;
     }
     
+    // Initialize weapon slot highlighting for starting weapon
+    if (currentWeaponId === 'pistol') {
+        switchCurrentWeapon('pistol');
+    }
+    
     playerManager.resetStats(WEAPON_AMMO_CONFIG);
     
     // Reset power-ups
@@ -1086,6 +1217,14 @@ sceneCameraManager.setSceneCamera(currentCameraScene);
     threeRenderer.isFreeCamera = false;
     threeRenderer.controls.enabled = false;
     renderManager.updateCallbacks.freeCamera.enabled = false;
+    
+    // Enable crosshair at game start
+    if (crosshairManager) {
+        crosshairManager.enable();
+        if (crosshairManager.crosshairElement) {
+            crosshairManager.crosshairElement.style.display = 'block';
+        }
+    }
     
     // Spawn entities
     // Check if factory scene is loaded OR if we're past the first scene
@@ -1185,35 +1324,84 @@ function createDamageNumber(position, damage, isHeadshot) {
     const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
     const y = (vector.y * -0.5 + 0.5) * window.innerHeight;
     
+    // Color coding: white for normal hits, red for all headshots
+    let color, glowColor, fontSize;
+    if (isHeadshot) {
+        // Headshot: always red
+        color = '#ff0000';
+        glowColor = '#ff0000';
+        fontSize = '40px'; // Larger for headshots
+    } else {
+        // Normal hit: white
+        color = '#ffffff';
+        glowColor = '#ffffff';
+        fontSize = '32px';
+    }
+    
     const damageDiv = document.createElement('div');
     damageDiv.style.cssText = `
         position: fixed;
         left: ${x}px;
         top: ${y}px;
         font-family: 'Courier New', monospace;
-        font-size: ${isHeadshot ? '48px' : '32px'};
+        font-size: ${fontSize};
         font-weight: bold;
-        color: ${isHeadshot ? '#ffff00' : '#ff0000'};
-        text-shadow: 0 0 ${isHeadshot ? '20px' : '10px'} ${isHeadshot ? '#ffff00' : '#ff0000'}, 2px 2px 4px #000;
+        color: ${color};
+        text-shadow: 
+            0 0 10px ${glowColor}, 
+            0 0 20px ${glowColor},
+            2px 2px 4px #000;
         pointer-events: none;
         z-index: 999;
-        animation: floatUp 1s ease-out forwards;
+        animation: floatUp${isHeadshot ? 'Headshot' : 'Normal'} 1s ease-out forwards;
+        transform: translate(-50%, -50%);
     `;
-    damageDiv.textContent = `-${damage}${isHeadshot ? ' 💀' : ''}`;
     
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes floatUp {
-            0% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-50px); }
-        }
-    `;
-    document.head.appendChild(style);
+    // Add "HEADSHOT" prefix for headshots
+    if (isHeadshot) {
+        damageDiv.textContent = `HEADSHOT +${damage}`;
+        // Add extra glow effect for headshots
+        damageDiv.style.filter = `drop-shadow(0 0 8px ${glowColor})`;
+    } else {
+        damageDiv.textContent = `+${damage}`;
+    }
+    
+    // Add animation keyframes if not already added
+    if (!document.getElementById('damage-animations-style')) {
+        const style = document.createElement('style');
+        style.id = 'damage-animations-style';
+        style.textContent = `
+            @keyframes floatUpNormal {
+                0% { 
+                    opacity: 1; 
+                    transform: translate(-50%, -50%) translateY(0) scale(1);
+                }
+                100% { 
+                    opacity: 0; 
+                    transform: translate(-50%, -50%) translateY(-50px) scale(0.8);
+                }
+            }
+            @keyframes floatUpHeadshot {
+                0% { 
+                    opacity: 1; 
+                    transform: translate(-50%, -50%) translateY(0) scale(1);
+                }
+                50% {
+                    transform: translate(-50%, -50%) translateY(-25px) scale(1.1);
+                }
+                100% { 
+                    opacity: 0; 
+                    transform: translate(-50%, -50%) translateY(-60px) scale(0.9);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
     document.body.appendChild(damageDiv);
     
     setTimeout(() => {
         damageDiv.remove();
-        style.remove();
     }, 1000);
 }
 
@@ -1308,6 +1496,15 @@ window.addEventListener('keydown', (event) => {
         case 'C':
             const isFree = threeRenderer.toggleFreeCamera();
             renderManager.updateCallbacks.freeCamera.enabled = isFree;
+            break;
+            
+        case 'e':
+        case 'E':
+            // Toggle post-processing on/off
+            if (postProcessingManager) {
+                postProcessingManager.toggle();
+            }
+            break;
             
             // Show/hide crosshair based on camera mode
             if (crosshairManager && crosshairManager.crosshairElement) {
@@ -1529,6 +1726,7 @@ console.log('  SPACE - Start Game');
 console.log('  Click - Shoot');
 console.log('  R - Reload / Restart');
 console.log('  C - Toggle Orbit Controls (for navigation/marking)');
+console.log('  E - Toggle Post-Processing Effects');
 console.log('  I - Jump to Warehouse Interior (testing)');
 console.log('  M - Mark Position (for SceneConfig) - works in orbit mode');
 console.log('  H - Toggle Helpers');

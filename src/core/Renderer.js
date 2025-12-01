@@ -81,8 +81,8 @@ export class Renderer {
         this.axesHelper = new THREE.AxesHelper(5);
         this.scene.add(this.axesHelper);
         
-        // Window resize handler
-        this.setupResizeHandler();
+        // Window resize handler (will be set up with renderManager reference in main.js)
+        this.resizeHandler = null;
     }
     
     setupLighting() {
@@ -113,12 +113,35 @@ export class Renderer {
         this.scene.add(backLight);
     }
     
-    setupResizeHandler() {
-        window.addEventListener('resize', () => {
-            this.camera.aspect = window.innerWidth / window.innerHeight;
+    setupResizeHandler(renderManager) {
+        // Remove existing listener if any (to prevent duplicates)
+        if (this.resizeHandler) {
+            window.removeEventListener('resize', this.resizeHandler);
+        }
+        
+        this.resizeHandler = () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            // Update camera aspect ratio
+            this.camera.aspect = width / height;
             this.camera.updateProjectionMatrix();
-            this.renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+            
+            // Update renderer size
+            this.renderer.setSize(width, height);
+            
+            // Update composer size if post-processing is enabled
+            if (renderManager) {
+                renderManager.handleResize();
+            }
+            
+            // Update orbit controls if enabled
+            if (this.controls) {
+                this.controls.handleResize();
+            }
+        };
+        
+        window.addEventListener('resize', this.resizeHandler);
     }
     
     toggleFreeCamera() {
