@@ -269,6 +269,9 @@ railMovementManager.setPathCompleteCallback((sceneIndex, sceneConfig) => {
         railMovementManager.stop();
     }
     
+    // Reset transition flag to allow next scene transition
+    isTransitioning = false;
+    
     console.log(`✅ Scene ${sceneIndex + 1} setup complete - zombies spawned`);
     
     // Switch to boss music if entering final interior scene (Scene 8)
@@ -693,12 +696,40 @@ function jumpToInteriorScene() {
     }
 }
 
+// Guard to prevent multiple calls to onSceneCleared
+let isTransitioning = false;
+
 function onSceneCleared() {
+    // Prevent multiple calls
+    if (isTransitioning) {
+        console.log('⏳ Scene transition already in progress, ignoring duplicate call');
+        return;
+    }
+    
+    // Only allow transition if we're in gameplay state
+    if (gameData.currentState !== GameState.GAMEPLAY) {
+        console.log(`⚠️ Cannot transition - current state is ${gameData.currentState}, not GAMEPLAY`);
+        return;
+    }
+    
+    console.log(`✅ Scene ${gameData.currentScene + 1} cleared! Transitioning to next scene...`);
+    isTransitioning = true;
+    
     if (sceneTransitionManager) {
         const result = sceneTransitionManager.onSceneCleared(SCENE_INDICES);
         if (result === 'complete') {
             gameFlowManager.completeMission(updateFinalStats, saveLeaderboard);
+            isTransitioning = false;
+        } else {
+            // Reset flag after a delay to allow transition to complete
+            // The flag will be reset when the new scene is set up
+            setTimeout(() => {
+                isTransitioning = false;
+            }, 2000);
         }
+    } else {
+        console.error('❌ SceneTransitionManager not available!');
+        isTransitioning = false;
     }
 }
 
@@ -1115,10 +1146,48 @@ if (!shootingSystemInitialized) {
 // Initialize after all dependencies are available (uiEffectsManager, sceneSetupManager, etc.)
 // Expose startGameFromMenu function for start screen
 window.startGameFromMenu = () => {
-    if (gameData.currentState === GameState.LOADING && renderManager.isReady()) {
+    // Prevent multiple calls
+    if (gameData.gameStarted) {
+        console.warn('⚠️ Game already started, ignoring startGameFromMenu call');
+        return;
+    }
+    
+    // Check if scene is ready
+    if (!renderManager.isReady()) {
+        console.warn('⚠️ Scene not ready yet, waiting...');
+        // Retry after a short delay
+        setTimeout(() => {
+            if (!gameData.gameStarted && renderManager.isReady()) {
+                console.log('✅ Scene ready, starting game on retry');
+                gameFlowManager.startGame();
+                currentCameraScene = CAMERA_SCENES[0];
+            }
+        }, 100);
+        return;
+    }
+    
+    // Check if factory scene is loaded (or allow if we're past initial loading)
+    if (!factorySceneLoaded) {
+        console.warn('⚠️ Factory scene not loaded yet, waiting...');
+        // Retry after a short delay
+        setTimeout(() => {
+            if (!gameData.gameStarted && factorySceneLoaded) {
+                console.log('✅ Factory scene loaded, starting game on retry');
+                gameFlowManager.startGame();
+                currentCameraScene = CAMERA_SCENES[0];
+            }
+        }, 100);
+        return;
+    }
+    
+    // Start the game - allow starting from LOADING state or if game hasn't started
+    if (gameData.currentState === GameState.LOADING || !gameData.gameStarted) {
+        console.log('🚀 Starting game from menu');
         gameFlowManager.startGame();
         // Update global currentCameraScene to match
         currentCameraScene = CAMERA_SCENES[0];
+    } else {
+        console.warn(`⚠️ Cannot start game - current state: ${gameData.currentState}, gameStarted: ${gameData.gameStarted}`);
     }
 };
 

@@ -130,17 +130,17 @@ export class PlayerManager {
                 requestAnimationFrame(updateProgress);
             } else {
                 // Reload complete
-                const ammoNeeded = gameData.maxAmmo - gameData.currentAmmo;
-                const ammoToReload = Math.min(ammoNeeded, gameData.reserveAmmo);
-                
-                gameData.currentAmmo += ammoToReload;
-                gameData.reserveAmmo -= ammoToReload;
-                gameData.isReloading = false;
-                
-                if (reloadIndicator) {
+            const ammoNeeded = gameData.maxAmmo - gameData.currentAmmo;
+            const ammoToReload = Math.min(ammoNeeded, gameData.reserveAmmo);
+            
+            gameData.currentAmmo += ammoToReload;
+            gameData.reserveAmmo -= ammoToReload;
+            gameData.isReloading = false;
+            
+            if (reloadIndicator) {
                     // Brief delay to show completion, then hide
                     setTimeout(() => {
-                        reloadIndicator.style.display = 'none';
+                reloadIndicator.style.display = 'none';
                     }, 200);
                 }
                 this.updateUI();

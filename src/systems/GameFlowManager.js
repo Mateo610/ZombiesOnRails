@@ -65,7 +65,24 @@ export class GameFlowManager {
      * Start the game
      */
     startGame() {
+        // Prevent multiple calls
+        if (gameData.gameStarted) {
+            console.warn('⚠️ Game already started, ignoring startGame() call');
+            return;
+        }
+        
         console.log('🚀 Starting Game');
+        
+        // Validate critical dependencies
+        if (!this.sceneLoader) {
+            console.error('❌ SceneLoader not available, cannot start game');
+            return;
+        }
+        
+        if (!this.playerManager) {
+            console.error('❌ PlayerManager not available, cannot start game');
+            return;
+        }
         
         // Hide start screen if it exists
         const startScreen = document.getElementById('start-screen');
@@ -95,6 +112,7 @@ export class GameFlowManager {
         const currentCameraScene = CAMERA_SCENES[0];
         // Note: The global currentCameraScene in main.js should be updated by the caller if needed
         
+        // Mark game as started early to prevent race conditions
         gameData.gameStarted = true;
         
         // Initialize weapon ammo for starting weapon (pistol)

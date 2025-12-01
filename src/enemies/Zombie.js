@@ -145,7 +145,7 @@ export default class Zombie {
         
         // Load GLB model asynchronously if path configured
         if (this.config.modelPath) {
-            this.loadModel();
+        this.loadModel();
         }
         
         console.log(`🧟 Spawned ${this.config.name} at`, position);
@@ -558,22 +558,22 @@ export default class Zombie {
         } else {
             console.log(`⚠️ No death animation found for ${this.config.name}, using fallback`);
             // Fallback death animation
-            const startY = this.mesh.position.y;
-            const duration = 1000;
-            const startTime = Date.now();
-            
-            const animate = () => {
+        const startY = this.mesh.position.y;
+        const duration = 1000;
+        const startTime = Date.now();
+        
+        const animate = () => {
                 if (!this.mesh || !this.scene.children.includes(this.mesh)) return;
                 
-                const elapsed = Date.now() - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                
-                this.mesh.position.y = startY * (1 - progress);
-                this.mesh.rotation.x = progress * Math.PI / 2;
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            this.mesh.position.y = startY * (1 - progress);
+            this.mesh.rotation.x = progress * Math.PI / 2;
                 
                 if (this.isPlaceholder) {
-                    this.mesh.material.opacity = 1 - progress;
-                    this.mesh.material.transparent = true;
+            this.mesh.material.opacity = 1 - progress;
+            this.mesh.material.transparent = true;
                 } else {
                     this.mesh.traverse((child) => {
                         if (child.isMesh && child.material) {
@@ -591,15 +591,15 @@ export default class Zombie {
                         }
                     });
                 }
-                
-                if (progress < 1) {
-                    requestAnimationFrame(animate);
-                } else {
-                    this.remove();
-                }
-            };
             
-            animate();
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.remove();
+            }
+        };
+        
+        animate();
         }
     }
     

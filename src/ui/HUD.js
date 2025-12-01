@@ -1602,7 +1602,27 @@ function setupStartScreen() {
     
     // Handle confirm button click - start the game
     if (confirmButton) {
+        let isStarting = false; // Guard to prevent multiple clicks
         confirmButton.addEventListener('click', () => {
+            // Prevent multiple rapid clicks
+            if (isStarting) {
+                console.log('⏳ Game start already in progress, ignoring click');
+                return;
+            }
+            
+            // Check if game is already started
+            if (gameData && gameData.gameStarted) {
+                console.log('⚠️ Game already started, ignoring confirm button click');
+                return;
+            }
+            
+            isStarting = true;
+            console.log('🎮 Confirm button clicked, starting game...');
+            
+            // Disable button to prevent multiple clicks
+            confirmButton.style.pointerEvents = 'none';
+            confirmButton.style.opacity = '0.5';
+            
             // Hide start screen
             if (startScreen) {
                 startScreen.classList.add('hidden');
@@ -1611,10 +1631,17 @@ function setupStartScreen() {
                 }, 500);
             }
             
-            // Trigger game start
-            if (window.startGameFromMenu) {
-                window.startGameFromMenu();
-            }
+            // Trigger game start with a small delay to ensure UI updates
+            setTimeout(() => {
+                if (window.startGameFromMenu) {
+                    window.startGameFromMenu();
+                } else {
+                    console.error('❌ startGameFromMenu function not available');
+                    isStarting = false;
+                    confirmButton.style.pointerEvents = 'auto';
+                    confirmButton.style.opacity = '1';
+                }
+            }, 50);
         });
     }
     
