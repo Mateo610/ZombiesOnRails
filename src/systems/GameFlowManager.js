@@ -87,10 +87,35 @@ export class GameFlowManager {
         // Hide start screen if it exists
         const startScreen = document.getElementById('start-screen');
         if (startScreen) {
+            // Restore main game canvas immediately (before hiding start screen)
+            if (this.threeRenderer && this.threeRenderer.renderer && this.threeRenderer.renderer.domElement) {
+                const canvas = this.threeRenderer.renderer.domElement;
+                canvas.style.opacity = '1';
+                canvas.style.visibility = 'visible';
+                canvas.style.zIndex = 'auto';
+                canvas.style.pointerEvents = 'auto';
+                canvas.classList.add('visible');
+                console.log('✅ Main game canvas restored');
+            }
+            
             startScreen.classList.add('hidden');
             setTimeout(() => {
                 startScreen.style.display = 'none';
+                // Dispose of 3D start screen scene (handled by inline script)
+                if (window.disposeStartScreenScene) {
+                    window.disposeStartScreenScene();
+                }
             }, 500);
+        } else {
+            // If no start screen, ensure canvas is visible
+            if (this.threeRenderer && this.threeRenderer.renderer && this.threeRenderer.renderer.domElement) {
+                const canvas = this.threeRenderer.renderer.domElement;
+                canvas.style.opacity = '1';
+                canvas.style.visibility = 'visible';
+                canvas.style.zIndex = 'auto';
+                canvas.style.pointerEvents = 'auto';
+                canvas.classList.add('visible');
+            }
         }
         
         // Show game UI elements

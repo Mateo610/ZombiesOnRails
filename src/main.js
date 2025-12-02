@@ -670,7 +670,7 @@ function spawnSceneZombies() {
             if (currentScene && currentScene.spawnPoints && currentScene.spawnPoints.length > 0) {
                 console.log(`🎬 Fallback: Spawning zombies for Scene ${gameData.currentScene + 1}: ${currentScene.name}`);
                 zombieManager.spawnSceneZombies(currentScene.spawnPoints);
-                updateUI();
+    updateUI();
             }
         }
     }
@@ -760,7 +760,7 @@ window.transitionToNextScene = () => {
     
     gameData.currentScene++;
     currentCameraScene = CAMERA_SCENES[gameData.currentScene];
-
+    
     zombieManager.clearZombies();
     powerUpManager.clear();
 
@@ -771,10 +771,10 @@ window.transitionToNextScene = () => {
     
     gameData.currentScene++;
     currentCameraScene = CAMERA_SCENES[gameData.currentScene];
-
+    
     zombieManager.clearZombies();
     powerUpManager.clear();
-
+    
     // Camera start/end
     // Convert plain objects to THREE.Vector3 (they're {x, y, z} objects, not Vector3 instances)
     const startPos = camera.position.clone();
@@ -794,7 +794,7 @@ window.transitionToNextScene = () => {
     // Temporarily disable camera overrides during transition
     const prevScreenShake = screenShakeIntensity;
     screenShakeIntensity = 0;
-
+    
     new TWEEN.Tween(startPos)
         .to(endPos, 2000)
         .easing(TWEEN.Easing.Quadratic.InOut)
@@ -802,7 +802,7 @@ window.transitionToNextScene = () => {
             camera.position.copy(startPos);
         })
         .start();
-
+    
     new TWEEN.Tween(startLookAt)
         .to(endLookAt, 2000)
         .easing(TWEEN.Easing.Quadratic.InOut)
@@ -897,50 +897,50 @@ window.addEventListener('keydown', (event) => {
     const key = event.key.toLowerCase();
     
     switch(key) {
-    case 'r':
-        if (gameData.currentState === GameState.GAME_OVER || 
-            gameData.currentState === GameState.MISSION_COMPLETE) {
+        case 'r':
+            if (gameData.currentState === GameState.GAME_OVER || 
+                gameData.currentState === GameState.MISSION_COMPLETE) {
             gameFlowManager.restartGame(zombieManager);
-        } else if (gameData.currentState === GameState.GAMEPLAY) {
+            } else if (gameData.currentState === GameState.GAMEPLAY) {
             playerManager.reload(currentWeaponId);
-        }
-        break;
-        
-    case ' ':
+            }
+            break;
+            
+        case ' ':
         // Space key now handled by start screen menu
         // Keep this for backward compatibility but it won't trigger if start screen is visible
-        if (gameData.currentState === GameState.LOADING && renderManager.isReady()) {
+            if (gameData.currentState === GameState.LOADING && renderManager.isReady()) {
             const startScreen = document.getElementById('start-screen');
             if (!startScreen || startScreen.classList.contains('hidden')) {
                 gameFlowManager.startGame();
                 // Update global currentCameraScene to match
                 currentCameraScene = CAMERA_SCENES[0];
             }
-        }
-        break;
-        
-    case 'c':
+            }
+            break;
+            
+        case 'c':
     case 'C': {
-        const isFree = threeRenderer.toggleFreeCamera();
-        renderManager.updateCallbacks.freeCamera.enabled = isFree;
+            const isFree = threeRenderer.toggleFreeCamera();
+            renderManager.updateCallbacks.freeCamera.enabled = isFree;
         
         // Show/hide crosshair based on camera mode
         if (crosshairManager && crosshairManager.crosshairElement) {
             crosshairManager.crosshairElement.style.display = isFree ? 'none' : 'block';
         }
         
-        if (!isFree) {
+            if (!isFree) {
             // Exiting orbit controls - reset to scene position
-            camera.position.set(
-                currentCameraScene.position.x,
-                currentCameraScene.position.y,
-                currentCameraScene.position.z
-            );
-            camera.lookAt(
-                currentCameraScene.lookAt.x,
-                currentCameraScene.lookAt.y,
-                currentCameraScene.lookAt.z
-            );
+                camera.position.set(
+                    currentCameraScene.position.x,
+                    currentCameraScene.position.y,
+                    currentCameraScene.position.z
+                );
+                camera.lookAt(
+                    currentCameraScene.lookAt.x,
+                    currentCameraScene.lookAt.y,
+                    currentCameraScene.lookAt.z
+                );
             
             // Restore original fog distance
             if (threeRenderer.scene.fog) {
@@ -1056,22 +1056,22 @@ window.addEventListener('keydown', (event) => {
             console.log(`    ]`);
             console.log('}\n');
             console.log('═══════════════════════════════════════════════════════\n');
-        }
-        break;
+            }
+            break;
+            
+        case 'h':
+            threeRenderer.toggleAxesHelper();
+            break;
         
-    case 'h':
-        threeRenderer.toggleAxesHelper();
-        break;
-    
-    case '1':
-        switchCurrentWeapon('pistol');
-        break;
-    case '2':
-        switchCurrentWeapon('shotgun');
-        break;
-    case '3':
-        switchCurrentWeapon('rifle');
-        break;
+        case '1':
+            switchCurrentWeapon('pistol');
+            break;
+        case '2':
+            switchCurrentWeapon('shotgun');
+            break;
+        case '3':
+            switchCurrentWeapon('rifle');
+            break;
     }
 });
 
@@ -1079,6 +1079,8 @@ window.addEventListener('keydown', (event) => {
 // INITIALIZATION
 // ============================================================================
 createUI();
+
+// Start screen 3D scene is handled by inline script in index.html
 
 // ============================================================================
 // CROSSHAIR MANAGER
@@ -1142,6 +1144,17 @@ window.startGameFromMenu = () => {
         return;
     }
     
+    // Restore main game canvas visibility before starting
+    const mainCanvas = renderer.domElement;
+    if (mainCanvas) {
+        mainCanvas.style.opacity = '1';
+        mainCanvas.style.visibility = 'visible';
+        mainCanvas.style.zIndex = 'auto';
+        mainCanvas.style.pointerEvents = 'auto';
+        mainCanvas.classList.add('visible');
+        console.log('✅ Main game canvas restored in startGameFromMenu');
+    }
+    
     // Check if scene is ready
     if (!renderManager.isReady()) {
         console.warn('⚠️ Scene not ready yet, waiting...');
@@ -1149,6 +1162,15 @@ window.startGameFromMenu = () => {
         setTimeout(() => {
             if (!gameData.gameStarted && renderManager.isReady()) {
                 console.log('✅ Scene ready, starting game on retry');
+                // Restore canvas
+                const mainCanvas = renderer.domElement;
+                if (mainCanvas) {
+                    mainCanvas.style.opacity = '1';
+                    mainCanvas.style.visibility = 'visible';
+                    mainCanvas.style.zIndex = 'auto';
+                    mainCanvas.style.pointerEvents = 'auto';
+                    mainCanvas.classList.add('visible');
+                }
                 gameFlowManager.startGame();
                 currentCameraScene = CAMERA_SCENES[0];
             }
@@ -1163,6 +1185,15 @@ window.startGameFromMenu = () => {
         setTimeout(() => {
             if (!gameData.gameStarted && factorySceneLoaded) {
                 console.log('✅ Factory scene loaded, starting game on retry');
+                // Restore canvas
+                const mainCanvas = renderer.domElement;
+                if (mainCanvas) {
+                    mainCanvas.style.opacity = '1';
+                    mainCanvas.style.visibility = 'visible';
+                    mainCanvas.style.zIndex = 'auto';
+                    mainCanvas.style.pointerEvents = 'auto';
+                    mainCanvas.classList.add('visible');
+                }
                 gameFlowManager.startGame();
                 currentCameraScene = CAMERA_SCENES[0];
             }
@@ -1314,10 +1345,10 @@ sceneLoader.loadFactoryScene(scene, (factoryModel) => {
     
     // Always prepare scene for display after factory scene loads (or fails)
     // This ensures the game can transition from LOADING state
-    if (!gameData.gameStarted) {
-        currentCameraScene = CAMERA_SCENES[0];
+        if (!gameData.gameStarted) {
+            currentCameraScene = CAMERA_SCENES[0];
         // Pre-render setup: ensure scene is ready before showing
-        renderManager.prepareSceneForDisplay();
+            renderManager.prepareSceneForDisplay();
     }
 });
 

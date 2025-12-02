@@ -21,10 +21,20 @@
             display: block;
             opacity: 0;
             transition: opacity 0.8s ease-in;
+            pointer-events: none;
         }
 
         canvas.visible {
             opacity: 1;
+            pointer-events: auto;
+        }
+        
+        /* Hide main game canvas when start screen is visible */
+        #start-screen:not(.hidden) ~ * canvas,
+        body:has(#start-screen:not(.hidden)) canvas:not(#start-screen-container canvas) {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            z-index: -1 !important;
         }
         
         /* Arcade-style crosshair */
@@ -131,14 +141,11 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 0, 40, 0.95) 100%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            background: transparent;
             z-index: 10000;
             font-family: 'Courier New', monospace;
             transition: opacity 0.5s ease-out;
+            overflow: hidden;
         }
 
         #start-screen.hidden {
@@ -146,41 +153,101 @@
             pointer-events: none;
         }
 
-        #start-screen-title {
-            font-size: 96px;
-            color: #ffff00;
-            text-shadow: 
-                0 0 20px #ffff00,
-                0 0 40px #ffff00,
-                0 0 60px #ffff00,
-                4px 4px 8px #000;
-            margin-bottom: 60px;
-            letter-spacing: 8px;
-            animation: titleGlow 2s ease-in-out infinite;
+        #start-screen-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background: #0a0a12;
+            pointer-events: none;
+        }
+        
+        #start-screen-container canvas {
+            display: block !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 2 !important;
+            pointer-events: none;
+            background: #0a0a12 !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+        
+        /* Force hide ALL other canvases when start screen is visible */
+        #start-screen:not(.hidden) ~ * canvas,
+        body:has(#start-screen:not(.hidden)) canvas:not(#start-screen-container canvas) {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            z-index: -9999 !important;
+            visibility: hidden !important;
+        }
+        
+        /* Hide main game canvas when start screen is visible */
+        #start-screen:not(.hidden) ~ canvas,
+        body:has(#start-screen:not(.hidden)) > canvas {
+            opacity: 0 !important;
+            pointer-events: none !important;
         }
 
-        @keyframes titleGlow {
-            0%, 100% { 
-                text-shadow: 
-                    0 0 20px #ffff00,
-                    0 0 40px #ffff00,
-                    0 0 60px #ffff00,
-                    4px 4px 8px #000;
-            }
-            50% { 
-                text-shadow: 
-                    0 0 30px #ffff00,
-                    0 0 60px #ffff00,
-                    0 0 90px #ffff00,
-                    4px 4px 8px #000;
-            }
+        #title-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #start-screen-title {
+            font-family: 'Impact', 'Arial Black', sans-serif;
+            font-size: 5rem;
+            color: #ff4422;
+            text-shadow: 
+                0 0 20px rgba(255, 68, 34, 0.8),
+                0 0 40px rgba(255, 68, 34, 0.5),
+                4px 4px 0 #000;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            animation: titlePulse 3s ease-in-out infinite;
+        }
+
+        #subtitle {
+            font-family: 'Courier New', monospace;
+            font-size: 1.5rem;
+            color: #aaa;
+            text-shadow: 2px 2px 0 #000;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            margin-bottom: 2rem;
+        }
+
+        @keyframes titlePulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.85; }
         }
 
         #start-menu {
+            position: absolute;
+            bottom: 15%;
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 30px;
+            pointer-events: auto;
+            z-index: 10;
         }
 
         #play-button {
@@ -255,26 +322,26 @@
         }
 
         .difficulty-button.selected {
-            color: #00ccff;
-            border-color: #00ccff;
-            background: rgba(0, 204, 255, 0.2);
-            box-shadow: 0 0 15px rgba(0, 204, 255, 0.5);
-            text-shadow: 0 0 10px #00ccff;
+            color: #aaa;
+            border-color: #aaa;
+            background: rgba(170, 170, 170, 0.2);
+            box-shadow: 0 0 15px rgba(170, 170, 170, 0.5);
+            text-shadow: 0 0 10px #aaa;
         }
 
         #confirm-button {
             padding: 15px 50px;
             font-size: 24px;
             font-family: 'Courier New', monospace;
-            color: #ffff00;
+            color: #00ff00;
             background: rgba(0, 0, 0, 0.6);
-            border: 3px solid #ffff00;
+            border: 3px solid #00ff00;
             border-radius: 8px;
             cursor: pointer;
-            text-shadow: 0 0 10px #ffff00;
+            text-shadow: 0 0 10px #00ff00;
             box-shadow: 
-                0 0 20px rgba(255, 255, 0, 0.5),
-                inset 0 0 20px rgba(255, 255, 0, 0.1);
+                0 0 20px rgba(0, 255, 0, 0.5),
+                inset 0 0 20px rgba(0, 255, 0, 0.1);
             transition: all 0.3s ease;
             letter-spacing: 2px;
             display: none;
@@ -286,10 +353,10 @@
         }
 
         #confirm-button:hover {
-            background: rgba(255, 255, 0, 0.2);
+            background: rgba(0, 255, 0, 0.2);
             box-shadow: 
-                0 0 30px rgba(255, 255, 0, 0.8),
-                inset 0 0 30px rgba(255, 255, 0, 0.2);
+                0 0 30px rgba(0, 255, 0, 0.8),
+                inset 0 0 30px rgba(0, 255, 0, 0.2);
             transform: scale(1.05);
         }
 
@@ -322,7 +389,11 @@
     </div>
     <div id="fade-transition"></div>
     <div id="start-screen">
-        <div id="start-screen-title">TEST</div>
+        <div id="start-screen-container"></div>
+        <div id="title-overlay">
+            <h1 id="start-screen-title">Dead Zone</h1>
+            <p id="subtitle">Extraction Protocol</p>
+        </div>
         <div id="start-menu">
             <button id="play-button">PLAY</button>
             <div id="difficulty-selector">
@@ -344,6 +415,466 @@
     </div>
     <!-- <script type="module" src="/src/mainorbit.js"></script> -->
     <script type="module" src="/src/main.js"></script>
+    
+    <!-- Start Screen 3D Scene - Inline script like test.html -->
+    <script type="module">
+        import * as THREE from 'three';
+        
+        let startScreenScene = null;
+        let startScreenRenderer = null;
+        let startScreenCamera = null;
+        let startScreenClock = null;
+        let startScreenAnimationId = null;
+        const startScreenElements = {
+            windowLights: [],
+            embers: null,
+            emberGeometry: null,
+            emberVelocities: [],
+            fogLayers: [],
+            zombies: [],
+            heliLight: null,
+            heliGlow: null,
+            fireGlow: null,
+            fireGlow2: null
+        };
+        
+        function initStartScreenScene() {
+            if (startScreenScene) return;
+            
+            const container = document.getElementById('start-screen-container');
+            if (!container) return;
+            
+            // Scene setup
+            startScreenScene = new THREE.Scene();
+            startScreenScene.background = new THREE.Color(0x0a0a12);
+            startScreenScene.fog = new THREE.FogExp2(0x1a1a2e, 0.015);
+            
+            // Camera
+            startScreenCamera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            startScreenCamera.position.set(0, 8, 30);
+            startScreenCamera.lookAt(0, 5, 0);
+            
+            // Renderer
+            startScreenRenderer = new THREE.WebGLRenderer({ antialias: true });
+            startScreenRenderer.setSize(window.innerWidth, window.innerHeight);
+            startScreenRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            startScreenRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+            startScreenRenderer.toneMappingExposure = 0.8;
+            
+            // Ensure canvas is visible
+            const canvas = startScreenRenderer.domElement;
+            canvas.style.cssText = 'display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; z-index: 99999 !important; opacity: 1 !important; visibility: visible !important; background: #0a0a12 !important;';
+            
+            // Ensure container is visible
+            container.style.display = 'block';
+            container.style.visibility = 'visible';
+            container.style.opacity = '1';
+            container.style.zIndex = '1';
+            container.style.position = 'absolute';
+            container.style.top = '0';
+            container.style.left = '0';
+            container.style.width = '100%';
+            container.style.height = '100%';
+            
+            container.prepend(canvas);
+            
+            // Hide all other canvases (main game canvas, mini-map, etc.)
+            const allCanvases = document.querySelectorAll('canvas');
+            allCanvases.forEach(c => {
+                if (c !== canvas) {
+                    c.style.opacity = '0';
+                    c.style.visibility = 'hidden';
+                    c.style.zIndex = '-9999';
+                    c.style.pointerEvents = 'none';
+                }
+            });
+            
+            // Clock
+            startScreenClock = new THREE.Clock();
+            
+            // Setup all scene elements (copy from test.html)
+            setupStartScreenLighting();
+            setupStartScreenGround();
+            setupStartScreenBuildings();
+            setupStartScreenWindowLights();
+            setupStartScreenEmbers();
+            setupStartScreenFogLayers();
+            setupStartScreenZombies();
+            setupStartScreenHelicopter();
+            
+            // Initial render
+            startScreenRenderer.clear();
+            startScreenRenderer.render(startScreenScene, startScreenCamera);
+            
+            // Start animation loop
+            animateStartScreen();
+            
+            // Handle resize
+            window.addEventListener('resize', () => {
+                if (startScreenCamera && startScreenRenderer) {
+                    startScreenCamera.aspect = window.innerWidth / window.innerHeight;
+                    startScreenCamera.updateProjectionMatrix();
+                    startScreenRenderer.setSize(window.innerWidth, window.innerHeight);
+                }
+            });
+            
+            console.log('✅ Start screen 3D scene initialized');
+        }
+        
+        function setupStartScreenLighting() {
+            const ambient = new THREE.AmbientLight(0x1a1a2e, 0.3);
+            startScreenScene.add(ambient);
+            
+            const moonLight = new THREE.DirectionalLight(0x4466aa, 0.4);
+            moonLight.position.set(-20, 30, -10);
+            startScreenScene.add(moonLight);
+            
+            startScreenElements.fireGlow = new THREE.PointLight(0xff6622, 1.5, 100);
+            startScreenElements.fireGlow.position.set(-30, 2, -20);
+            startScreenScene.add(startScreenElements.fireGlow);
+            
+            startScreenElements.fireGlow2 = new THREE.PointLight(0xff4411, 1, 80);
+            startScreenElements.fireGlow2.position.set(25, 1, -30);
+            startScreenScene.add(startScreenElements.fireGlow2);
+        }
+        
+        function setupStartScreenGround() {
+            const groundGeo = new THREE.PlaneGeometry(200, 200);
+            const groundMat = new THREE.MeshStandardMaterial({ 
+                color: 0x1a1a1a,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = 0;
+            startScreenScene.add(ground);
+        }
+        
+        function setupStartScreenBuildings() {
+            const buildingMat = new THREE.MeshStandardMaterial({
+                color: 0x0a0a0f,
+                roughness: 0.95,
+                metalness: 0
+            });
+            
+            const createBuilding = (width, height, depth, x, z) => {
+                const geo = new THREE.BoxGeometry(width, height, depth);
+                const mesh = new THREE.Mesh(geo, buildingMat);
+                mesh.position.set(x, height / 2, z);
+                startScreenScene.add(mesh);
+            };
+            
+            const createSmokestack = (radius, height, x, z) => {
+                const geo = new THREE.CylinderGeometry(radius * 0.7, radius, height, 8);
+                const mesh = new THREE.Mesh(geo, buildingMat);
+                mesh.position.set(x, height / 2, z);
+                startScreenScene.add(mesh);
+            };
+            
+            createBuilding(25, 18, 15, -30, -25);
+            createBuilding(15, 12, 20, -15, -30);
+            createBuilding(10, 25, 10, -35, -35);
+            createSmokestack(2, 35, -40, -30);
+            createSmokestack(1.5, 28, -25, -40);
+            createBuilding(20, 15, 18, 25, -28);
+            createBuilding(12, 22, 12, 35, -35);
+            createBuilding(18, 10, 25, 15, -40);
+            createSmokestack(2.5, 40, 40, -25);
+            createBuilding(40, 30, 20, 0, -60);
+            createBuilding(30, 35, 15, -40, -70);
+            createBuilding(35, 25, 18, 45, -65);
+            createSmokestack(3, 50, -55, -60);
+            createSmokestack(3, 45, 55, -55);
+        }
+        
+        function setupStartScreenWindowLights() {
+            const windowMat = new THREE.MeshBasicMaterial({ color: 0xffaa44 });
+            
+            const createWindow = (x, y, z, size = 1) => {
+                const geo = new THREE.PlaneGeometry(size * 1.5, size * 2);
+                const mesh = new THREE.Mesh(geo, windowMat.clone());
+                mesh.position.set(x, y, z);
+                mesh.userData.baseIntensity = 0.3 + Math.random() * 0.7;
+                mesh.userData.flickerSpeed = 1 + Math.random() * 3;
+                mesh.userData.flickerOffset = Math.random() * Math.PI * 2;
+                startScreenElements.windowLights.push(mesh);
+                startScreenScene.add(mesh);
+            };
+            
+            createWindow(-30, 8, -17.5, 1.2);
+            createWindow(-27, 12, -17.5, 1);
+            createWindow(-33, 6, -17.5, 0.8);
+            createWindow(25, 7, -19, 1.1);
+            createWindow(28, 11, -19, 0.9);
+            createWindow(0, 15, -50, 1.5);
+            createWindow(-5, 20, -50, 1.3);
+            createWindow(8, 12, -50, 1.4);
+            createWindow(-40, 18, -62, 1.6);
+            createWindow(45, 14, -56, 1.2);
+        }
+        
+        function setupStartScreenEmbers() {
+            const emberCount = 150;
+            startScreenElements.emberGeometry = new THREE.BufferGeometry();
+            const emberPositions = new Float32Array(emberCount * 3);
+            const emberSizes = new Float32Array(emberCount);
+            
+            for (let i = 0; i < emberCount; i++) {
+                emberPositions[i * 3] = (Math.random() - 0.5) * 100;
+                emberPositions[i * 3 + 1] = Math.random() * 30;
+                emberPositions[i * 3 + 2] = -20 + (Math.random() - 0.5) * 60;
+                
+                startScreenElements.emberVelocities.push({
+                    x: (Math.random() - 0.5) * 0.02,
+                    y: 0.02 + Math.random() * 0.03,
+                    z: (Math.random() - 0.5) * 0.01
+                });
+                
+                emberSizes[i] = 2 + Math.random() * 3;
+            }
+            
+            startScreenElements.emberGeometry.setAttribute('position', new THREE.BufferAttribute(emberPositions, 3));
+            startScreenElements.emberGeometry.setAttribute('size', new THREE.BufferAttribute(emberSizes, 1));
+            
+            const emberMaterial = new THREE.PointsMaterial({
+                color: 0xff6633,
+                size: 0.3,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending,
+                sizeAttenuation: true
+            });
+            
+            startScreenElements.embers = new THREE.Points(startScreenElements.emberGeometry, emberMaterial);
+            startScreenScene.add(startScreenElements.embers);
+        }
+        
+        function setupStartScreenFogLayers() {
+            const fogTexture = (() => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 256;
+                const ctx = canvas.getContext('2d');
+                const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+                gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 256, 256);
+                return new THREE.CanvasTexture(canvas);
+            })();
+            
+            const createFogLayer = (y, z, scale, speed) => {
+                const geo = new THREE.PlaneGeometry(120, 20);
+                const mat = new THREE.MeshBasicMaterial({
+                    map: fogTexture,
+                    transparent: true,
+                    opacity: 0.15,
+                    depthWrite: false,
+                    blending: THREE.AdditiveBlending
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(0, y, z);
+                mesh.scale.set(scale, scale, 1);
+                mesh.userData.speed = speed;
+                startScreenElements.fogLayers.push(mesh);
+                startScreenScene.add(mesh);
+            };
+            
+            createFogLayer(3, -15, 1.5, 0.8);
+            createFogLayer(5, -25, 2, 0.5);
+            createFogLayer(2, -10, 1, 1.2);
+            createFogLayer(8, -35, 2.5, 0.3);
+        }
+        
+        function setupStartScreenZombies() {
+            const zombieMat = new THREE.MeshBasicMaterial({ 
+                color: 0x000000,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            const createZombie = (x, z) => {
+                const group = new THREE.Group();
+                const bodyGeo = new THREE.BoxGeometry(0.8, 1.8, 0.4);
+                const body = new THREE.Mesh(bodyGeo, zombieMat);
+                body.position.y = 1.2;
+                group.add(body);
+                
+                const headGeo = new THREE.SphereGeometry(0.35, 8, 6);
+                const head = new THREE.Mesh(headGeo, zombieMat);
+                head.position.y = 2.4;
+                group.add(head);
+                
+                const armGeo = new THREE.BoxGeometry(0.25, 0.8, 0.25);
+                const leftArm = new THREE.Mesh(armGeo, zombieMat);
+                leftArm.position.set(-0.6, 1.4, 0.3);
+                leftArm.rotation.x = -0.5;
+                leftArm.rotation.z = 0.3;
+                group.add(leftArm);
+                
+                const rightArm = new THREE.Mesh(armGeo, zombieMat);
+                rightArm.position.set(0.6, 1.5, 0.4);
+                rightArm.rotation.x = -0.7;
+                rightArm.rotation.z = -0.2;
+                group.add(rightArm);
+                
+                group.position.set(x, 0, z);
+                group.userData.startX = x;
+                group.userData.swayOffset = Math.random() * Math.PI * 2;
+                group.userData.swaySpeed = 0.5 + Math.random() * 0.5;
+                group.userData.walkSpeed = 0.005 + Math.random() * 0.01;
+                group.userData.walkDirection = Math.random() > 0.5 ? 1 : -1;
+                
+                startScreenElements.zombies.push(group);
+                startScreenScene.add(group);
+            };
+            
+            createZombie(-15, -18);
+            createZombie(-8, -22);
+            createZombie(10, -20);
+            createZombie(18, -25);
+            createZombie(-25, -28);
+        }
+        
+        function setupStartScreenHelicopter() {
+            startScreenElements.heliLight = new THREE.PointLight(0xffffff, 2, 50);
+            startScreenElements.heliLight.position.set(40, 25, -80);
+            startScreenScene.add(startScreenElements.heliLight);
+            
+            startScreenElements.heliGlow = new THREE.Mesh(
+                new THREE.SphereGeometry(0.5, 8, 8),
+                new THREE.MeshBasicMaterial({ color: 0xffffff })
+            );
+            startScreenElements.heliGlow.position.copy(startScreenElements.heliLight.position);
+            startScreenScene.add(startScreenElements.heliGlow);
+        }
+        
+        function animateStartScreen() {
+            if (!startScreenScene || !startScreenRenderer || !startScreenCamera) return;
+            
+            startScreenAnimationId = requestAnimationFrame(animateStartScreen);
+            const elapsed = startScreenClock.getElapsedTime();
+            
+            // Camera drift
+            startScreenCamera.position.x = Math.sin(elapsed * 0.1) * 2;
+            startScreenCamera.position.y = 8 + Math.sin(elapsed * 0.15) * 0.5;
+            startScreenCamera.lookAt(0, 5, -20);
+            
+            // Window lights - smooth flicker
+            startScreenElements.windowLights.forEach(window => {
+                const flicker = Math.sin(elapsed * window.userData.flickerSpeed + window.userData.flickerOffset);
+                const intensity = window.userData.baseIntensity * (0.5 + flicker * 0.3);
+                window.material.opacity = Math.max(0.1, Math.min(1, intensity));
+            });
+            
+            // Embers
+            const positions = startScreenElements.emberGeometry.attributes.position.array;
+            for (let i = 0; i < 150; i++) {
+                positions[i * 3] += startScreenElements.emberVelocities[i].x;
+                positions[i * 3 + 1] += startScreenElements.emberVelocities[i].y;
+                positions[i * 3 + 2] += startScreenElements.emberVelocities[i].z;
+                positions[i * 3] += Math.sin(elapsed * 2 + i) * 0.005;
+                if (positions[i * 3 + 1] > 35) {
+                    positions[i * 3] = (Math.random() - 0.5) * 100;
+                    positions[i * 3 + 1] = 0;
+                    positions[i * 3 + 2] = -20 + (Math.random() - 0.5) * 60;
+                }
+            }
+            startScreenElements.emberGeometry.attributes.position.needsUpdate = true;
+            
+            // Fog layers
+            startScreenElements.fogLayers.forEach(fog => {
+                fog.position.x += fog.userData.speed * 0.05;
+                if (fog.position.x > 80) fog.position.x = -80;
+            });
+            
+            // Zombies
+            startScreenElements.zombies.forEach(zombie => {
+                zombie.rotation.z = Math.sin(elapsed * zombie.userData.swaySpeed + zombie.userData.swayOffset) * 0.1;
+                zombie.rotation.x = Math.sin(elapsed * zombie.userData.swaySpeed * 0.7 + zombie.userData.swayOffset) * 0.05;
+                zombie.position.x += zombie.userData.walkSpeed * zombie.userData.walkDirection;
+                if (Math.abs(zombie.position.x - zombie.userData.startX) > 5) {
+                    zombie.userData.walkDirection *= -1;
+                }
+            });
+            
+            // Helicopter
+            startScreenElements.heliLight.position.x = 40 + Math.sin(elapsed * 0.3) * 5;
+            startScreenElements.heliLight.position.y = 25 + Math.sin(elapsed * 0.5) * 2;
+            startScreenElements.heliGlow.position.copy(startScreenElements.heliLight.position);
+            startScreenElements.heliLight.intensity = 2 + Math.sin(elapsed * 8) * 0.3;
+            
+            // Fire glow
+            startScreenElements.fireGlow.intensity = 1.5 + Math.sin(elapsed * 3) * 0.3 + Math.random() * 0.2;
+            startScreenElements.fireGlow2.intensity = 1 + Math.sin(elapsed * 2.5 + 1) * 0.2 + Math.random() * 0.15;
+            
+            startScreenRenderer.render(startScreenScene, startScreenCamera);
+        }
+        
+        function disposeStartScreenScene() {
+            if (startScreenAnimationId) {
+                cancelAnimationFrame(startScreenAnimationId);
+                startScreenAnimationId = null;
+            }
+            if (startScreenRenderer && startScreenRenderer.domElement) {
+                // Hide start screen canvas
+                startScreenRenderer.domElement.style.display = 'none';
+                startScreenRenderer.domElement.remove();
+                startScreenRenderer.dispose();
+            }
+            // Clear scene elements
+            if (startScreenScene) {
+                startScreenScene.traverse((object) => {
+                    if (object.geometry) object.geometry.dispose();
+                    if (object.material) {
+                        if (Array.isArray(object.material)) {
+                            object.material.forEach(mat => mat.dispose());
+                        } else {
+                            object.material.dispose();
+                        }
+                    }
+                });
+            }
+            startScreenScene = null;
+            startScreenRenderer = null;
+            startScreenCamera = null;
+            startScreenClock = null;
+            // Clear element arrays
+            startScreenElements.windowLights = [];
+            startScreenElements.fogLayers = [];
+            startScreenElements.zombies = [];
+            startScreenElements.emberVelocities = [];
+        }
+        
+        // Initialize when start screen is shown
+        const startScreen = document.getElementById('start-screen');
+        if (startScreen) {
+            const observer = new MutationObserver(() => {
+                const display = window.getComputedStyle(startScreen).display;
+                if (display === 'flex' && !startScreenScene) {
+                    initStartScreenScene();
+                } else if (display === 'none' && startScreenScene) {
+                    disposeStartScreenScene();
+                }
+            });
+            observer.observe(startScreen, { attributes: true, attributeFilter: ['style'] });
+            
+            // Check on load
+            function checkAndInit() {
+                if (window.getComputedStyle(startScreen).display === 'flex' && !startScreenScene) {
+                    initStartScreenScene();
+                }
+            }
+            checkAndInit();
+            setTimeout(checkAndInit, 500);
+            setTimeout(checkAndInit, 1000);
+        }
+        
+        // Expose dispose function globally for cleanup
+        window.disposeStartScreenScene = disposeStartScreenScene;
+    </script>
 </body>
 </html>
 

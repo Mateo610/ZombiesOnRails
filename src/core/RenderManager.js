@@ -98,9 +98,15 @@ export class RenderManager {
                 const startScreen = document.getElementById('start-screen');
                 if (startScreen) {
                     startScreen.style.display = 'flex';
+                    // Keep main game canvas hidden when start screen is visible
+                    this.renderer.domElement.style.opacity = '0';
+                    this.renderer.domElement.style.visibility = 'hidden';
+                    this.renderer.domElement.style.zIndex = '-9999';
+                    this.renderer.domElement.style.pointerEvents = 'none';
+                } else {
+                    // Show canvas now that scene is fully ready (only if no start screen)
+                    this.renderer.domElement.classList.add('visible');
                 }
-                // Show canvas now that scene is fully ready
-                this.renderer.domElement.classList.add('visible');
             }, 800);
         }
     }

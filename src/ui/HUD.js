@@ -82,7 +82,7 @@ export function createUI() {
                             ">0%</span>
                         </div>
                         <div style="
-                            width: 100%;
+                        width: 100%;
                             height: 8px;
                             background: rgba(0, 0, 0, 0.8);
                             border: 1px solid rgba(153, 153, 153, 0.5);
@@ -92,16 +92,16 @@ export function createUI() {
                         ">
                             <div id="mission-progress-bar" style="
                                 width: 0%;
-                                height: 100%;
+                        height: 100%;
                                 background: linear-gradient(90deg, #0088ff, #00aaff, #00ccff);
                                 box-shadow: 0 0 10px rgba(0, 136, 255, 0.8);
                                 transition: width 0.5s ease-out;
-                            "></div>
-                        </div>
-                    </div>
-                    
+                    "></div>
+                </div>
+            </div>
+            
                     <!-- Scene Progress Indicators -->
-                    <div style="margin-bottom: 10px;">
+            <div style="margin-bottom: 10px;">
                         <div style="
                             font-size: 11px;
                             color: #aaaaaa;
@@ -114,9 +114,9 @@ export function createUI() {
                             flex-wrap: wrap;
                         ">
                             <!-- Scene indicators will be dynamically generated -->
-                        </div>
-                    </div>
-                    
+            </div>
+            </div>
+            
                     <!-- Current Scene & Zombies -->
                     <div style="
                         border-top: 1px solid rgba(153, 153, 153, 0.2);
@@ -127,7 +127,7 @@ export function createUI() {
                             <span style="letter-spacing: 1px;">CURRENT SCENE:</span> 
                             <span id="scene-number" style="color: #ffffff; font-weight: bold;">1</span>/
                             <span id="total-scenes" style="color: #cccccc;">3</span>
-                        </div>
+                </div>
                         <div style="font-size: 13px; color: #aaaaaa;">
                             <span style="letter-spacing: 1px;">ZOMBIES:</span> 
                             <span id="zombies-killed" style="color: #ffffff; font-weight: bold;">0</span>/
@@ -193,7 +193,7 @@ export function createUI() {
                     <div id="combo-timer-bar" style="width: 100%; height: 100%; background: #ff0000; transition: width 0.1s ease-out; box-shadow: 0 0 8px #ff0000;"></div>
                 </div>
             </div>
-        </div>
+            </div>
             
             <!-- Power-Up Indicators Panel -->
             <div id="powerup-indicators" style="
@@ -246,14 +246,14 @@ export function createUI() {
             text-align: right;
             z-index: 10;
             pointer-events: none;
-            font-size: 48px;
-            color: #fff;
-            text-shadow: 0 0 15px #fff, 3px 3px 6px #000;
-            font-weight: bold;
+                font-size: 48px;
+                color: #fff;
+                text-shadow: 0 0 15px #fff, 3px 3px 6px #000;
+                font-weight: bold;
             display: none;
-        ">
-            <span id="current-ammo">12</span> / <span id="reserve-ammo">60</span>
-        </div>
+            ">
+                <span id="current-ammo">12</span> / <span id="reserve-ammo">60</span>
+            </div>
             
             <!-- Circular Reload Progress Indicator -->
             <div id="reload-indicator" style="
@@ -704,7 +704,7 @@ export function createUI() {
             overflow-y: auto;
             animation: fadeIn 0.5s ease-in;
         ">
-            <div style="
+                <div style="
                 text-align: center;
                 max-width: 900px;
                 width: 90%;
@@ -1634,6 +1634,19 @@ function setupStartScreen() {
                 startScreen.classList.add('hidden');
                 setTimeout(() => {
                     startScreen.style.display = 'none';
+                    // Dispose of 3D start screen scene (handled by inline script)
+                    if (window.disposeStartScreenScene) {
+                        window.disposeStartScreenScene();
+                    }
+                    // Restore main game canvas visibility
+                    const mainCanvas = document.querySelector('canvas:not(#start-screen-container canvas):not(#mini-map-canvas)');
+                    if (mainCanvas) {
+                        mainCanvas.style.opacity = '1';
+                        mainCanvas.style.visibility = 'visible';
+                        mainCanvas.style.zIndex = 'auto';
+                        mainCanvas.style.pointerEvents = 'auto';
+                        mainCanvas.classList.add('visible');
+                    }
                 }, 500);
             }
             
