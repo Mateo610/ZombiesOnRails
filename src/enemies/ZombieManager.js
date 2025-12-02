@@ -16,6 +16,17 @@ export default class ZombieManager {
         this.zombies = [];
         this.sceneZombiesKilled = 0;
         this._sceneClearedNotified = false; // Track if we've already notified about scene being cleared
+        
+        // Wave system properties
+        this.currentWave = 1;
+        this.maxWaves = 1; // Will be set based on difficulty
+        this.sceneStartTime = 0;
+        this.currentSpawnPoints = [];
+        this.waveTimer = 7000; // 7 seconds in milliseconds
+        this.waveTimerActive = false;
+        this._waitingForAnimations = false;
+        this._lastSceneIndex = -1; // Track last scene index to detect scene changes
+        this._spawningNextWave = false; // Flag to prevent premature transitions during wave spawn
     }
     
     /**
@@ -23,11 +34,36 @@ export default class ZombieManager {
      * @param {{x:number,y:number,z:number,type:string}[]} spawnPoints
      */
     spawnSceneZombies(spawnPoints) {
-        console.log(`🎬 Spawning zombies for Scene ${this.gameData.currentScene + 1}`);
+        // Store spawn points for wave respawning
+        this.currentSpawnPoints = spawnPoints;
+        
+        // Set max waves based on difficulty
+        const difficultyWaves = {
+            easy: 1,
+            medium: 2,
+            hard: 3
+        };
+        this.maxWaves = difficultyWaves[this.gameData.difficulty] || 1;
+        
+        // Reset wave counter and scene start time for new scene
+        if (this.gameData.currentScene !== this._lastSceneIndex) {
+            // New scene - reset everything
+            this.currentWave = 1;
+            this.sceneStartTime = Date.now();
+            this.waveTimerActive = true;
+            this._lastSceneIndex = this.gameData.currentScene;
+            console.log(`🔄 New scene detected - resetting wave system`);
+        }
+        
+        console.log(`🎬 Spawning Wave ${this.currentWave}/${this.maxWaves} for Scene ${this.gameData.currentScene + 1} (Difficulty: ${this.gameData.difficulty})`);
         
         this.sceneZombiesKilled = 0;
-        this._sceneClearedNotified = false; // Reset notification flag for new scene
-        this.clearZombies();
+        this._sceneClearedNotified = false; // Reset notification flag for new wave
+        
+        // Only clear zombies if starting a new scene (wave 1), not for respawns
+        if (this.currentWave === 1) {
+            this.clearZombies();
+        }
         
         spawnPoints.forEach((spawn, index) => {
             setTimeout(() => {
@@ -54,6 +90,9 @@ export default class ZombieManager {
      * @param {() => void} onSceneClearedCb
      */
     update(deltaTime, slowMoActive, currentState, gameplayStateConst, onSceneClearedCb) {
+        // Update wave system (check for respawns)
+        this.updateWaveSystem();
+        
         this.zombies.forEach(zombie => {
             if (!zombie.isDead) {
                 zombie.update(deltaTime, slowMoActive);
@@ -62,13 +101,20 @@ export default class ZombieManager {
         
         const aliveCount = this.zombies.filter(z => !z.isDead).length;
         
-        // Check if scene is cleared (all zombies dead)
+        // Only check for scene transition if ALL waves are complete
+        // Don't transition if we're still waiting for more waves to spawn or currently spawning
+        const allWavesComplete = this.currentWave >= this.maxWaves;
+        
+        // Check if scene is cleared (all zombies dead AND all waves complete)
         if (
             aliveCount === 0 &&
             this.zombies.length > 0 &&
             currentState === gameplayStateConst &&
+            allWavesComplete && // Only transition if all waves are done
+            !this._spawningNextWave && // Don't transition if we're spawning a new wave
             !this._sceneClearedNotified // Only notify once per scene
         ) {
+            // All waves cleared - proceed with scene transition
             // Wait for death animations to finish before transitioning
             if (this.hasAnimatingDeaths()) {
                 // Only call waitForDeathAnimations once per scene clear
@@ -96,6 +142,81 @@ export default class ZombieManager {
             // Reset flags if zombies are still alive (new zombies spawned)
             this._waitingForAnimations = false;
             this._sceneClearedNotified = false;
+        } else if (aliveCount === 0 && !allWavesComplete) {
+            // Wave cleared but more waves coming - log and wait
+            if (!this._sceneClearedNotified) {
+                console.log(`✅ Wave ${this.currentWave}/${this.maxWaves} cleared - waiting for next wave...`);
+                this._sceneClearedNotified = true; // Mark as notified to prevent duplicate logs
+            }
+        }
+    }
+    
+    /**
+     * Update wave system - check if it's time to spawn the next wave
+     */
+    updateWaveSystem() {
+        // Only check if timer is active and we're in gameplay
+        if (!this.waveTimerActive || this.gameData.currentState !== 'GAMEPLAY') {
+            return;
+        }
+        
+        // Don't check for next wave if we've already reached max waves
+        if (this.currentWave >= this.maxWaves) {
+            this.waveTimerActive = false;
+            return;
+        }
+        
+        // Check if current wave is cleared (all zombies dead)
+        const aliveCount = this.zombies.filter(z => !z.isDead).length;
+        
+        // Calculate time since scene started
+        const elapsed = Date.now() - this.sceneStartTime;
+        const timeForNextWave = this.currentWave * this.waveTimer; // Wave 2 at 7s, Wave 3 at 14s
+        
+        // Spawn next wave if:
+        // 1. At least 7 seconds have passed since scene start (or 7s since last wave)
+        // 2. Current wave is cleared (all zombies dead)
+        if (elapsed >= timeForNextWave && aliveCount === 0 && !this._spawningNextWave) {
+            // Spawn next wave
+            this._spawningNextWave = true; // Set flag to prevent premature transitions
+            this.currentWave++;
+            console.log(`🌊 Spawning Wave ${this.currentWave}/${this.maxWaves} (${(elapsed / 1000).toFixed(1)}s elapsed since scene start)`);
+            this._sceneClearedNotified = false; // Reset notification flag for new wave
+            
+            // Spawn next wave using stored spawn points
+            if (this.currentSpawnPoints && this.currentSpawnPoints.length > 0) {
+                const spawnCount = this.currentSpawnPoints.length;
+                let spawnedCount = 0;
+                
+                this.currentSpawnPoints.forEach((spawn, index) => {
+                    setTimeout(() => {
+                        const zombie = new Zombie(
+                            new THREE.Vector3(spawn.x, spawn.y, spawn.z),
+                            spawn.type,
+                            this.scene,
+                            this.camera,
+                            this.gameData,
+                            this.damagePlayer,
+                            this.incrementCombo
+                        );
+                        this.zombies.push(zombie);
+                        spawnedCount++;
+                        
+                        // Clear flag once all zombies are spawned
+                        if (spawnedCount >= spawnCount) {
+                            this._spawningNextWave = false;
+                        }
+                    }, index * 300);
+                });
+            } else {
+                // No spawn points, clear flag immediately
+                this._spawningNextWave = false;
+            }
+        }
+        
+        // Deactivate timer if all waves are done
+        if (this.currentWave >= this.maxWaves) {
+            this.waveTimerActive = false;
         }
     }
     
@@ -124,6 +245,22 @@ export default class ZombieManager {
     
     getZombies() {
         return this.zombies;
+    }
+    
+    /**
+     * Get max waves for current difficulty
+     * @returns {number} Maximum number of waves
+     */
+    getMaxWaves() {
+        return this.maxWaves;
+    }
+    
+    /**
+     * Get current wave number
+     * @returns {number} Current wave (1-indexed)
+     */
+    getCurrentWave() {
+        return this.currentWave;
     }
     
     incrementSceneZombiesKilled() {

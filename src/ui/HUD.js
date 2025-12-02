@@ -1150,10 +1150,16 @@ export function updateUI() {
     // Current scene contributes partial progress based on zombie kills
     const completedScenes = Math.max(0, gameData.currentScene);
     const currentScene = getCurrentCameraScene();
-    const totalZombies = currentScene ? currentScene.spawnPoints.length : 0;
+    const zombiesPerWave = currentScene ? currentScene.spawnPoints.length : 0;
+    const maxWaves = zombieManager ? zombieManager.getMaxWaves() : 1;
+    const totalZombies = zombiesPerWave * maxWaves; // Total zombies across all waves
     const zombies = zombieManager.getZombies();
     const aliveZombies = zombies.filter(z => !z.isDead).length;
-    const zombiesKilled = Math.max(0, totalZombies - aliveZombies);
+    const deadZombies = zombies.filter(z => z.isDead).length;
+    
+    // Calculate zombies killed: count dead zombies in array
+    // Note: zombies stay in array until death animations finish, so this is accurate
+    const zombiesKilled = deadZombies;
     
     // Current scene progress (0-1) based on zombie kills
     const currentSceneProgress = totalZombies > 0 ? zombiesKilled / totalZombies : 1;

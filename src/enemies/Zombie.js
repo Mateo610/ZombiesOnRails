@@ -386,7 +386,16 @@ export default class Zombie {
             1, 2    // Speed goes from 1x to 2x
         );
         const slowFactor = slowMoActive ? 0.5 : 1;
-        this.currentSpeed = this.baseSpeed * Math.max(1, speedMultiplier) * slowFactor;
+        
+        // Apply difficulty speed multiplier
+        const difficultyMultipliers = {
+            easy: 1.0,
+            medium: 1.3,
+            hard: 1.6
+        };
+        const difficultyMultiplier = difficultyMultipliers[this.gameData.difficulty] || 1.0;
+        
+        this.currentSpeed = this.baseSpeed * Math.max(1, speedMultiplier) * slowFactor * difficultyMultiplier;
         
         // Check if in attack range
         if (this.distanceToPlayer < this.attackRange) {
