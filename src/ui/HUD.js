@@ -706,125 +706,176 @@ export function createUI() {
         ">
                 <div style="
                 text-align: center;
-                max-width: 900px;
-                width: 90%;
-                padding: 40px;
+                max-width: 1200px;
+                width: 95%;
+                padding: 20px;
             ">
                 <!-- Title -->
                 <div style="
-                    font-size: 84px;
+                    font-size: 56px;
                     color: #ffff00;
                     text-shadow: 
                         0 0 20px #ffff00,
                         0 0 40px #ffff00,
                         0 0 60px #ffff00;
-                    margin-bottom: 20px;
+                    margin-bottom: 15px;
                     animation: pulse 1.5s infinite;
-                    letter-spacing: 4px;
+                    letter-spacing: 3px;
                 ">
                     MISSION COMPLETE
                 </div>
                 
                 <!-- Rank Badge -->
                 <div style="
-                    font-size: 56px;
-                    color: #999999;
-                    margin-bottom: 50px;
+                    margin-bottom: 20px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    gap: 20px;
+                    gap: 15px;
                 ">
-                    <span style="font-size: 32px; color: #666;">RANK:</span>
-                    <span id="final-rank" style="
-                        font-size: 72px;
+                    <span style="
+                        font-size: 24px; 
+                        color: #666;
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
                         font-weight: bold;
-                        text-shadow: 0 0 20px currentColor;
-                        padding: 10px 30px;
+                    ">RANK</span>
+                    <span id="final-rank" style="
+                        font-size: 64px;
+                        font-weight: bold;
+                        text-shadow: 
+                            0 0 20px currentColor,
+                            0 0 40px currentColor,
+                            2px 2px 6px #000;
+                        padding: 12px 30px;
                         border: 3px solid currentColor;
-                        border-radius: 8px;
-                        background: rgba(0, 0, 0, 0.5);
+                        border-radius: 12px;
+                        background: linear-gradient(135deg, rgba(0, 0, 0, 0.7) 0%, rgba(20, 20, 40, 0.7) 100%);
+                        box-shadow: 
+                            0 0 30px currentColor,
+                            inset 0 0 20px rgba(0, 0, 0, 0.5);
+                        min-width: 80px;
+                        display: inline-block;
+                        animation: rankPulse 2s infinite;
                     ">S</span>
                 </div>
                 
                 <!-- Detailed Stats Breakdown -->
                 <div style="
-                    background: rgba(0, 0, 0, 0.6);
-                    border: 2px solid rgba(153, 153, 153, 0.5);
+                    background: linear-gradient(135deg, rgba(0, 0, 0, 0.85) 0%, rgba(20, 20, 40, 0.85) 100%);
+                    border: 3px solid rgba(153, 153, 153, 0.6);
                     border-radius: 12px;
-                    padding: 30px;
-                    margin-bottom: 30px;
+                    padding: 20px;
+                    margin-bottom: 15px;
                     box-shadow: 
-                        0 0 30px rgba(0, 0, 0, 0.8),
-                        inset 0 0 20px rgba(0, 0, 0, 0.5);
+                        0 0 30px rgba(0, 0, 0, 0.9),
+                        0 0 15px rgba(0, 136, 255, 0.2),
+                        inset 0 0 20px rgba(0, 0, 0, 0.6);
+                    backdrop-filter: blur(10px);
                 ">
                     <div style="
-                        font-size: 32px;
+                        font-size: 24px;
                         color: #00ccff;
-                        margin-bottom: 25px;
-                        text-shadow: 0 0 10px #00ccff;
+                        margin-bottom: 15px;
+                        text-shadow: 
+                            0 0 10px #00ccff,
+                            0 0 20px #00ccff,
+                            2px 2px 4px #000;
                         letter-spacing: 2px;
+                        font-weight: bold;
+                        text-align: center;
+                        border-bottom: 2px solid rgba(0, 204, 255, 0.3);
+                        padding-bottom: 8px;
                     ">
-                        RUN BREAKDOWN
+                        PERFORMANCE ANALYSIS
                     </div>
                     <div id="final-stats" style="
-                        font-size: 22px;
-                        color: #fff;
-                        line-height: 2.2;
-                        text-align: left;
                         display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 15px 30px;
+                        grid-template-columns: repeat(4, 1fr);
+                        gap: 10px;
                     "></div>
                 </div>
                 
                 <!-- Final Score Highlight -->
-                <div id="final-score-display" style="
-                    font-size: 48px;
-                    margin: 30px 0;
-                    color: #ffff00;
-                    text-shadow: 
-                        0 0 20px #ffff00,
-                        0 0 40px #ffff00;
-                    font-weight: bold;
-                    letter-spacing: 3px;
-                    animation: scoreGlow 2s infinite;
-                "></div>
+                <div style="
+                    margin: 15px 0;
+                    padding: 15px;
+                    background: linear-gradient(135deg, rgba(255, 255, 0, 0.2) 0%, rgba(0, 0, 0, 0.6) 100%);
+                    border: 3px solid rgba(255, 255, 0, 0.6);
+                    border-radius: 12px;
+                    box-shadow: 
+                        0 0 30px rgba(255, 255, 0, 0.5),
+                        inset 0 0 20px rgba(0, 0, 0, 0.5);
+                    backdrop-filter: blur(10px);
+                ">
+                    <div style="
+                        font-size: 14px;
+                        color: #ffff00;
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
+                        margin-bottom: 8px;
+                        opacity: 0.9;
+                    ">FINAL SCORE</div>
+                    <div id="final-score-display" style="
+                        font-size: 42px;
+                        color: #ffff00;
+                        text-shadow: 
+                            0 0 20px #ffff00,
+                            0 0 40px #ffff00,
+                            0 0 60px #ffff00,
+                            2px 2px 6px #000;
+                        font-weight: bold;
+                        letter-spacing: 3px;
+                        animation: scoreGlow 2s infinite;
+                    "></div>
+                </div>
                 
                 <!-- Leaderboard -->
                 <div style="
-                    margin-top: 40px;
-                    padding: 25px;
-                    background: rgba(0, 136, 255, 0.15);
-                    border: 2px solid rgba(0, 136, 255, 0.5);
+                    margin-top: 15px;
+                    padding: 15px;
+                    background: linear-gradient(135deg, rgba(0, 136, 255, 0.2) 0%, rgba(0, 0, 0, 0.6) 100%);
+                    border: 3px solid rgba(0, 136, 255, 0.6);
                     border-radius: 12px;
-                    box-shadow: 0 0 20px rgba(0, 136, 255, 0.3);
+                    box-shadow: 
+                        0 0 25px rgba(0, 136, 255, 0.4),
+                        inset 0 0 15px rgba(0, 0, 0, 0.5);
+                    backdrop-filter: blur(10px);
+                    max-height: 200px;
+                    overflow-y: auto;
                 ">
                     <div style="
-                        font-size: 32px;
+                        font-size: 20px;
                         color: #00ccff;
-                        margin-bottom: 20px;
-                        text-shadow: 0 0 10px #00ccff;
+                        margin-bottom: 12px;
+                        text-shadow: 
+                            0 0 10px #00ccff,
+                            0 0 20px #00ccff,
+                            2px 2px 4px #000;
                         letter-spacing: 2px;
+                        font-weight: bold;
+                        text-align: center;
+                        border-bottom: 2px solid rgba(0, 204, 255, 0.3);
+                        padding-bottom: 8px;
                     ">
-                        BEST SCORES
+                        LEADERBOARD
                     </div>
                     <div id="leaderboard" style="
-                        font-size: 18px;
+                        font-size: 14px;
                         color: #fff;
-                        line-height: 2;
+                        line-height: 1.8;
                         text-align: left;
                     "></div>
                 </div>
                 
                 <!-- Restart Prompt -->
                 <div style="
-                    font-size: 28px;
+                    font-size: 18px;
                     color: #ff1493;
-                    margin-top: 50px;
+                    margin-top: 15px;
                     animation: blink 1.5s infinite;
-                    text-shadow: 0 0 10px #ff1493;
-                    letter-spacing: 2px;
+                    text-shadow: 0 0 8px #ff1493;
+                    letter-spacing: 1.5px;
                 ">
                     Press R to Restart
                 </div>
@@ -847,16 +898,33 @@ export function createUI() {
             @keyframes scoreGlow {
                 0%, 100% { 
                     text-shadow: 
-                        0 0 20px #ffff00,
-                        0 0 40px #ffff00;
+                        0 0 30px #ffff00,
+                        0 0 60px #ffff00,
+                        0 0 90px #ffff00,
+                        2px 2px 8px #000;
                     transform: scale(1);
                 }
                 50% { 
                     text-shadow: 
-                        0 0 30px #ffff00,
-                        0 0 60px #ffff00,
-                        0 0 80px #ffff00;
+                        0 0 40px #ffff00,
+                        0 0 80px #ffff00,
+                        0 0 120px #ffff00,
+                        2px 2px 8px #000;
+                    transform: scale(1.03);
+                }
+            }
+            @keyframes rankPulse {
+                0%, 100% { 
+                    transform: scale(1);
+                    box-shadow: 
+                        0 0 40px currentColor,
+                        inset 0 0 30px rgba(0, 0, 0, 0.5);
+                }
+                50% { 
                     transform: scale(1.05);
+                    box-shadow: 
+                        0 0 60px currentColor,
+                        inset 0 0 40px rgba(0, 0, 0, 0.5);
                 }
             }
             @keyframes scoreIncrease {
@@ -1389,102 +1457,251 @@ export function updateFinalStats() {
         ? (gameData.shotsFired / gameData.totalZombiesKilled).toFixed(1)
         : '0.0';
     
+    // Calculate additional stats
+    const shotsHit = gameData.shotsHit || 0;
+    const avgTimePerKill = gameData.totalZombiesKilled > 0
+        ? (gameData.currentTime / gameData.totalZombiesKilled).toFixed(1)
+        : '0.0';
+    const bodyShots = gameData.totalZombiesKilled - gameData.headshotKills;
+    const bodyShotPercentage = gameData.totalZombiesKilled > 0
+        ? Math.round((bodyShots / gameData.totalZombiesKilled) * 100)
+        : 0;
+    
+    // Create professional stat cards
     const statsHTML = `
         <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 6px;
-            border-left: 3px solid #00ccff;
+            background: linear-gradient(135deg, rgba(0, 136, 255, 0.15) 0%, rgba(0, 0, 0, 0.4) 100%);
+            border: 2px solid rgba(0, 136, 255, 0.4);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 
+                0 0 15px rgba(0, 136, 255, 0.3),
+                inset 0 0 10px rgba(0, 0, 0, 0.5);
         ">
-            <span style="color: #999;">Zombies Eliminated:</span>
-            <span style="color: #fff; font-weight: bold; font-size: 24px;">${gameData.totalZombiesKilled}</span>
+            <div style="
+                font-size: 11px;
+                color: #00ccff;
+                text-transform: uppercase;
+                letter-spacing: 1.5px;
+                margin-bottom: 6px;
+                opacity: 0.8;
+            ">ZOMBIES ELIMINATED</div>
+            <div style="
+                font-size: 32px;
+                color: #fff;
+                font-weight: bold;
+                text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            ">${gameData.totalZombiesKilled}</div>
         </div>
+        
         <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 6px;
-            border-left: 3px solid #ff0000;
+            background: linear-gradient(135deg, rgba(255, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.4) 100%);
+            border: 2px solid rgba(255, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 
+                0 0 12px rgba(255, 0, 0, 0.3),
+                inset 0 0 8px rgba(0, 0, 0, 0.5);
         ">
-            <span style="color: #999;">Headshots:</span>
-            <span style="color: #ff0000; font-weight: bold; font-size: 24px;">${gameData.headshotKills} <span style="font-size: 18px; color: #999;">(${headshotPercentage}%)</span></span>
+            <div style="
+                font-size: 9px;
+                color: #ff4444;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 4px;
+                opacity: 0.8;
+            ">HEADSHOTS</div>
+            <div style="
+                font-size: 26px;
+                color: #ff0000;
+                font-weight: bold;
+                text-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
+            ">${gameData.headshotKills}</div>
+            <div style="
+                font-size: 10px;
+                color: #999;
+                margin-top: 3px;
+            ">${headshotPercentage}%</div>
         </div>
+        
         <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 6px;
-            border-left: 3px solid #00ff00;
+            background: linear-gradient(135deg, rgba(0, 255, 0, 0.15) 0%, rgba(0, 0, 0, 0.4) 100%);
+            border: 2px solid rgba(0, 255, 0, 0.4);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 
+                0 0 12px rgba(0, 255, 0, 0.3),
+                inset 0 0 8px rgba(0, 0, 0, 0.5);
         ">
-            <span style="color: #999;">Accuracy:</span>
-            <span style="color: #00ff00; font-weight: bold; font-size: 24px;">${accuracy}%</span>
+            <div style="
+                font-size: 9px;
+                color: #00ff00;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 4px;
+                opacity: 0.8;
+            ">ACCURACY</div>
+            <div style="
+                font-size: 26px;
+                color: #00ff00;
+                font-weight: bold;
+                text-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+            ">${accuracy}%</div>
+            <div style="
+                font-size: 10px;
+                color: #999;
+                margin-top: 3px;
+            ">${shotsHit}/${gameData.shotsFired}</div>
         </div>
+        
         <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 6px;
-            border-left: 3px solid #ffaa00;
+            background: linear-gradient(135deg, rgba(255, 170, 0, 0.15) 0%, rgba(0, 0, 0, 0.4) 100%);
+            border: 2px solid rgba(255, 170, 0, 0.4);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 
+                0 0 12px rgba(255, 170, 0, 0.3),
+                inset 0 0 8px rgba(0, 0, 0, 0.5);
         ">
-            <span style="color: #999;">Max Combo:</span>
-            <span style="color: #ffaa00; font-weight: bold; font-size: 24px;">x${gameData.maxCombo}</span>
+            <div style="
+                font-size: 9px;
+                color: #ffaa00;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 4px;
+                opacity: 0.8;
+            ">MAX COMBO</div>
+            <div style="
+                font-size: 26px;
+                color: #ffaa00;
+                font-weight: bold;
+                text-shadow: 0 0 8px rgba(255, 170, 0, 0.5);
+            ">x${gameData.maxCombo}</div>
+            <div style="
+                font-size: 10px;
+                color: #999;
+                margin-top: 3px;
+            ">Streak</div>
         </div>
+        
         <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 6px;
-            border-left: 3px solid #00ccff;
+            background: linear-gradient(135deg, rgba(0, 204, 255, 0.15) 0%, rgba(0, 0, 0, 0.4) 100%);
+            border: 2px solid rgba(0, 204, 255, 0.4);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 
+                0 0 12px rgba(0, 204, 255, 0.3),
+                inset 0 0 8px rgba(0, 0, 0, 0.5);
         ">
-            <span style="color: #999;">Time:</span>
-            <span style="color: #fff; font-weight: bold; font-size: 24px;">${timeFormatted}</span>
+            <div style="
+                font-size: 9px;
+                color: #00ccff;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 4px;
+                opacity: 0.8;
+            ">TIME</div>
+            <div style="
+                font-size: 26px;
+                color: #00ccff;
+                font-weight: bold;
+                text-shadow: 0 0 8px rgba(0, 204, 255, 0.5);
+            ">${timeFormatted}</div>
+            <div style="
+                font-size: 10px;
+                color: #999;
+                margin-top: 3px;
+            ">${avgTimePerKill}s/kill</div>
         </div>
+        
         <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 6px;
-            border-left: 3px solid #999;
+            background: linear-gradient(135deg, rgba(153, 153, 153, 0.15) 0%, rgba(0, 0, 0, 0.4) 100%);
+            border: 2px solid rgba(153, 153, 153, 0.4);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 
+                0 0 12px rgba(153, 153, 153, 0.3),
+                inset 0 0 8px rgba(0, 0, 0, 0.5);
         ">
-            <span style="color: #999;">Shots Fired:</span>
-            <span style="color: #fff; font-weight: bold; font-size: 24px;">${gameData.shotsFired}</span>
+            <div style="
+                font-size: 9px;
+                color: #999;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 4px;
+                opacity: 0.8;
+            ">SHOTS FIRED</div>
+            <div style="
+                font-size: 26px;
+                color: #fff;
+                font-weight: bold;
+                text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+            ">${gameData.shotsFired.toLocaleString()}</div>
+            <div style="
+                font-size: 10px;
+                color: #999;
+                margin-top: 3px;
+            ">${shotsPerKill}/kill</div>
         </div>
+        
         <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 6px;
-            border-left: 3px solid #999;
+            background: linear-gradient(135deg, rgba(153, 153, 153, 0.15) 0%, rgba(0, 0, 0, 0.4) 100%);
+            border: 2px solid rgba(153, 153, 153, 0.4);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 
+                0 0 12px rgba(153, 153, 153, 0.3),
+                inset 0 0 8px rgba(0, 0, 0, 0.5);
         ">
-            <span style="color: #999;">Shots Per Kill:</span>
-            <span style="color: #fff; font-weight: bold; font-size: 24px;">${shotsPerKill}</span>
+            <div style="
+                font-size: 9px;
+                color: #999;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 4px;
+                opacity: 0.8;
+            ">AVG SCORE/KILL</div>
+            <div style="
+                font-size: 26px;
+                color: #fff;
+                font-weight: bold;
+                text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+            ">${avgScorePerZombie.toLocaleString()}</div>
+            <div style="
+                font-size: 10px;
+                color: #999;
+                margin-top: 3px;
+            ">Per zombie</div>
         </div>
+        
         <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 6px;
-            border-left: 3px solid #999;
+            background: linear-gradient(135deg, rgba(136, 0, 255, 0.15) 0%, rgba(0, 0, 0, 0.4) 100%);
+            border: 2px solid rgba(136, 0, 255, 0.4);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 
+                0 0 12px rgba(136, 0, 255, 0.3),
+                inset 0 0 8px rgba(0, 0, 0, 0.5);
         ">
-            <span style="color: #999;">Avg Score/Zombie:</span>
-            <span style="color: #fff; font-weight: bold; font-size: 24px;">${avgScorePerZombie}</span>
+            <div style="
+                font-size: 9px;
+                color: #8800ff;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 4px;
+                opacity: 0.8;
+            ">BODY SHOTS</div>
+            <div style="
+                font-size: 26px;
+                color: #aa44ff;
+                font-weight: bold;
+                text-shadow: 0 0 8px rgba(136, 0, 255, 0.5);
+            ">${bodyShots}</div>
+            <div style="
+                font-size: 10px;
+                color: #999;
+                margin-top: 3px;
+            ">${bodyShotPercentage}%</div>
         </div>
     `;
     
@@ -1557,16 +1774,105 @@ function updateLeaderboard() {
     const scores = JSON.parse(localStorage.getItem('zombieRailShooterScores') || '[]');
     
     let html = '';
-    scores.forEach((entry, index) => {
-        html += `
-            <div style="margin-bottom: 10px;">
-                ${index + 1}. Score: ${entry.score} | Rank: ${entry.rank} | Acc: ${entry.accuracy}% | ${entry.date}
-            </div>
+    if (scores.length === 0) {
+        html = `
+            <div style="
+                text-align: center;
+                color: #666;
+                font-size: 14px;
+                padding: 15px;
+                font-style: italic;
+            ">No scores recorded yet</div>
         `;
-    });
-    
-    if (html === '') {
-        html = '<div>No scores yet!</div>';
+    } else {
+        scores.forEach((entry, index) => {
+            const rankColors = {
+                'S': '#ffff00',
+                'A': '#00ff00',
+                'B': '#999999',
+                'C': '#ffa500',
+                'D': '#ff0000'
+            };
+            const rankColor = rankColors[entry.rank] || '#999';
+            const isTopScore = index === 0;
+            
+            html += `
+                <div style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 8px 12px;
+                    margin-bottom: 6px;
+                    background: ${isTopScore 
+                        ? 'linear-gradient(135deg, rgba(255, 255, 0, 0.15) 0%, rgba(0, 0, 0, 0.4) 100%)' 
+                        : 'rgba(0, 0, 0, 0.3)'};
+                    border: 2px solid ${isTopScore ? 'rgba(255, 255, 0, 0.4)' : 'rgba(153, 153, 153, 0.3)'};
+                    border-radius: 8px;
+                    box-shadow: ${isTopScore ? '0 0 12px rgba(255, 255, 0, 0.2)' : 'none'};
+                    transition: transform 0.2s;
+                ">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="
+                            font-size: 16px;
+                            font-weight: bold;
+                            color: ${isTopScore ? '#ffff00' : '#999'};
+                            min-width: 25px;
+                        ">#${index + 1}</div>
+                        <div>
+                            <div style="
+                                font-size: 16px;
+                                font-weight: bold;
+                                color: #fff;
+                                margin-bottom: 2px;
+                            ">${entry.score.toLocaleString()}</div>
+                            <div style="
+                                font-size: 10px;
+                                color: #999;
+                            ">${entry.date}</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="text-align: right;">
+                            <div style="
+                                font-size: 10px;
+                                color: #999;
+                                margin-bottom: 2px;
+                            ">Rank</div>
+                            <div style="
+                                font-size: 18px;
+                                font-weight: bold;
+                                color: ${rankColor};
+                                text-shadow: 0 0 8px ${rankColor};
+                            ">${entry.rank}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="
+                                font-size: 10px;
+                                color: #999;
+                                margin-bottom: 2px;
+                            ">Acc</div>
+                            <div style="
+                                font-size: 16px;
+                                font-weight: bold;
+                                color: #00ff00;
+                            ">${entry.accuracy}%</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="
+                                font-size: 10px;
+                                color: #999;
+                                margin-bottom: 2px;
+                            ">Kills</div>
+                            <div style="
+                                font-size: 16px;
+                                font-weight: bold;
+                                color: #fff;
+                            ">${entry.kills || 0}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
     }
     
     document.getElementById('leaderboard').innerHTML = html;
