@@ -660,28 +660,114 @@ export function createUI() {
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.95);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.98) 0%, rgba(40, 20, 20, 0.98) 100%);
             display: none;
             justify-content: center;
             align-items: center;
             z-index: 100;
             font-family: 'Courier New', monospace;
+            overflow-y: auto;
+            animation: fadeIn 0.5s ease-in;
         ">
-            <div style="text-align: center;">
+            <div style="
+                text-align: center;
+                max-width: 1200px;
+                width: 95%;
+                padding: 20px;
+            ">
+                <!-- Title -->
                 <div style="
-                    font-size: 72px;
+                    font-size: 56px;
                     color: #ff0000;
-                    text-shadow: 0 0 30px #ff0000;
-                    margin-bottom: 40px;
+                    text-shadow: 
+                        0 0 20px #ff0000,
+                        0 0 40px #ff0000,
+                        0 0 60px #ff0000;
+                    margin-bottom: 15px;
+                    animation: pulse 1.5s infinite;
+                    letter-spacing: 3px;
                 ">
                     GAME OVER
                 </div>
-                <div id="game-over-stats" style="font-size: 24px; color: #fff; line-height: 2;"></div>
+                
+                <!-- Detailed Stats Breakdown -->
                 <div style="
-                    font-size: 24px;
+                    background: linear-gradient(135deg, rgba(0, 0, 0, 0.85) 0%, rgba(40, 20, 20, 0.85) 100%);
+                    border: 3px solid rgba(153, 153, 153, 0.6);
+                    border-radius: 12px;
+                    padding: 20px;
+                    margin-bottom: 15px;
+                    box-shadow: 
+                        0 0 30px rgba(0, 0, 0, 0.9),
+                        0 0 15px rgba(255, 0, 0, 0.2),
+                        inset 0 0 20px rgba(0, 0, 0, 0.6);
+                    backdrop-filter: blur(10px);
+                ">
+                    <div style="
+                        font-size: 24px;
+                        color: #ff4444;
+                        margin-bottom: 15px;
+                        text-shadow: 
+                            0 0 10px #ff4444,
+                            0 0 20px #ff4444,
+                            2px 2px 4px #000;
+                        letter-spacing: 2px;
+                        font-weight: bold;
+                        text-align: center;
+                        border-bottom: 2px solid rgba(255, 68, 68, 0.3);
+                        padding-bottom: 8px;
+                    ">
+                        PERFORMANCE ANALYSIS
+                    </div>
+                    <div id="game-over-stats" style="
+                        display: grid;
+                        grid-template-columns: repeat(4, 1fr);
+                        gap: 10px;
+                    "></div>
+                </div>
+                
+                <!-- Final Score Highlight -->
+                <div style="
+                    margin: 15px 0;
+                    padding: 15px;
+                    background: linear-gradient(135deg, rgba(255, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.6) 100%);
+                    border: 3px solid rgba(255, 0, 0, 0.6);
+                    border-radius: 12px;
+                    box-shadow: 
+                        0 0 30px rgba(255, 0, 0, 0.5),
+                        inset 0 0 20px rgba(0, 0, 0, 0.5);
+                    backdrop-filter: blur(10px);
+                ">
+                    <div style="
+                        font-size: 14px;
+                        color: #ff0000;
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
+                        margin-bottom: 8px;
+                        opacity: 0.9;
+                    ">FINAL SCORE</div>
+                    <div id="game-over-score-display" style="
+                        font-size: 42px;
+                        color: #ff0000;
+                        text-shadow: 
+                            0 0 20px #ff0000,
+                            0 0 40px #ff0000,
+                            0 0 60px #ff0000,
+                            2px 2px 6px #000;
+                        font-weight: bold;
+                        letter-spacing: 3px;
+                        animation: scoreGlow 2s infinite;
+                    "></div>
+                </div>
+                
+                <!-- Restart Prompt -->
+                <div style="
+                    font-size: 18px;
                     color: #ff1493;
-                    margin-top: 60px;
+                    margin-top: 15px;
                     animation: blink 1.5s infinite;
+                    text-shadow: 0 0 8px #ff1493;
+                    letter-spacing: 1.5px;
                 ">
                     Press R to Restart
                 </div>
@@ -1707,6 +1793,12 @@ export function updateFinalStats() {
     
     if (gameData.currentState === GameState.GAME_OVER) {
         document.getElementById('game-over-stats').innerHTML = statsHTML;
+        
+        // Update final score display for game over
+        const gameOverScoreEl = document.getElementById('game-over-score-display');
+        if (gameOverScoreEl) {
+            gameOverScoreEl.textContent = gameData.score.toLocaleString();
+        }
     } else {
         document.getElementById('final-stats').innerHTML = statsHTML;
         document.getElementById('final-rank').textContent = rank;
@@ -1723,7 +1815,7 @@ export function updateFinalStats() {
         // Update final score display
         const finalScoreEl = document.getElementById('final-score-display');
         if (finalScoreEl) {
-            finalScoreEl.textContent = `FINAL SCORE: ${gameData.score.toLocaleString()}`;
+            finalScoreEl.textContent = gameData.score.toLocaleString();
         }
     }
     
