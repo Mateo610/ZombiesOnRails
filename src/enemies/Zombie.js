@@ -22,7 +22,7 @@ export const ZOMBIE_TYPES = {
     },
     runner: {
         name: 'Runner',
-        health: 50,
+        health: 100,
         speed: 1.2,
         damage: 15,
         points: 150,
@@ -52,7 +52,7 @@ export const ZOMBIE_TYPES = {
     },
     crawler: {
         name: 'Crawler',
-        health: 30,
+        health: 50,
         speed: 1.5,
         damage: 5,
         points: 75,
@@ -465,8 +465,9 @@ export default class Zombie {
     takeDamage(amount, isHeadshot = false) {
         if (this.isDead) return { killed: false, headshot: false };
         
-        const actualDamage = isHeadshot ? amount * 2 : amount;
-        this.health -= actualDamage;
+        // Use the damage amount directly (headshot damage is already calculated in ShootingSystem)
+        // No need to multiply again - the amount parameter already contains the correct headshot damage
+        this.health -= amount;
         
         // Flash effect
         if (this.isPlaceholder) {

@@ -271,9 +271,10 @@ railMovementManager.setPathCompleteCallback((sceneIndex, sceneConfig) => {
         gameData.gameStarted = true;
     }
     
-    // Enable crosshair
+    // Enable crosshair and center it
     if (crosshairManager) {
         crosshairManager.enable();
+        crosshairManager.center(); // Reset crosshair to center
         if (crosshairManager.crosshairElement) {
             crosshairManager.crosshairElement.style.display = 'block';
         }

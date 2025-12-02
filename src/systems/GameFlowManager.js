@@ -161,9 +161,10 @@ export class GameFlowManager {
         this.threeRenderer.controls.enabled = false;
         this.renderManager.updateCallbacks.freeCamera.enabled = false;
         
-        // Enable crosshair at game start
+        // Enable crosshair at game start and center it
         if (this.crosshairManager) {
             this.crosshairManager.enable();
+            this.crosshairManager.center(); // Reset crosshair to center at game start
             if (this.crosshairManager.crosshairElement) {
                 this.crosshairManager.crosshairElement.style.display = 'block';
             }

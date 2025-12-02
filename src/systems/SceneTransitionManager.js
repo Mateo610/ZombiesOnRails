@@ -186,9 +186,10 @@ export class SceneTransitionManager {
         // Set game state back to gameplay
         gameData.currentState = GameState.GAMEPLAY;
         
-        // Enable crosshair
+        // Enable crosshair and center it
         if (this.crosshairManager) {
             this.crosshairManager.enable();
+            this.crosshairManager.center(); // Reset crosshair to center at start of scene
             if (this.crosshairManager.crosshairElement) {
                 this.crosshairManager.crosshairElement.style.display = 'block';
             }
