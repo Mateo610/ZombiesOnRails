@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-
 let gameData;
 let zombieManager;
 let camera;
@@ -1602,10 +1600,12 @@ function setupStartScreen() {
     
     // Handle confirm button click - start the game
     if (confirmButton) {
-        let isStarting = false; // Guard to prevent multiple clicks
+        // Store isStarting flag on button element so it can be reset
+        confirmButton.dataset.isStarting = 'false';
+        
         confirmButton.addEventListener('click', () => {
             // Prevent multiple rapid clicks
-            if (isStarting) {
+            if (confirmButton.dataset.isStarting === 'true') {
                 console.log('⏳ Game start already in progress, ignoring click');
                 return;
             }
@@ -1616,7 +1616,7 @@ function setupStartScreen() {
                 return;
             }
             
-            isStarting = true;
+            confirmButton.dataset.isStarting = 'true';
             console.log('🎮 Confirm button clicked, starting game...');
             
             // Disable button to prevent multiple clicks
@@ -1635,9 +1635,13 @@ function setupStartScreen() {
             setTimeout(() => {
                 if (window.startGameFromMenu) {
                     window.startGameFromMenu();
+                    // Reset flag after game starts (with delay to ensure it completes)
+                    setTimeout(() => {
+                        confirmButton.dataset.isStarting = 'false';
+                    }, 1000);
                 } else {
                     console.error('❌ startGameFromMenu function not available');
-                    isStarting = false;
+                    confirmButton.dataset.isStarting = 'false';
                     confirmButton.style.pointerEvents = 'auto';
                     confirmButton.style.opacity = '1';
                 }

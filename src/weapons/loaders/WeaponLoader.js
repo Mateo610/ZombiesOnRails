@@ -71,7 +71,7 @@ export class WeaponLoader {
         this.configureMaterials(model);
 
         // Scale and center
-        this.scaleAndCenterModel(model, weaponId);
+        this.scaleAndCenterModel(model);
 
         // Apply rotation
         this.applyRotation(model, weaponId);
@@ -96,7 +96,7 @@ export class WeaponLoader {
                             if (mat.transparent) {
                                 mat.transparent = false;
                             }
-                            if (mat.opacity !== undefined) {
+                            if (typeof mat.opacity !== 'undefined') {
                                 mat.opacity = 1;
                             }
                         }
@@ -111,7 +111,7 @@ export class WeaponLoader {
      * @param {THREE.Object3D} model - The weapon model
      * @param {string} weaponId - Weapon identifier
      */
-    scaleAndCenterModel(model, weaponId) {
+    scaleAndCenterModel(model) {
         const box = new THREE.Box3().setFromObject(model);
         const size = box.getSize(new THREE.Vector3());
         const maxDimension = Math.max(size.x, size.y, size.z);

@@ -193,19 +193,133 @@ export class GameFlowManager {
      */
     restartGame(zombieManager) {
         console.log('🔄 Restarting Game');
+        
+        // Wait for death animations to finish before restarting
+        if (zombieManager && zombieManager.hasAnimatingDeaths()) {
+            console.log('⏳ Waiting for death animations before restarting...');
+            zombieManager.waitForDeathAnimations(() => {
+                this._doRestart(zombieManager);
+            });
+        } else {
+            // No animations, restart immediately
+            this._doRestart(zombieManager);
+        }
+    }
+    
+    /**
+     * Internal method to perform the actual restart
+     * @private
+     */
+    _doRestart(zombieManager) {
+        console.log('🔄 Resetting to main menu...');
+        
         // Clear entities
         if (zombieManager) {
-            zombieManager.clearZombies();
+            zombieManager.clearZombies(true); // Force clear since we already waited
         }
         this.powerUpManager.clear();
         
-        document.getElementById('game-over-screen').style.display = 'none';
-        document.getElementById('mission-complete').style.display = 'none';
+        // Hide game over and mission complete screens
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const missionCompleteScreen = document.getElementById('mission-complete');
+        if (gameOverScreen) gameOverScreen.style.display = 'none';
+        if (missionCompleteScreen) missionCompleteScreen.style.display = 'none';
         
-        // Reset music flag so it can start again
+        // Hide game UI elements
+        const hudLeft = document.getElementById('hud-left');
+        const powerupIndicators = document.getElementById('powerup-indicators');
+        const ammoDisplay = document.getElementById('ammo-display');
+        const healthHearts = document.getElementById('health-hearts');
+        const settingsBtn = document.getElementById('settings-btn');
+        const crosshair = this.crosshairManager?.crosshairElement;
+        
+        if (hudLeft) hudLeft.style.display = 'none';
+        if (powerupIndicators) powerupIndicators.style.display = 'none';
+        if (ammoDisplay) ammoDisplay.style.display = 'none';
+        if (healthHearts) healthHearts.style.display = 'none';
+        if (settingsBtn) settingsBtn.style.display = 'none';
+        if (crosshair) crosshair.style.display = 'none';
+        
+        // Stop music
+        if (this.soundManager) {
+            this.soundManager.stopMusic();
+        }
+        
+        // Reset music flag
         this.musicStarted = false;
         
-        this.startGame();
+        // Reset game state flags
+        gameData.gameStarted = false;
+        gameData.currentState = GameState.LOADING;
+        gameData.currentScene = 0;
+        
+        // Reset transition flag
+        if (window.resetTransitionFlag) {
+            window.resetTransitionFlag();
+        }
+        
+        // Reset rail movement
+        if (this.railMovementManager) {
+            this.railMovementManager.reset();
+        }
+        
+        // Reset camera to initial position (first scene)
+        const firstScene = CAMERA_SCENES[0];
+        if (firstScene) {
+            // Update global currentCameraScene
+            if (window.setCurrentCameraScene) {
+                window.setCurrentCameraScene(firstScene);
+            }
+            // Set camera position
+            if (this.sceneCameraManager) {
+                this.sceneCameraManager.setSceneCamera(firstScene);
+            }
+        }
+        
+        // Reset scene visibility - show factory exterior, hide warehouse
+        if (this.sceneLoader.currentSceneModel) {
+            this.sceneLoader.currentSceneModel.visible = true;
+        }
+        if (this.sceneLoader.warehouseModel) {
+            this.sceneLoader.warehouseModel.visible = false;
+        }
+        
+        // Hide weapon models
+        if (this.weaponModelManager) {
+            this.weaponModelManager.hideWeapons();
+        }
+        
+        // Disable free camera
+        this.threeRenderer.isFreeCamera = false;
+        this.threeRenderer.controls.enabled = false;
+        this.renderManager.updateCallbacks.freeCamera.enabled = false;
+        
+        // Reset first game start flag so scene title shows on next start
+        this.isFirstGameStart = true;
+        
+        // Show start screen
+        const startScreen = document.getElementById('start-screen');
+        if (startScreen) {
+            startScreen.style.display = 'flex';
+            startScreen.classList.remove('hidden');
+            
+            // Reset start screen UI elements
+            const playButton = document.getElementById('play-button');
+            const difficultySelector = document.getElementById('difficulty-selector');
+            const confirmButton = document.getElementById('confirm-button');
+            
+            if (playButton) playButton.style.display = 'block';
+            if (difficultySelector) difficultySelector.classList.remove('visible');
+            if (confirmButton) {
+                confirmButton.classList.remove('visible');
+                confirmButton.style.pointerEvents = 'auto';
+                confirmButton.style.opacity = '1';
+                // Reset the isStarting flag so button can be clicked again
+                confirmButton.dataset.isStarting = 'false';
+            }
+        }
+        
+        console.log('✅ Reset to main menu - ready for new game');
     }
     
     /**

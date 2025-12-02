@@ -58,7 +58,7 @@ export class WeaponVisibility {
                         if (mat) {
                             mat.needsUpdate = true;
                             mat.transparent = false;
-                            if (mat.opacity !== undefined) mat.opacity = 1;
+                            if (mat.opacity !== null) mat.opacity = 1;
                         }
                     });
                 }

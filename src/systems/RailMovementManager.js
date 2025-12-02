@@ -224,7 +224,7 @@ export class RailMovementManager {
         } else {
             // Standard path completion - check if path has sceneIndex (from SceneConfig)
             let sceneIndex = null;
-            if (this.currentPath && this.currentPath.sceneIndex !== undefined) {
+            if (this.currentPath && typeof this.currentPath.sceneIndex !== 'undefined') {
                 sceneIndex = this.currentPath.sceneIndex;
             }
             
@@ -325,7 +325,7 @@ export class RailMovementManager {
         this.currentPath = null; // Clear current path reference
         
         // Clear global flag to re-enable camera breathing/shake
-        if (typeof window !== 'undefined' && window.isRailMovementActive !== undefined) {
+        if (typeof window !== 'undefined' && typeof window.isRailMovementActive !== 'undefined') {
             window.isRailMovementActive = false;
         }
         if (this.gameData) {
@@ -334,7 +334,7 @@ export class RailMovementManager {
         
         // Don't increment currentPathIndex for scene paths - gameData.currentScene is updated by the callback
         // Only increment for non-scene paths (if any)
-        if (!wasExactTarget && (this.currentPath === null || this.currentPath.sceneIndex === undefined)) {
+        if (!wasExactTarget && (this.currentPath === null || typeof this.currentPath.sceneIndex === 'undefined')) {
             this.currentPathIndex++;
         }
         
@@ -368,9 +368,11 @@ export class RailMovementManager {
             return false;
         }
         
-        // Check if game is in gameplay state
-        if (this.gameData.currentState !== this.GameState.GAMEPLAY) {
-            console.log('⚠️ Rail movement: Game not in gameplay state. Current:', this.gameData.currentState);
+        // Check if game is in a valid state for rail movement
+        // Allow both GAMEPLAY (manual button press) and SCENE_TRANSITION (automatic scene clear)
+        const validStates = [this.GameState.GAMEPLAY, this.GameState.SCENE_TRANSITION];
+        if (!validStates.includes(this.gameData.currentState)) {
+            console.log('⚠️ Rail movement: Game not in valid state for rail movement. Current:', this.gameData.currentState);
             return false;
         }
         
@@ -485,7 +487,7 @@ export class RailMovementManager {
         this.isOnRails = true;
         
         // Set global flag to disable camera breathing/shake
-        if (typeof window !== 'undefined' && window.isRailMovementActive !== undefined) {
+        if (typeof window !== 'undefined' && typeof window.isRailMovementActive !== 'undefined') {
             window.isRailMovementActive = true;
         }
         // Also try to set it on gameData if accessible
@@ -595,7 +597,7 @@ export class RailMovementManager {
         this.isOnRails = true;
         
         // Set global flag to disable camera breathing/shake
-        if (typeof window !== 'undefined' && window.isRailMovementActive !== undefined) {
+        if (typeof window !== 'undefined' && typeof window.isRailMovementActive !== 'undefined') {
             window.isRailMovementActive = true;
         }
         if (this.gameData) {

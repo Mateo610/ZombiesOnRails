@@ -1,5 +1,4 @@
 import { gameData } from '../core/GameState.js';
-import { GameState } from '../core/GameState.js';
 import { soundManager } from './SoundManager.js';
 
 /**
@@ -15,11 +14,6 @@ export class PlayerManager {
     }
     
     damage(amount) {
-        // TESTING MODE: Player cannot die
-        // Uncomment the code below to re-enable damage
-        return;
-        
-        /* DISABLED FOR TESTING
         if (gameData.health <= 0) return;
         
         gameData.health = Math.max(0, gameData.health - amount);
@@ -41,7 +35,6 @@ export class PlayerManager {
         if (gameData.health <= 0) {
             this.gameOver();
         }
-        */
     }
     
     incrementCombo() {
@@ -130,17 +123,17 @@ export class PlayerManager {
                 requestAnimationFrame(updateProgress);
             } else {
                 // Reload complete
-            const ammoNeeded = gameData.maxAmmo - gameData.currentAmmo;
-            const ammoToReload = Math.min(ammoNeeded, gameData.reserveAmmo);
-            
-            gameData.currentAmmo += ammoToReload;
-            gameData.reserveAmmo -= ammoToReload;
-            gameData.isReloading = false;
-            
-            if (reloadIndicator) {
+                const ammoNeeded = gameData.maxAmmo - gameData.currentAmmo;
+                const ammoToReload = Math.min(ammoNeeded, gameData.reserveAmmo);
+                
+                gameData.currentAmmo += ammoToReload;
+                gameData.reserveAmmo -= ammoToReload;
+                gameData.isReloading = false;
+                
+                if (reloadIndicator) {
                     // Brief delay to show completion, then hide
                     setTimeout(() => {
-                reloadIndicator.style.display = 'none';
+                        reloadIndicator.style.display = 'none';
                     }, 200);
                 }
                 this.updateUI();

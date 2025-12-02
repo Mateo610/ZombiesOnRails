@@ -1,6 +1,3 @@
-import { MathUtils } from 'three';
-
-// Per-weapon recoil configuration
 const RECOIL_CONFIG = {
     pistol:   { kick: 0.02, fovKick: 2,  recovery: 12 },
     shotgun:  { kick: 0.05, fovKick: 5,  recovery: 10 },

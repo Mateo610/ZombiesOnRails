@@ -11,7 +11,6 @@ let reloadFn;
 let updateUIFn;
 let resetComboFn;
 let createDamageNumberFn;
-let showHeadshotIndicatorFn;
 let onScreenShake;
 
 const raycaster = new THREE.Raycaster();
@@ -28,7 +27,6 @@ export function initShootingSystem({
     updateUI,
     resetCombo,
     createDamageNumber,
-    showHeadshotIndicator,
     triggerScreenShake
 }) {
     scene = sceneRef;
@@ -40,7 +38,6 @@ export function initShootingSystem({
     updateUIFn = updateUI;
     resetComboFn = resetCombo;
     createDamageNumberFn = createDamageNumber;
-    showHeadshotIndicatorFn = showHeadshotIndicator;
     onScreenShake = triggerScreenShake;
 }
 
