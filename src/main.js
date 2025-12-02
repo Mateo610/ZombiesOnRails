@@ -14,7 +14,7 @@ import { PowerUpManager } from './systems/PowerUpManager.js';
 import { PlayerManager } from './systems/PlayerManager.js';
 import ZombieManager from './enemies/ZombieManager.js';
 import { updateRecoil, setRecoilWeapon } from './combat/Recoil.js';
-import { initShootingSystem, updateImpactSpheres } from './combat/ShootingSystem.js';
+import { initShootingSystem, updateImpactSpheres, setLockManager } from './combat/ShootingSystem.js';
 import { initHUD, createUI, updateUI, updateFinalStats, saveLeaderboard, showGameUI } from './ui/HUD.js';
 import { WeaponModelManager } from './weapons/WeaponModelManager.js';
 import { RailMovementManager } from './systems/RailMovementManager.js';
@@ -28,6 +28,7 @@ import { UIEffectsManager } from './ui/UIEffectsManager.js';
 import { CameraEffectsManager } from './systems/CameraEffectsManager.js';
 import { GameFlowManager } from './systems/GameFlowManager.js';
 import { SceneSetupManager } from './systems/SceneSetupManager.js';
+import { LockManager } from './systems/LockManager.js';
 
 // ============================================================================
 // THREE.JS SETUP
@@ -75,6 +76,7 @@ let crosshairManager;
 let uiEffectsManager;
 let sceneTransitionManager;
 let gameFlowManager;
+let lockManager;
 let warehouseLoaded = false;
 
 // Rail movement flags managed by SceneTransitionManager
@@ -259,6 +261,36 @@ railMovementManager.setPathCompleteCallback((sceneIndex, sceneConfig) => {
     zombieManager.clearZombies();
     powerUpManager.clear();
     
+    // Load lock for Scene 5 (Front of Door Pivot)
+    if (sceneIndex === SCENE_INDICES.FRONT_OF_DOOR_PIVOT) {
+        if (!lockManager) {
+            lockManager = new LockManager(
+                scene,
+                camera,
+                gameData,
+                () => {
+                    // Lock opened callback - trigger scene transition
+                    console.log('🔓 Lock opened, triggering scene transition');
+                    if (sceneTransitionManager) {
+                        sceneTransitionManager.onSceneCleared(SCENE_INDICES);
+                    }
+                }
+            );
+            // Update shooting system with lock manager reference
+            setLockManager(lockManager);
+        }
+        // Load lock at specified position (using Scene 1 position coordinates)
+        // Position based on Scene 1 camera position, adjusted for door lock placement
+        const lockPosition = new THREE.Vector3(-9.64, 0.16, 5.76);
+        lockManager.loadLock(lockPosition);
+    } else {
+        // Dispose lock if we're not on Scene 5
+        if (lockManager) {
+            lockManager.dispose();
+            setLockManager(null);
+        }
+    }
+    
     // Spawn zombies for the new scene
     spawnSceneZombies();
     powerUpManager.spawnScenePowerUps(gameData.currentScene);
@@ -370,6 +402,7 @@ initShootingSystem({
     gameDataRef: gameData,
     zombieManagerRef: zombieManager,
     powerUpsArrayRef: () => powerUpManager ? powerUpManager.getPowerUps() : [],
+    lockManager: null, // Will be set when lock is loaded
     reload: () => playerManager.reload(),
     updateUI,
     resetCombo: () => playerManager.resetCombo(),
@@ -512,8 +545,8 @@ function updateScreenShake() {
 function startRailMovement() {
     if (sceneTransitionManager && typeof sceneTransitionManager.startRailMovement === 'function') {
         sceneTransitionManager.startRailMovement(SCENE_INDICES);
+        }
     }
-}
 window.startRailMovement = startRailMovement;
 // isRailMovementActive is now managed by SceneTransitionManager
 
@@ -544,6 +577,10 @@ renderManager.setUpdateCallbacks({
                 playerManager.updateComboTimer(deltaTime);
                 powerUpManager.update(deltaTime);
                 powerUpManager.updateTimers(deltaTime);
+                // Update lock (animation and physics)
+                if (lockManager) {
+                    lockManager.update(deltaTime);
+                }
                 gameData.currentTime = (Date.now() - gameData.startTime) / 1000;
                 updateUI();
             }
@@ -671,7 +708,7 @@ function spawnSceneZombies() {
                 console.log(`🎬 Fallback: Spawning zombies for Scene ${gameData.currentScene + 1}: ${currentScene.name}`);
                 zombieManager.spawnSceneZombies(currentScene.spawnPoints);
     updateUI();
-            }
+}
         }
     }
 }
@@ -919,6 +956,17 @@ window.addEventListener('keydown', (event) => {
             }
             break;
             
+        case 'g':
+        case 'G':
+            // Toggle god mode (development only - no damage)
+            gameData.godMode = !gameData.godMode;
+            if (gameData.godMode) {
+                console.log('🛡️ GOD MODE ENABLED - You are invincible!');
+            } else {
+                console.log('💔 God mode disabled - You can now take damage');
+            }
+            break;
+            
         case 'c':
     case 'C': {
             const isFree = threeRenderer.toggleFreeCamera();
@@ -1117,6 +1165,7 @@ if (!shootingSystemInitialized) {
         gameDataRef: gameData,
         zombieManagerRef: zombieManager,
         powerUpsArrayRef: () => powerUpManager.getPowerUps(),
+        lockManager: lockManager || null, // Pass lockManager reference (may be null initially)
         reload: () => playerManager.reload(),
         updateUI,
         resetCombo: () => playerManager.resetCombo(),
@@ -1349,7 +1398,7 @@ sceneLoader.loadFactoryScene(scene, (factoryModel) => {
             currentCameraScene = CAMERA_SCENES[0];
         // Pre-render setup: ensure scene is ready before showing
             renderManager.prepareSceneForDisplay();
-    }
+        }
 });
 
 // Fallback: If factory scene takes too long, prepare scene anyway after a timeout

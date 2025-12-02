@@ -7,6 +7,7 @@ let camera;
 let gameData;
 let zombieManager;
 let powerUpsRef;
+let lockManagerRef;
 let reloadFn;
 let updateUIFn;
 let resetComboFn;
@@ -30,6 +31,7 @@ export function initShootingSystem({
     gameDataRef,
     zombieManagerRef,
     powerUpsArrayRef,
+    lockManager,
     reload,
     updateUI,
     resetCombo,
@@ -41,11 +43,20 @@ export function initShootingSystem({
     gameData = gameDataRef;
     zombieManager = zombieManagerRef;
     powerUpsRef = powerUpsArrayRef;
+    lockManagerRef = lockManager;
     reloadFn = reload;
     updateUIFn = updateUI;
     resetComboFn = resetCombo;
     createDamageNumberFn = createDamageNumber;
     onScreenShake = triggerScreenShake;
+}
+
+/**
+ * Update the lock manager reference
+ * @param {LockManager} lockManager - The lock manager instance
+ */
+export function setLockManager(lockManager) {
+    lockManagerRef = lockManager;
 }
 
 export function shoot(mouseX, mouseY, currentWeaponId) {
@@ -76,11 +87,21 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
     const zombieMeshes = zombies.filter(z => !z.isDead).map(z => z.mesh);
     const powerUps = powerUpsRef ? powerUpsRef() : [];
     const powerUpGroups = powerUps.map(p => p.group);
-    const intersects = raycaster.intersectObjects([scene.getObjectByName('ground') || null, ...zombieMeshes, ...powerUpGroups].filter(Boolean), true);
+    const lockMeshes = lockManagerRef && lockManagerRef.isActive() ? lockManagerRef.getLockMeshes() : [];
+    const intersects = raycaster.intersectObjects([scene.getObjectByName('ground') || null, ...zombieMeshes, ...powerUpGroups, ...lockMeshes].filter(Boolean), true);
     
     if (intersects.length > 0) {
         const hitObject = intersects[0].object;
         const hitPoint = intersects[0].point;
+        
+        // Lock hit
+        if (hitObject.userData.isLock && lockManagerRef) {
+            lockManagerRef.onShot();
+            // Create impact effect
+            createImpactSphere(hitPoint);
+            if (updateUIFn) updateUIFn();
+            return;
+        }
         
         // Power-up hit
         if (hitObject.userData.isPowerUp) {

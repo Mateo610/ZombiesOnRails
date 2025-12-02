@@ -14,6 +14,12 @@ export class PlayerManager {
     }
     
     damage(amount) {
+        // God mode - no damage taken (development only)
+        if (gameData.godMode) {
+            console.log(`🛡️ God mode active - damage blocked (${amount} damage)`);
+            return;
+        }
+        
         if (gameData.health <= 0) return;
         
         gameData.health = Math.max(0, gameData.health - amount);

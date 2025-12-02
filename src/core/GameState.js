@@ -62,6 +62,9 @@ export const gameData = {
     bestTime: 0,
     
     // Difficulty setting
-    difficulty: 'medium' // 'easy', 'medium', 'hard'
+    difficulty: 'medium', // 'easy', 'medium', 'hard'
+    
+    // Development mode
+    godMode: false  // Press 'G' to toggle god mode (no damage)
 };
 
