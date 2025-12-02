@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-
 /**
  * SceneCameraManager
  * Handles camera positioning and initial direction for each scene

@@ -92,36 +92,36 @@ export class GameStateManager {
         console.log(`▶️ Entering state: ${state}`);
         
         switch(state) {
-            case GameState.LOADING:
-                // Asset loading happens here
-                break;
-                
-            case GameState.INTRO_CUTSCENE:
-                // Start intro cutscene
-                break;
-                
-            case GameState.GAMEPLAY:
-                // Start gameplay
-                this.gameData.gameStartTime = Date.now();
-                this.gameData.zombiesKilled = 0;
-                this.gameData.shotsFired = 0;
-                this.gameData.shotsHit = 0;
-                this.gameData.score = 0;
-                break;
-                
-            case GameState.OUTRO_CUTSCENE:
-                // Start outro cutscene
-                break;
-                
-            case GameState.MISSION_COMPLETE:
-                // Show results
-                this.gameData.gameEndTime = Date.now();
-                this.calculateFinalScore();
-                break;
-                
-            case GameState.PAUSED:
-                // Pause game
-                break;
+        case GameState.LOADING:
+            // Asset loading happens here
+            break;
+            
+        case GameState.INTRO_CUTSCENE:
+            // Start intro cutscene
+            break;
+            
+        case GameState.GAMEPLAY:
+            // Start gameplay
+            this.gameData.gameStartTime = Date.now();
+            this.gameData.zombiesKilled = 0;
+            this.gameData.shotsFired = 0;
+            this.gameData.shotsHit = 0;
+            this.gameData.score = 0;
+            break;
+            
+        case GameState.OUTRO_CUTSCENE:
+            // Start outro cutscene
+            break;
+            
+        case GameState.MISSION_COMPLETE:
+            // Show results
+            this.gameData.gameEndTime = Date.now();
+            this.calculateFinalScore();
+            break;
+            
+        case GameState.PAUSED:
+            // Pause game
+            break;
         }
         
         // Call registered callback

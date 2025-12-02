@@ -74,23 +74,23 @@ export class PowerUpManager {
         this.showPowerUpMessage(`POWER-UP: ${typeLabel}`);
         
         switch (type) {
-            case 'health':
-                this.gameData.health = Math.min(
-                    this.gameData.maxHealth,
-                    this.gameData.health + 30
-                );
-                break;
-            case 'ammo':
-                this.gameData.reserveAmmo += 12;
-                break;
-            case 'double_damage':
-                this.gameData.doubleDamageActive = true;
-                this.gameData.doubleDamageTimer = 10;
-                break;
-            case 'slow_mo':
-                this.gameData.slowMoActive = true;
-                this.gameData.slowMoTimer = 5;
-                break;
+        case 'health':
+            this.gameData.health = Math.min(
+                this.gameData.maxHealth,
+                this.gameData.health + 30
+            );
+            break;
+        case 'ammo':
+            this.gameData.reserveAmmo += 12;
+            break;
+        case 'double_damage':
+            this.gameData.doubleDamageActive = true;
+            this.gameData.doubleDamageTimer = 10;
+            break;
+        case 'slow_mo':
+            this.gameData.slowMoActive = true;
+            this.gameData.slowMoTimer = 5;
+            break;
         }
         
         this.updateUI();

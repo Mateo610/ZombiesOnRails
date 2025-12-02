@@ -11,12 +11,18 @@ let reloadFn;
 let updateUIFn;
 let resetComboFn;
 let createDamageNumberFn;
-let showHeadshotIndicatorFn;
 let onScreenShake;
 
 const raycaster = new THREE.Raycaster();
 const muzzleFlash = document.getElementById('muzzle-flash');
 let impactSpheres = [];
+
+// Weapon damage configuration: { body: number, headshot: number }
+const WEAPON_DAMAGE = {
+    pistol: { body: 25, headshot: 50 },
+    shotgun: { body: 100, headshot: 200 },
+    rifle: { body: 50, headshot: 100 }
+};
 
 export function initShootingSystem({
     sceneRef,
@@ -28,7 +34,6 @@ export function initShootingSystem({
     updateUI,
     resetCombo,
     createDamageNumber,
-    showHeadshotIndicator,
     triggerScreenShake
 }) {
     scene = sceneRef;
@@ -40,7 +45,6 @@ export function initShootingSystem({
     updateUIFn = updateUI;
     resetComboFn = resetCombo;
     createDamageNumberFn = createDamageNumber;
-    showHeadshotIndicatorFn = showHeadshotIndicator;
     onScreenShake = triggerScreenShake;
 }
 
@@ -103,14 +107,18 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
 
             console.log(`Hit at Y: ${hitPoint.y.toFixed(2)}, Headshot threshold: ${headshotThreshold.toFixed(2)}, Top: ${modelTop.toFixed(2)}`);
             
-            const baseDamage = 50;
+            // Get weapon damage configuration
+            const weaponDamage = WEAPON_DAMAGE[currentWeaponId] || WEAPON_DAMAGE.pistol;
+            const baseDamage = isHeadshot ? weaponDamage.headshot : weaponDamage.body;
+            
+            // Apply double damage power-up if active
             const damageAmount = gameData.doubleDamageActive ? baseDamage * 2 : baseDamage;
             const result = zombie.takeDamage(damageAmount, isHeadshot);
             
             if (createDamageNumberFn) {
                 createDamageNumberFn(
                     hitPoint,
-                    isHeadshot ? damageAmount * 2 : damageAmount,
+                    damageAmount,
                     isHeadshot
                 );
             }

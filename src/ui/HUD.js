@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-
 let gameData;
 let zombieManager;
 let camera;
@@ -1152,10 +1150,16 @@ export function updateUI() {
     // Current scene contributes partial progress based on zombie kills
     const completedScenes = Math.max(0, gameData.currentScene);
     const currentScene = getCurrentCameraScene();
-    const totalZombies = currentScene ? currentScene.spawnPoints.length : 0;
+    const zombiesPerWave = currentScene ? currentScene.spawnPoints.length : 0;
+    const maxWaves = zombieManager ? zombieManager.getMaxWaves() : 1;
+    const totalZombies = zombiesPerWave * maxWaves; // Total zombies across all waves
     const zombies = zombieManager.getZombies();
     const aliveZombies = zombies.filter(z => !z.isDead).length;
-    const zombiesKilled = Math.max(0, totalZombies - aliveZombies);
+    const deadZombies = zombies.filter(z => z.isDead).length;
+    
+    // Calculate zombies killed: count dead zombies in array
+    // Note: zombies stay in array until death animations finish, so this is accurate
+    const zombiesKilled = deadZombies;
     
     // Current scene progress (0-1) based on zombie kills
     const currentSceneProgress = totalZombies > 0 ? zombiesKilled / totalZombies : 1;
@@ -1602,10 +1606,12 @@ function setupStartScreen() {
     
     // Handle confirm button click - start the game
     if (confirmButton) {
-        let isStarting = false; // Guard to prevent multiple clicks
+        // Store isStarting flag on button element so it can be reset
+        confirmButton.dataset.isStarting = 'false';
+        
         confirmButton.addEventListener('click', () => {
             // Prevent multiple rapid clicks
-            if (isStarting) {
+            if (confirmButton.dataset.isStarting === 'true') {
                 console.log('⏳ Game start already in progress, ignoring click');
                 return;
             }
@@ -1616,7 +1622,7 @@ function setupStartScreen() {
                 return;
             }
             
-            isStarting = true;
+            confirmButton.dataset.isStarting = 'true';
             console.log('🎮 Confirm button clicked, starting game...');
             
             // Disable button to prevent multiple clicks
@@ -1635,9 +1641,13 @@ function setupStartScreen() {
             setTimeout(() => {
                 if (window.startGameFromMenu) {
                     window.startGameFromMenu();
+                    // Reset flag after game starts (with delay to ensure it completes)
+                    setTimeout(() => {
+                        confirmButton.dataset.isStarting = 'false';
+                    }, 1000);
                 } else {
                     console.error('❌ startGameFromMenu function not available');
-                    isStarting = false;
+                    confirmButton.dataset.isStarting = 'false';
                     confirmButton.style.pointerEvents = 'auto';
                     confirmButton.style.opacity = '1';
                 }

@@ -22,7 +22,7 @@ export const ZOMBIE_TYPES = {
     },
     runner: {
         name: 'Runner',
-        health: 50,
+        health: 100,
         speed: 1.2,
         damage: 15,
         points: 150,
@@ -52,7 +52,7 @@ export const ZOMBIE_TYPES = {
     },
     crawler: {
         name: 'Crawler',
-        health: 30,
+        health: 50,
         speed: 1.5,
         damage: 5,
         points: 75,
@@ -116,6 +116,7 @@ export default class Zombie {
         this.currentSpeed = this.baseSpeed;
         this.isDead = false;
         this.isAttacking = false;
+        this.isAnimatingDeath = false; // Track if death animation is still playing
         
         // AI
         this.target = new THREE.Vector3(
@@ -145,7 +146,7 @@ export default class Zombie {
         
         // Load GLB model asynchronously if path configured
         if (this.config.modelPath) {
-        this.loadModel();
+            this.loadModel();
         }
         
         console.log(`🧟 Spawned ${this.config.name} at`, position);
@@ -372,8 +373,11 @@ export default class Zombie {
             }
         }
         
-        // Calculate distance to player
-        this.distanceToPlayer = this.mesh.position.distanceTo(this.target);
+        // Calculate HORIZONTAL distance to player (ignore Y so zombies don't get "stuck"
+        // when their height doesn't exactly match the target height)
+        const toPlayer = new THREE.Vector3().subVectors(this.target, this.mesh.position);
+        toPlayer.y = 0;
+        this.distanceToPlayer = toPlayer.length();
         
         // Speed up as zombie gets closer (tension!)
         const speedMultiplier = THREE.MathUtils.mapLinear(
@@ -382,7 +386,16 @@ export default class Zombie {
             1, 2    // Speed goes from 1x to 2x
         );
         const slowFactor = slowMoActive ? 0.5 : 1;
-        this.currentSpeed = this.baseSpeed * Math.max(1, speedMultiplier) * slowFactor;
+        
+        // Apply difficulty speed multiplier
+        const difficultyMultipliers = {
+            easy: 1.0,
+            medium: 1.3,
+            hard: 1.6
+        };
+        const difficultyMultiplier = difficultyMultipliers[this.gameData.difficulty] || 1.0;
+        
+        this.currentSpeed = this.baseSpeed * Math.max(1, speedMultiplier) * slowFactor * difficultyMultiplier;
         
         // Check if in attack range
         if (this.distanceToPlayer < this.attackRange) {
@@ -392,10 +405,8 @@ export default class Zombie {
             return;
         }
         
-        // Move toward player
-        const direction = new THREE.Vector3();
-        direction.subVectors(this.target, this.mesh.position);
-        direction.y = 0;
+        // Move toward player (horizontal plane only)
+        const direction = toPlayer;
         
         if (direction.length() > this.attackRange) {
             direction.normalize();
@@ -454,8 +465,9 @@ export default class Zombie {
     takeDamage(amount, isHeadshot = false) {
         if (this.isDead) return { killed: false, headshot: false };
         
-        const actualDamage = isHeadshot ? amount * 2 : amount;
-        this.health -= actualDamage;
+        // Use the damage amount directly (headshot damage is already calculated in ShootingSystem)
+        // No need to multiply again - the amount parameter already contains the correct headshot damage
+        this.health -= amount;
         
         // Flash effect
         if (this.isPlaceholder) {
@@ -517,6 +529,9 @@ export default class Zombie {
             console.log(`   Model visible: ${this.mesh.visible}, position:`, this.mesh.position);
             console.log(`   Model scale:`, this.mesh.scale);
             
+            // Mark that we're animating death
+            this.isAnimatingDeath = true;
+            
             // Don't stop anything - just play death with full weight immediately
             // The high weight will override other animations
             dieAction.reset();
@@ -553,27 +568,29 @@ export default class Zombie {
             // Simple timeout approach - remove after animation completes
             setTimeout(() => {
                 console.log(`   Death animation finished, removing zombie`);
+                this.isAnimatingDeath = false;
                 this.remove();
             }, duration * 1000);
         } else {
             console.log(`⚠️ No death animation found for ${this.config.name}, using fallback`);
             // Fallback death animation
-        const startY = this.mesh.position.y;
-        const duration = 1000;
-        const startTime = Date.now();
-        
-        const animate = () => {
+            this.isAnimatingDeath = true;
+            const startY = this.mesh.position.y;
+            const duration = 1000;
+            const startTime = Date.now();
+            
+            const animate = () => {
                 if (!this.mesh || !this.scene.children.includes(this.mesh)) return;
                 
-            const elapsed = Date.now() - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            
-            this.mesh.position.y = startY * (1 - progress);
-            this.mesh.rotation.x = progress * Math.PI / 2;
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                this.mesh.position.y = startY * (1 - progress);
+                this.mesh.rotation.x = progress * Math.PI / 2;
                 
                 if (this.isPlaceholder) {
-            this.mesh.material.opacity = 1 - progress;
-            this.mesh.material.transparent = true;
+                    this.mesh.material.opacity = 1 - progress;
+                    this.mesh.material.transparent = true;
                 } else {
                     this.mesh.traverse((child) => {
                         if (child.isMesh && child.material) {
@@ -592,14 +609,15 @@ export default class Zombie {
                     });
                 }
             
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            } else {
-                this.remove();
-            }
-        };
-        
-        animate();
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    this.isAnimatingDeath = false;
+                    this.remove();
+                }
+            };
+            
+            animate();
         }
     }
     

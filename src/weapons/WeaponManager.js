@@ -106,15 +106,15 @@ export class WeaponManager {
      */
     handleKeyInput(key) {
         switch (key) {
-            case '1':
-                this.switchWeapon('pistol');
-                break;
-            case '2':
-                this.switchWeapon('shotgun');
-                break;
-            case '3':
-                this.switchWeapon('rifle');
-                break;
+        case '1':
+            this.switchWeapon('pistol');
+            break;
+        case '2':
+            this.switchWeapon('shotgun');
+            break;
+        case '3':
+            this.switchWeapon('rifle');
+            break;
         }
     }
 

@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-
 /**
  * MouseLookManager
  * Handles mouse look (camera rotation) for free-look during shooting scenes

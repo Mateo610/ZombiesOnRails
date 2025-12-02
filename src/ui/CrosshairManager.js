@@ -153,12 +153,28 @@ export class CrosshairManager {
     
     /**
      * Center the crosshair (useful for reset or disabled states)
+     * Immediately snaps to center position
      */
     center() {
-        this.targetX = window.innerWidth / 2;
-        this.targetY = window.innerHeight / 2;
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        
+        // Set both target and current position to center immediately
+        this.targetX = centerX;
+        this.targetY = centerY;
+        this.currentX = centerX;
+        this.currentY = centerY;
         this.mouseX = 0;
         this.mouseY = 0;
+        this.mouseScreenX = centerX;
+        this.mouseScreenY = centerY;
+        
+        // Immediately update the crosshair position
+        if (this.crosshairElement) {
+            const crosshairOffsetX = this.currentX - 20; // Half of 40px width
+            const crosshairOffsetY = this.currentY - 20; // Half of 40px height
+            this.crosshairElement.style.transform = `translate(${crosshairOffsetX}px, ${crosshairOffsetY}px)`;
+        }
     }
     
     /**

@@ -47,6 +47,14 @@ export class SceneTransitionManager {
         this.warehouseLoaded = false;
         this._isRailMovementActive = false;
         this._wasRailMovementActive = false;
+        this._transitionResetCallback = null; // Callback to reset transition flag
+    }
+    
+    /**
+     * Set callback to reset transition flag when scene setup completes
+     */
+    setTransitionResetCallback(callback) {
+        this._transitionResetCallback = callback;
     }
     
     /**
@@ -178,9 +186,10 @@ export class SceneTransitionManager {
         // Set game state back to gameplay
         gameData.currentState = GameState.GAMEPLAY;
         
-        // Enable crosshair
+        // Enable crosshair and center it
         if (this.crosshairManager) {
             this.crosshairManager.enable();
+            this.crosshairManager.center(); // Reset crosshair to center at start of scene
             if (this.crosshairManager.crosshairElement) {
                 this.crosshairManager.crosshairElement.style.display = 'block';
             }
@@ -243,7 +252,7 @@ export class SceneTransitionManager {
             this.stopRailMovement();
             gameData.currentState = GameState.SCENE_TRANSITION;
             this.fadeToBlackAndJumpToInterior();
-            return;
+            return 'interior_jump';
         }
         
         // Check if this is the last scene
@@ -256,6 +265,7 @@ export class SceneTransitionManager {
         // For all other scenes, use rail movement to transition automatically
         console.log(`🚂 Automatically advancing to next scene using rail movement...`);
         this.advanceToNextSceneWithRail(SCENE_INDICES);
+        return 'transition';
     }
     
     /**
@@ -337,10 +347,6 @@ export class SceneTransitionManager {
             return;
         }
         
-        // Set global flag before starting movement
-        this._isRailMovementActive = true;
-        this._wasRailMovementActive = true;
-        
         // Disable free look during rail movement
         if (this.sceneCameraManager) {
             this.sceneCameraManager.disableFreeLook();
@@ -348,13 +354,21 @@ export class SceneTransitionManager {
         
         // Start rail movement
         console.log('🎬 Calling railMovementManager.moveToNextPath()...');
-        this.railMovementManager.moveToNextPath();
+        const movementStarted = this.railMovementManager.moveToNextPath();
         
-        // Verify rail movement started
-        if (this._isRailMovementActive) {
+        // Only set flags if movement actually started
+        if (movementStarted) {
+            this._isRailMovementActive = true;
+            this._wasRailMovementActive = true;
             console.log('✅ Rail movement started successfully');
         } else {
-            console.warn('⚠️ Rail movement flag not set - movement may not have started');
+            console.error('❌ Rail movement failed to start - check console for details');
+            // Reset state back to gameplay if movement failed
+            gameData.currentState = GameState.GAMEPLAY;
+            // Reset transition flag so user can try again
+            if (this._transitionResetCallback) {
+                this._transitionResetCallback();
+            }
         }
     }
     
@@ -453,6 +467,11 @@ export class SceneTransitionManager {
             }
             
             console.log(`✅ Scene ${sceneIndex + 1} setup complete - zombies spawned, ready for next transition`);
+            
+            // Reset transition flag now that scene setup is complete
+            if (this._transitionResetCallback) {
+                this._transitionResetCallback();
+            }
             
             // Switch to boss music if entering final interior scene (Scene 8)
             if (sceneIndex === SCENE_INDICES.WAREHOUSE_INTERIOR_FINAL && this.soundManager) {

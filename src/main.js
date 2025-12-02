@@ -60,6 +60,29 @@ threeRenderer.setupResizeHandler(renderManager);
 
 let currentCameraScene = CAMERA_SCENES[0];
 
+// Scene index constants for clarity
+const SCENE_INDICES = {
+    FRONT_OF_DOOR_PIVOT: 5,      // Scene 6 - triggers interior transition
+    WAREHOUSE_INTERIOR: 6,        // Scene 7 - first interior scene
+    WAREHOUSE_INTERIOR_FINAL: 7,  // Scene 8 - final interior scene
+    INTERIOR_START: 6             // First interior scene index
+};
+
+// Forward declarations for managers referenced before initialization
+let mouseLookManager;
+let sceneCameraManager;
+let crosshairManager;
+let uiEffectsManager;
+let sceneTransitionManager;
+let gameFlowManager;
+let warehouseLoaded = false;
+
+// Rail movement flags managed by SceneTransitionManager
+let isRailMovementActive = false;
+
+// Transition guard
+let isTransitioning = false;
+
 // Player Manager - gameOver will be defined later
 // Use a callback variable that will be updated when gameOver is defined
 let gameOverCallback = () => {
@@ -158,7 +181,6 @@ function enableFreeLookAfterRailMovement() {
             sceneTransitionManager.setWasRailMovementActive(false);
             sceneTransitionManager.setRailMovementActive(false);
         } else {
-            wasRailMovementActive = false;
             isRailMovementActive = false;
         }
     }, FLAG_CLEAR_DELAY_MS);
@@ -168,17 +190,17 @@ function enableFreeLookAfterRailMovement() {
 // This is only called for paths with sceneIndex (from RailPathConfig paths)
 railMovementManager.setPathCompleteCallback((sceneIndex, sceneConfig) => {
     // Get scene config from CAMERA_SCENES if not provided
-    const scene = sceneConfig || CAMERA_SCENES[sceneIndex];
-    if (!scene) {
+    const sceneDefinition = sceneConfig || CAMERA_SCENES[sceneIndex];
+    if (!sceneDefinition) {
         console.error(`❌ Scene config not found for index ${sceneIndex}`);
         return;
     }
     
-    console.log(`🎬 Rail path completed - Scene ${sceneIndex + 1}: ${scene.name}`);
+    console.log(`🎬 Rail path completed - Scene ${sceneIndex + 1}: ${sceneDefinition.name}`);
     
     // Update current scene
     gameData.currentScene = sceneIndex;
-    currentCameraScene = scene;
+    currentCameraScene = sceneDefinition;
     
     // Ensure warehouse is visible ONLY for interior scenes (index 6 and 7)
     // Exterior scenes should use factory exterior model
@@ -249,9 +271,10 @@ railMovementManager.setPathCompleteCallback((sceneIndex, sceneConfig) => {
         gameData.gameStarted = true;
     }
     
-    // Enable crosshair
+    // Enable crosshair and center it
     if (crosshairManager) {
         crosshairManager.enable();
+        crosshairManager.center(); // Reset crosshair to center
         if (crosshairManager.crosshairElement) {
             crosshairManager.crosshairElement.style.display = 'block';
         }
@@ -263,7 +286,6 @@ railMovementManager.setPathCompleteCallback((sceneIndex, sceneConfig) => {
         sceneTransitionManager.setWasRailMovementActive(false);
     } else {
         isRailMovementActive = false;
-        wasRailMovementActive = false;
     }
     if (railMovementManager) {
         railMovementManager.stop();
@@ -309,15 +331,10 @@ railMovementManager.setPathCompleteCallback((sceneIndex, sceneConfig) => {
 // Screen shake
 let screenShakeIntensity = 0;
 
-// Global flags for rail movement - now managed by SceneTransitionManager
-// Legacy variables kept for backward compatibility during transition
-let isRailMovementActive = false;
-let wasRailMovementActive = false;
-
 // ============================================================================
 // MOUSE LOOK MANAGER
 // ============================================================================
-const mouseLookManager = new MouseLookManager(camera, gameData, GameState);
+mouseLookManager = new MouseLookManager(camera, gameData, GameState);
 mouseLookManager.init();
 
 // ============================================================================
@@ -325,7 +342,7 @@ mouseLookManager.init();
 // ============================================================================
 // Handles camera positioning and initial direction for each scene
 // Provides clean integration between scene coordinates and free look system
-const sceneCameraManager = new SceneCameraManager(camera, mouseLookManager);
+sceneCameraManager = new SceneCameraManager(camera, mouseLookManager);
 
 // ============================================================================
 // CAMERA EFFECTS MANAGER
@@ -503,13 +520,13 @@ window.startRailMovement = startRailMovement;
 // ============================================================================
 // RENDER MANAGER UPDATE CALLBACKS
 // ============================================================================
-    renderManager.setUpdateCallbacks({
-        tween: () => {
-            // Update rail movement (now uses manual interpolation, not TWEEN)
-            railMovementManager.update();
-            // Still update TWEEN for any other tweens in the system
-            TWEEN.update();
-        }, // Rail movement updates here - MUST be before camera updates
+renderManager.setUpdateCallbacks({
+    tween: () => {
+        // Update rail movement (now uses manual interpolation, not TWEEN)
+        railMovementManager.update();
+        // Still update TWEEN for any other tweens in the system
+        TWEEN.update();
+    }, // Rail movement updates here - MUST be before camera updates
     freeCamera: {
         enabled: false,
         update: () => threeRenderer.controls.update()
@@ -551,8 +568,6 @@ window.startRailMovement = startRailMovement;
                 if (isRailActive) {
                     if (sceneTransitionManager && typeof sceneTransitionManager.setWasRailMovementActive === 'function') {
                         sceneTransitionManager.setWasRailMovementActive(true);
-                    } else {
-                        wasRailMovementActive = true;
                     }
                 }
                 
@@ -609,17 +624,6 @@ window.startRailMovement = startRailMovement;
     ]
 });
 
-// ============================================================================
-// SCENE MANAGEMENT
-// ============================================================================
-// Scene index constants for clarity
-const SCENE_INDICES = {
-    FRONT_OF_DOOR_PIVOT: 5,      // Scene 6 - triggers interior transition
-    WAREHOUSE_INTERIOR: 6,        // Scene 7 - first interior scene
-    WAREHOUSE_INTERIOR_FINAL: 7,  // Scene 8 - final interior scene
-    INTERIOR_START: 6             // First interior scene index
-};
-
 // Initialize Scene Setup Manager now that SCENE_INDICES is defined
 sceneSetupManager = new SceneSetupManager({
     sceneLoader,
@@ -633,8 +637,6 @@ sceneSetupManager = new SceneSetupManager({
 let factorySceneLoaded = false;
 // Warehouse loaded flag - now managed by SceneSetupManager
 // Legacy variable kept for backward compatibility during transition
-let warehouseLoaded = false;
-let warehouseLoading = false; // Track if warehouse is currently being loaded
 // isFirstGameStart is now managed by GameFlowManager
 
 // ============================================================================
@@ -650,11 +652,11 @@ function setupWarehouseVisibility(setGround = true) {
  * Stop rail movement completely
  * Now handled by SceneTransitionManager
  */
-function stopRailMovement() {
+window.stopRailMovement = () => {
     if (sceneTransitionManager) {
         sceneTransitionManager.stopRailMovement();
     }
-}
+};
 
 function spawnSceneZombies() {
     if (sceneSetupManager) {
@@ -678,26 +680,37 @@ function spawnSceneZombies() {
  * Quick fade to black, load warehouse, then directly set camera to Scene 7 (no rail movement)
  * Now handled by SceneTransitionManager
  */
-function fadeToBlackAndJumpToInterior() {
+window.fadeToBlackAndJumpToInterior = () => {
     if (sceneTransitionManager) {
         sceneTransitionManager.fadeToBlackAndJumpToInterior();
     }
-}
+};
 
 /**
  * Jump directly to Scene 7 (Warehouse Interior) without rail movement
  * Now handled by SceneTransitionManager
  */
-function jumpToInteriorScene() {
+window.jumpToInteriorScene = () => {
     if (sceneTransitionManager) {
         sceneTransitionManager.jumpToInteriorScene();
         // Update global currentCameraScene
         currentCameraScene = sceneTransitionManager.getCurrentCameraScene();
     }
+};
+
+// Function to reset transition flag (called when scene setup completes)
+function resetTransitionFlag() {
+    isTransitioning = false;
+    console.log('🔄 Transition flag reset - ready for next transition');
 }
 
-// Guard to prevent multiple calls to onSceneCleared
-let isTransitioning = false;
+// Expose globally for GameFlowManager
+window.resetTransitionFlag = resetTransitionFlag;
+
+// Function to update global currentCameraScene (for GameFlowManager)
+window.setCurrentCameraScene = (sceneConfig) => {
+    currentCameraScene = sceneConfig;
+};
 
 function onSceneCleared() {
     // Prevent multiple calls
@@ -716,37 +729,32 @@ function onSceneCleared() {
     isTransitioning = true;
     
     if (sceneTransitionManager) {
+        // Pass reset function to SceneTransitionManager so it can reset the flag when scene setup completes
+        sceneTransitionManager.setTransitionResetCallback(resetTransitionFlag);
+        
         const result = sceneTransitionManager.onSceneCleared(SCENE_INDICES);
         if (result === 'complete') {
             gameFlowManager.completeMission(updateFinalStats, saveLeaderboard);
             isTransitioning = false;
-        } else {
-            // Reset flag after a delay to allow transition to complete
-            // The flag will be reset when the new scene is set up
-            setTimeout(() => {
-                isTransitioning = false;
-            }, 2000);
         }
+        // Note: For normal transitions, the flag will be reset by the callback when scene setup completes
     } else {
         console.error('❌ SceneTransitionManager not available!');
         isTransitioning = false;
     }
 }
 
-/**
- * Advance to next scene using rail movement
- * Now handled by SceneTransitionManager
- */
-function advanceToNextSceneWithRail() {
+// Manual helper for debugging scene transitions
+window.advanceToNextSceneWithRail = () => {
     if (sceneTransitionManager) {
         sceneTransitionManager.advanceToNextSceneWithRail(SCENE_INDICES);
     }
-}
+};
 
 // transitionToNextScene is now handled by SceneTransitionManager
 // Keeping the function below for backward compatibility if needed
 
-function transitionToNextScene() {
+window.transitionToNextScene = () => {
     gameData.currentState = GameState.SCENE_TRANSITION;
     console.log('🎥 Transitioning to next scene...');
     
@@ -787,7 +795,7 @@ function transitionToNextScene() {
     const prevScreenShake = screenShakeIntensity;
     screenShakeIntensity = 0;
 
-    const tweenPos = new TWEEN.Tween(startPos)
+    new TWEEN.Tween(startPos)
         .to(endPos, 2000)
         .easing(TWEEN.Easing.Quadratic.InOut)
         .onUpdate(() => {
@@ -795,11 +803,11 @@ function transitionToNextScene() {
         })
         .start();
 
-    const tweenLookAt = new TWEEN.Tween(startLookAt)
+    new TWEEN.Tween(startLookAt)
         .to(endLookAt, 2000)
         .easing(TWEEN.Easing.Quadratic.InOut)
         .onUpdate(() => {
-            camera.up.set(0, 1, 0); // ADD THIS LINE
+            camera.up.set(0, 1, 0);
             camera.lookAt(startLookAt);
         })
         .onComplete(() => {
@@ -820,7 +828,7 @@ function transitionToNextScene() {
             showSceneTitle();
         })
         .start();
-}
+};
 
 /**
  * Advance to next scene using rail movement system
@@ -851,22 +859,6 @@ gameOverCallback = () => {
     gameFlowManager.gameOver(updateFinalStats, saveLeaderboard);
 };
 
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
-// Wrapper functions for backward compatibility - delegate to UIEffectsManager
-function showPowerUpMessage(text) {
-    uiEffectsManager.showPowerUpMessage(text);
-}
-
-function showHeadshotIndicator() {
-    uiEffectsManager.showHeadshotIndicator();
-}
-
-function createDamageNumber(position, damage, isHeadshot) {
-    uiEffectsManager.createDamageNumber(position, damage, isHeadshot);
-}
-
 async function loadWarehouseInterior(onComplete) {
     if (sceneSetupManager) {
         await sceneSetupManager.loadWarehouseInterior(scene, onComplete);
@@ -885,7 +877,7 @@ import { shoot as shootWeapon } from './combat/ShootingSystem.js';
 // One-time music start on first user interaction (browser requirement)
 // Now handled by GameFlowManager.startMusicOnInteraction()
 
-window.addEventListener('click', (event) => {
+window.addEventListener('click', () => {
     // Start music on first click if not already started
     gameFlowManager.startMusicOnInteraction();
     
@@ -905,107 +897,89 @@ window.addEventListener('keydown', (event) => {
     const key = event.key.toLowerCase();
     
     switch(key) {
-        case 'r':
-            if (gameData.currentState === GameState.GAME_OVER || 
-                gameData.currentState === GameState.MISSION_COMPLETE) {
-                gameFlowManager.restartGame(zombieManager);
-            } else if (gameData.currentState === GameState.GAMEPLAY) {
-                playerManager.reload(currentWeaponId);
+    case 'r':
+        if (gameData.currentState === GameState.GAME_OVER || 
+            gameData.currentState === GameState.MISSION_COMPLETE) {
+            gameFlowManager.restartGame(zombieManager);
+        } else if (gameData.currentState === GameState.GAMEPLAY) {
+            playerManager.reload(currentWeaponId);
+        }
+        break;
+        
+    case ' ':
+        // Space key now handled by start screen menu
+        // Keep this for backward compatibility but it won't trigger if start screen is visible
+        if (gameData.currentState === GameState.LOADING && renderManager.isReady()) {
+            const startScreen = document.getElementById('start-screen');
+            if (!startScreen || startScreen.classList.contains('hidden')) {
+                gameFlowManager.startGame();
+                // Update global currentCameraScene to match
+                currentCameraScene = CAMERA_SCENES[0];
             }
-            break;
+        }
+        break;
+        
+    case 'c':
+    case 'C': {
+        const isFree = threeRenderer.toggleFreeCamera();
+        renderManager.updateCallbacks.freeCamera.enabled = isFree;
+        
+        // Show/hide crosshair based on camera mode
+        if (crosshairManager && crosshairManager.crosshairElement) {
+            crosshairManager.crosshairElement.style.display = isFree ? 'none' : 'block';
+        }
+        
+        if (!isFree) {
+            // Exiting orbit controls - reset to scene position
+            camera.position.set(
+                currentCameraScene.position.x,
+                currentCameraScene.position.y,
+                currentCameraScene.position.z
+            );
+            camera.lookAt(
+                currentCameraScene.lookAt.x,
+                currentCameraScene.lookAt.y,
+                currentCameraScene.lookAt.z
+            );
             
-        case ' ':
-            // Space key now handled by start screen menu
-            // Keep this for backward compatibility but it won't trigger if start screen is visible
-            if (gameData.currentState === GameState.LOADING && renderManager.isReady()) {
-                const startScreen = document.getElementById('start-screen');
-                if (!startScreen || startScreen.classList.contains('hidden')) {
-                    gameFlowManager.startGame();
-                    // Update global currentCameraScene to match
-                    currentCameraScene = CAMERA_SCENES[0];
-                }
-            }
-            break;
-            
-        case 'c':
-        case 'C':
-            const isFree = threeRenderer.toggleFreeCamera();
-            renderManager.updateCallbacks.freeCamera.enabled = isFree;
-            break;
-            
-        case 'e':
-        case 'E':
-            // Toggle post-processing on/off
-            if (postProcessingManager) {
-                postProcessingManager.toggle();
-            }
-            break;
-            
-            // Show/hide crosshair based on camera mode
-            if (crosshairManager && crosshairManager.crosshairElement) {
-                crosshairManager.crosshairElement.style.display = isFree ? 'none' : 'block';
+            // Restore original fog distance
+            if (threeRenderer.scene.fog) {
+                threeRenderer.scene.fog.far = 200;
             }
             
-            if (!isFree) {
-                // Exiting orbit controls - reset to scene position
-                camera.position.set(
-                    currentCameraScene.position.x,
-                    currentCameraScene.position.y,
-                    currentCameraScene.position.z
-                );
-                camera.lookAt(
-                    currentCameraScene.lookAt.x,
-                    currentCameraScene.lookAt.y,
-                    currentCameraScene.lookAt.z
-                );
-                
-                // Restore original fog distance
-                if (threeRenderer.scene.fog) {
-                    threeRenderer.scene.fog.far = 200; // Restore normal fog distance
-                }
-                
-                console.log('🎥 Orbit controls disabled - returned to game camera');
-            } else {
-                // Entering orbit controls - set target to current camera position for free movement
-                // This allows panning anywhere without being locked to a specific orbit point
-                threeRenderer.controls.target.copy(camera.position);
-                
-                // Disable or extend fog for better exploration (reduce visual barriers)
-                if (threeRenderer.scene.fog) {
-                    threeRenderer.scene.fog.far = 500; // Extend fog distance significantly
-                }
-                
-                threeRenderer.controls.update();
-                console.log('🎥 Orbit controls enabled - use mouse to navigate, M to mark position');
-                console.log('💡 Right-click drag to pan, scroll to zoom, no movement limits');
-            }
-            break;
+            console.log('🎥 Orbit controls disabled - returned to game camera');
+        } else {
+            // Entering orbit controls - set target to current camera position for free movement
+            threeRenderer.controls.target.copy(camera.position);
             
-        case 'i':
-        case 'I':
-            // Shortcut to jump to warehouse interior scene for testing
-            if (gameData.currentState === GameState.GAMEPLAY) {
-                // Ensure warehouse is loaded first
-                const isLoaded = sceneSetupManager ? sceneSetupManager.isWarehouseLoaded() : warehouseLoaded;
-                if (!isLoaded || !sceneLoader.warehouseModel) {
-                    loadWarehouseInterior(() => {
-                        gameData.currentScene = SCENE_INDICES.WAREHOUSE_INTERIOR;
-                        currentCameraScene = CAMERA_SCENES[SCENE_INDICES.WAREHOUSE_INTERIOR];
-                        setupWarehouseVisibility();
-                        sceneCameraManager.setSceneCamera(currentCameraScene);
-                        zombieManager.clearZombies();
-                        spawnSceneZombies();
-                        
-                        // Disable orbit controls, enable free look
-                        threeRenderer.isFreeCamera = false;
-                        threeRenderer.controls.enabled = false;
-                        renderManager.updateCallbacks.freeCamera.enabled = false;
-                        if (crosshairManager && crosshairManager.crosshairElement) {
-                            crosshairManager.crosshairElement.style.display = 'block';
-                        }
-                    });
-                } else {
-                    // Warehouse already loaded, jump directly
+            // Disable or extend fog for better exploration (reduce visual barriers)
+            if (threeRenderer.scene.fog) {
+                threeRenderer.scene.fog.far = 500;
+            }
+            
+            threeRenderer.controls.update();
+            console.log('🎥 Orbit controls enabled - use mouse to navigate, M to mark position');
+            console.log('💡 Right-click drag to pan, scroll to zoom, no movement limits');
+        }
+        break;
+    }
+        
+    case 'e':
+    case 'E':
+        // Toggle post-processing on/off
+        if (postProcessingManager) {
+            postProcessingManager.toggle();
+        }
+        break;
+        
+    case 'i':
+    case 'I':
+        // Shortcut to jump to warehouse interior scene for testing
+        if (gameData.currentState === GameState.GAMEPLAY) {
+            // Ensure warehouse is loaded first
+            const isLoaded = sceneSetupManager ? sceneSetupManager.isWarehouseLoaded() : warehouseLoaded;
+            if (!isLoaded || !sceneLoader.warehouseModel) {
+                loadWarehouseInterior(() => {
                     gameData.currentScene = SCENE_INDICES.WAREHOUSE_INTERIOR;
                     currentCameraScene = CAMERA_SCENES[SCENE_INDICES.WAREHOUSE_INTERIOR];
                     setupWarehouseVisibility();
@@ -1020,67 +994,84 @@ window.addEventListener('keydown', (event) => {
                     if (crosshairManager && crosshairManager.crosshairElement) {
                         crosshairManager.crosshairElement.style.display = 'block';
                     }
+                });
+            } else {
+                // Warehouse already loaded, jump directly
+                gameData.currentScene = SCENE_INDICES.WAREHOUSE_INTERIOR;
+                currentCameraScene = CAMERA_SCENES[SCENE_INDICES.WAREHOUSE_INTERIOR];
+                setupWarehouseVisibility();
+                sceneCameraManager.setSceneCamera(currentCameraScene);
+                zombieManager.clearZombies();
+                spawnSceneZombies();
+                
+                // Disable orbit controls, enable free look
+                threeRenderer.isFreeCamera = false;
+                threeRenderer.controls.enabled = false;
+                renderManager.updateCallbacks.freeCamera.enabled = false;
+                if (crosshairManager && crosshairManager.crosshairElement) {
+                    crosshairManager.crosshairElement.style.display = 'block';
                 }
             }
-            break;
-            
-        case 'm':
-        case 'M':
-            // Mark current camera position and look-at direction for SceneConfig
-            // Works in both gameplay and orbit controls mode
-            if (gameData.currentState === GameState.GAMEPLAY || threeRenderer.isFreeCamera) {
-                const pos = camera.position.clone();
-                const direction = new THREE.Vector3();
-                camera.getWorldDirection(direction);
-                
-                // Calculate look-at point (position + direction * some distance)
-                // Use orbit controls target if available, otherwise use direction
-                let lookAt;
-                if (threeRenderer.isFreeCamera && threeRenderer.controls && threeRenderer.controls.target) {
-                    // Use orbit controls target for more accurate look-at
-                    lookAt = threeRenderer.controls.target.clone();
-                } else {
-                    // Use camera direction
-                    const lookAtDistance = 10;
-                    lookAt = pos.clone().add(direction.multiplyScalar(lookAtDistance));
-                }
-                
-                // Get current scene name for context
-                const sceneName = currentCameraScene ? currentCameraScene.name : 'Unknown Scene';
-                const sceneNumber = gameData.currentScene + 1;
-                
-                // Output in a clean, copy-paste friendly format
-                console.log('\n═══════════════════════════════════════════════════════');
-                console.log('📍 MARKED POSITION FOR SCENECONFIG');
-                console.log('═══════════════════════════════════════════════════════\n');
-                console.log(`Scene: ${sceneNumber} (${sceneName})`);
-                console.log('Copy this into SceneConfig.js:\n');
-                console.log('{');
-                console.log(`    name: "${sceneName}",`);
-                console.log(`    position: { x: ${pos.x.toFixed(2)}, y: ${pos.y.toFixed(2)}, z: ${pos.z.toFixed(2)} },`);
-                console.log(`    lookAt: { x: ${lookAt.x.toFixed(2)}, y: ${lookAt.y.toFixed(2)}, z: ${lookAt.z.toFixed(2)} },`);
-                console.log(`    transitionDuration: 3000,`);
-                console.log(`    spawnPoints: [`);
-                console.log(`        // Add spawn points here`);
-                console.log(`    ]`);
-                console.log('}\n');
-                console.log('═══════════════════════════════════════════════════════\n');
-            }
-            break;
-            
-        case 'h':
-            threeRenderer.toggleAxesHelper();
-            break;
+        }
+        break;
         
-        case '1':
-            switchCurrentWeapon('pistol');
-            break;
-        case '2':
-            switchCurrentWeapon('shotgun');
-            break;
-        case '3':
-            switchCurrentWeapon('rifle');
-            break;
+    case 'm':
+    case 'M':
+        // Mark current camera position and look-at direction for SceneConfig
+        // Works in both gameplay and orbit controls mode
+        if (gameData.currentState === GameState.GAMEPLAY || threeRenderer.isFreeCamera) {
+            const pos = camera.position.clone();
+            const direction = new THREE.Vector3();
+            camera.getWorldDirection(direction);
+            
+            // Calculate look-at point (position + direction * some distance)
+            // Use orbit controls target if available, otherwise use direction
+            let lookAt;
+            if (threeRenderer.isFreeCamera && threeRenderer.controls && threeRenderer.controls.target) {
+                // Use orbit controls target for more accurate look-at
+                lookAt = threeRenderer.controls.target.clone();
+            } else {
+                // Use camera direction
+                const lookAtDistance = 10;
+                lookAt = pos.clone().add(direction.multiplyScalar(lookAtDistance));
+            }
+            
+            // Get current scene name for context
+            const sceneName = currentCameraScene ? currentCameraScene.name : 'Unknown Scene';
+            const sceneNumber = gameData.currentScene + 1;
+            
+            // Output in a clean, copy-paste friendly format
+            console.log('\n═══════════════════════════════════════════════════════');
+            console.log('📍 MARKED POSITION FOR SCENECONFIG');
+            console.log('═══════════════════════════════════════════════════════\n');
+            console.log(`Scene: ${sceneNumber} (${sceneName})`);
+            console.log('Copy this into SceneConfig.js:\n');
+            console.log('{');
+            console.log(`    name: "${sceneName}",`);
+            console.log(`    position: { x: ${pos.x.toFixed(2)}, y: ${pos.y.toFixed(2)}, z: ${pos.z.toFixed(2)} },`);
+            console.log(`    lookAt: { x: ${lookAt.x.toFixed(2)}, y: ${lookAt.y.toFixed(2)}, z: ${lookAt.z.toFixed(2)} },`);
+            console.log(`    transitionDuration: 3000,`);
+            console.log(`    spawnPoints: [`);
+            console.log(`        // Add spawn points here`);
+            console.log(`    ]`);
+            console.log('}\n');
+            console.log('═══════════════════════════════════════════════════════\n');
+        }
+        break;
+        
+    case 'h':
+        threeRenderer.toggleAxesHelper();
+        break;
+    
+    case '1':
+        switchCurrentWeapon('pistol');
+        break;
+    case '2':
+        switchCurrentWeapon('shotgun');
+        break;
+    case '3':
+        switchCurrentWeapon('rifle');
+        break;
     }
 });
 
@@ -1092,13 +1083,13 @@ createUI();
 // ============================================================================
 // CROSSHAIR MANAGER
 // ============================================================================
-const crosshairManager = new CrosshairManager();
+crosshairManager = new CrosshairManager();
 crosshairManager.init('crosshair');
 
 // ============================================================================
 // UI EFFECTS MANAGER
 // ============================================================================
-const uiEffectsManager = new UIEffectsManager({ camera });
+uiEffectsManager = new UIEffectsManager({ camera });
 
 // CameraEffectsManager is initialized earlier in the file (after mouseLookManager)
 
@@ -1128,7 +1119,6 @@ if (!shootingSystemInitialized) {
         updateUI,
         resetCombo: () => playerManager.resetCombo(),
         createDamageNumber: (position, damage, isHeadshot) => uiEffectsManager.createDamageNumber(position, damage, isHeadshot),
-        showHeadshotIndicator: () => uiEffectsManager.showHeadshotIndicator(),
         triggerScreenShake: () => { 
             if (cameraEffectsManager) {
                 cameraEffectsManager.triggerShake(0.02);
@@ -1191,7 +1181,7 @@ window.startGameFromMenu = () => {
     }
 };
 
-const gameFlowManager = new GameFlowManager({
+gameFlowManager = new GameFlowManager({
     sceneLoader,
     threeRenderer,
     renderManager,
@@ -1228,7 +1218,7 @@ gameFlowManager.setShowGameUI(showGameUI);
 // SCENE TRANSITION MANAGER
 // ============================================================================
 // Initialize after all dependencies are available
-const sceneTransitionManager = new SceneTransitionManager({
+sceneTransitionManager = new SceneTransitionManager({
     camera,
     sceneLoader,
     threeRenderer,

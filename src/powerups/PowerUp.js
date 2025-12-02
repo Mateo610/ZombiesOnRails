@@ -138,7 +138,6 @@ export default class PowerUp {
 
         // Simple fade-out / scale-out effect before removal
         const mesh = this.mesh;
-        const group = this.group;
         let life = 0.3;
 
         const fadeUpdate = (delta) => {
