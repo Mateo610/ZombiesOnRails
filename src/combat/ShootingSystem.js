@@ -7,6 +7,7 @@ let camera;
 let gameData;
 let zombieManager;
 let powerUpsRef;
+let ammoPickupsRef;
 let lockManagerRef;
 let reloadFn;
 let updateUIFn;
@@ -31,6 +32,7 @@ export function initShootingSystem({
     gameDataRef,
     zombieManagerRef,
     powerUpsArrayRef,
+    ammoPickupsArrayRef,
     lockManager,
     reload,
     updateUI,
@@ -43,6 +45,7 @@ export function initShootingSystem({
     gameData = gameDataRef;
     zombieManager = zombieManagerRef;
     powerUpsRef = powerUpsArrayRef;
+    ammoPickupsRef = ammoPickupsArrayRef;
     lockManagerRef = lockManager;
     reloadFn = reload;
     updateUIFn = updateUI;
@@ -87,8 +90,10 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
     const zombieMeshes = zombies.filter(z => !z.isDead).map(z => z.mesh);
     const powerUps = powerUpsRef ? powerUpsRef() : [];
     const powerUpGroups = powerUps.map(p => p.group);
+    const ammoPickups = ammoPickupsRef ? ammoPickupsRef() : [];
+    const ammoPickupGroups = ammoPickups.map(p => p.group);
     const lockMeshes = lockManagerRef && lockManagerRef.isActive() ? lockManagerRef.getLockMeshes() : [];
-    const intersects = raycaster.intersectObjects([scene.getObjectByName('ground') || null, ...zombieMeshes, ...powerUpGroups, ...lockMeshes].filter(Boolean), true);
+    const intersects = raycaster.intersectObjects([scene.getObjectByName('ground') || null, ...zombieMeshes, ...powerUpGroups, ...ammoPickupGroups, ...lockMeshes].filter(Boolean), true);
     
     if (intersects.length > 0) {
         const hitObject = intersects[0].object;
@@ -97,6 +102,18 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
         // Lock hit
         if (hitObject.userData.isLock && lockManagerRef) {
             lockManagerRef.onShot();
+            // Create impact effect
+            createImpactSphere(hitPoint);
+            if (updateUIFn) updateUIFn();
+            return;
+        }
+        
+        // Ammo pickup hit
+        if (hitObject.userData.isAmmoPickup) {
+            const ammoPickupInstance = hitObject.userData.ammoPickup;
+            if (ammoPickupInstance && !ammoPickupInstance.collected) {
+                ammoPickupInstance.collect();
+            }
             // Create impact effect
             createImpactSphere(hitPoint);
             if (updateUIFn) updateUIFn();

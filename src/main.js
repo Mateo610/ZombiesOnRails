@@ -11,6 +11,7 @@ import { Renderer } from './core/Renderer.js';
 import { RenderManager } from './core/RenderManager.js';
 import { SceneLoader } from './core/SceneLoader.js';
 import { PowerUpManager } from './systems/PowerUpManager.js';
+import { AmmoPickupManager } from './systems/AmmoPickupManager.js';
 import { PlayerManager } from './systems/PlayerManager.js';
 import ZombieManager from './enemies/ZombieManager.js';
 import { updateRecoil, setRecoilWeapon } from './combat/Recoil.js';
@@ -109,6 +110,19 @@ let powerUpManager = new PowerUpManager(
     }
 );
 
+// Ammo Pickup Manager - will be reinitialized after uiEffectsManager is available
+let ammoPickupManager = new AmmoPickupManager(
+    scene,
+    camera,
+    gameData,
+    updateUI,
+    (text) => {
+        // Placeholder - will be replaced when uiEffectsManager is available
+        console.log('Ammo pickup message:', text);
+    },
+    () => currentWeaponId // Pass function to get current weapon ID
+);
+
 // Zombie Manager
 const zombieManager = new ZombieManager(
     scene,
@@ -149,11 +163,17 @@ function enableFreeLookAfterRailMovement() {
         return;
     }
     
+    // CRITICAL: Reset mouse look rotation to center FIRST
+    // This ensures we start from a neutral position regardless of previous scene's aim
+    mouseLookManager.reset();
+    
     // CRITICAL: Ensure camera is looking at exact SceneConfig lookAt before syncing free look
     // This ensures the starting direction matches what your partner intended
     if (currentCameraScene && currentCameraScene.lookAt) {
-        // Reset camera up vector
+        // Reset camera up vector and rotation
         camera.up.set(0, 1, 0);
+        camera.rotation.set(0, 0, 0);
+        camera.rotation.order = 'YXZ';
         
         // Set EXACT lookAt from SceneConfig (this is what your partner intended)
         camera.lookAt(
@@ -260,6 +280,7 @@ railMovementManager.setPathCompleteCallback((sceneIndex, sceneConfig) => {
     // Clear existing zombies and power-ups
     zombieManager.clearZombies();
     powerUpManager.clear();
+    ammoPickupManager.clear();
     
     // Load lock for Scene 5 (Front of Door Pivot)
     if (sceneIndex === SCENE_INDICES.FRONT_OF_DOOR_PIVOT) {
@@ -294,6 +315,7 @@ railMovementManager.setPathCompleteCallback((sceneIndex, sceneConfig) => {
     // Spawn zombies for the new scene
     spawnSceneZombies();
     powerUpManager.spawnScenePowerUps(gameData.currentScene);
+    ammoPickupManager.spawnSceneAmmoPickups(gameData.currentScene);
     showSceneTitle();
     
     // Set state back to gameplay
@@ -350,6 +372,20 @@ railMovementManager.setPathCompleteCallback((sceneIndex, sceneConfig) => {
         if (sceneCameraManager) {
             sceneCameraManager.setInitialDirection(currentCameraScene);
         } else if (mouseLookManager) {
+            // CRITICAL: Reset mouse look rotation to center FIRST
+            mouseLookManager.reset();
+            // Reset camera rotation before setting lookAt
+            camera.up.set(0, 1, 0);
+            camera.rotation.set(0, 0, 0);
+            camera.rotation.order = 'YXZ';
+            if (currentCameraScene?.lookAt) {
+                camera.lookAt(
+                    currentCameraScene.lookAt.x,
+                    currentCameraScene.lookAt.y,
+                    currentCameraScene.lookAt.z
+                );
+                camera.updateMatrixWorld(true);
+            }
             mouseLookManager.updateRotationFromCamera();
             mouseLookManager.unlock();
             mouseLookManager.enable();
@@ -402,6 +438,7 @@ initShootingSystem({
     gameDataRef: gameData,
     zombieManagerRef: zombieManager,
     powerUpsArrayRef: () => powerUpManager ? powerUpManager.getPowerUps() : [],
+    ammoPickupsArrayRef: () => ammoPickupManager ? ammoPickupManager.getAmmoPickups() : [],
     lockManager: null, // Will be set when lock is loaded
     reload: () => playerManager.reload(),
     updateUI,
@@ -577,6 +614,7 @@ renderManager.setUpdateCallbacks({
                 playerManager.updateComboTimer(deltaTime);
                 powerUpManager.update(deltaTime);
                 powerUpManager.updateTimers(deltaTime);
+                ammoPickupManager.update(deltaTime);
                 // Update lock (animation and physics)
                 if (lockManager) {
                     lockManager.update(deltaTime);
@@ -800,6 +838,7 @@ window.transitionToNextScene = () => {
     
     zombieManager.clearZombies();
     powerUpManager.clear();
+    ammoPickupManager.clear();
 
     // Camera start/end
     // Convert plain objects to THREE.Vector3 (they're {x, y, z} objects, not Vector3 instances)
@@ -811,6 +850,7 @@ window.transitionToNextScene = () => {
     
     zombieManager.clearZombies();
     powerUpManager.clear();
+    ammoPickupManager.clear();
     
     // Camera start/end
     // Convert plain objects to THREE.Vector3 (they're {x, y, z} objects, not Vector3 instances)
@@ -862,6 +902,7 @@ window.transitionToNextScene = () => {
             }
             spawnSceneZombies();
             powerUpManager.spawnScenePowerUps(gameData.currentScene);
+            ammoPickupManager.spawnSceneAmmoPickups(gameData.currentScene);
             showSceneTitle();
         })
         .start();
@@ -1157,6 +1198,18 @@ if (powerUpManager && uiEffectsManager) {
     );
 }
 
+if (ammoPickupManager && uiEffectsManager) {
+    // Reinitialize AmmoPickupManager with proper message callback
+    ammoPickupManager = new AmmoPickupManager(
+        scene,
+        camera,
+        gameData,
+        updateUI,
+        (text) => uiEffectsManager.showPowerUpMessage(text), // Reuse power-up message display
+        () => currentWeaponId // Pass function to get current weapon ID
+    );
+}
+
 // Initialize shooting system now that uiEffectsManager is available
 if (!shootingSystemInitialized) {
     initShootingSystem({
@@ -1165,6 +1218,7 @@ if (!shootingSystemInitialized) {
         gameDataRef: gameData,
         zombieManagerRef: zombieManager,
         powerUpsArrayRef: () => powerUpManager.getPowerUps(),
+        ammoPickupsArrayRef: () => ammoPickupManager ? ammoPickupManager.getAmmoPickups() : [],
         lockManager: lockManager || null, // Pass lockManager reference (may be null initially)
         reload: () => playerManager.reload(),
         updateUI,

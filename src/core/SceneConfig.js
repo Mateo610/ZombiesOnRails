@@ -28,7 +28,7 @@ export const CAMERA_SCENES = [
     },
     {
         name: "3",
-        position: { x: 2.54, y: 1.6, z: 3.49 }, // Fixed: y was 1, changed to 1.6 to match player height
+        position: { x: 2.54, y: 1, z: 3.49 }, // Fixed: y was 1, changed to 1.6 to match player height
         lookAt: { x: 0.64, y: 1.5, z: 6.74 },
         transitionDuration: 3000, // Optional: duration in ms for rail movement transition
         spawnPoints: [
@@ -40,9 +40,9 @@ export const CAMERA_SCENES = [
     },
     {
         name: "Turn Around",
-        position: { x: 2.54, y: 1.6, z: 3.49 }, // Turn around location
+        position: { x: 2.54, y: 1, z: 3.49 }, // Turn around location
         lookAt: { x: 2.26, y: 1.0, z: -5.23 }, // Rotated 270 degrees to the right (another 90 degrees from 180)
-        transitionDuration: 3000,
+        transitionDuration: 1000,
         spawnPoints: [
             // TODO: Add spawn points for turn around scene
         ]
@@ -104,5 +104,42 @@ export const POWERUP_SPAWN_POSITIONS = [
     [
         new THREE.Vector3(-12, 1, -6),
         new THREE.Vector3(-14, 1, -9)
+    ]
+];
+
+// Fixed positions per scene for spawning ammo pickups
+// Format: { x, y, z, weaponType: 'pistol' | 'shotgun' | 'rifle' }
+export const AMMO_PICKUP_SPAWN_POSITIONS = [
+    // Scene 0 - Warehouse Exterior (Scene 1)
+    [
+        { x: 8.0, y: 1.0, z: 4.0, weaponType: 'pistol' },
+        { x: 10.0, y: 1.0, z: 2.0, weaponType: 'shotgun' }
+    ],
+    // Scene 1 - Scene 2
+    [
+        { x: 12.0, y: 1.0, z: -5.0, weaponType: 'rifle' }
+    ],
+    // Scene 2 - Scene 3
+    [
+        { x: 1.0, y: 1.0, z: 7.0, weaponType: 'pistol' },
+        { x: -1.0, y: 1.0, z: 7.0, weaponType: 'shotgun' }
+    ],
+    // Scene 3 - Turn Around
+    [],
+    // Scene 4 - Mid Street
+    [
+        { x: -4.0, y: 1.0, z: 8.0, weaponType: 'rifle' }
+    ],
+    // Scene 5 - Front of Door Pivot
+    [],
+    // Scene 6 - Warehouse Interior
+    [
+        { x: -2.0, y: 0.5, z: -5.0, weaponType: 'pistol' },
+        { x: -4.0, y: 0.5, z: -6.0, weaponType: 'shotgun' }
+    ],
+    // Scene 7 - Warehouse Interior Final
+    [
+        { x: -6.0, y: 0.5, z: -3.0, weaponType: 'rifle' },
+        { x: -7.0, y: 0.5, z: -4.0, weaponType: 'pistol' }
     ]
 ];
