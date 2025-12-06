@@ -136,28 +136,14 @@ export default class PowerUp {
             this.onCollect(this.type);
         }
 
-        // Simple fade-out / scale-out effect before removal
-        const mesh = this.mesh;
-        let life = 0.3;
-
-        const fadeUpdate = (delta) => {
-            if (!mesh.material) return;
-            life -= delta;
-            const t = Math.max(life / 0.3, 0);
-            mesh.scale.setScalar(t);
-            mesh.material.emissiveIntensity = t * 1.5;
-
-            if (life <= 0) {
-                this._dispose();
-                if (fadeUpdate._removeMe) fadeUpdate._removeMe();
-            }
-        };
-
-        // Expose hook so external game loop can unregister this temporary updater if needed.
-        this._fadeUpdate = fadeUpdate;
-
+        // Immediately hide the power-up when collected (shot or picked up)
+        this.group.visible = false;
+        
         // Immediately hide collision radius
         this.collisionRadius = 0;
+        
+        // Dispose immediately
+        this._dispose();
     }
 
     /**

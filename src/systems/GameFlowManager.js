@@ -140,21 +140,15 @@ export class GameFlowManager {
         // Mark game as started early to prevent race conditions
         gameData.gameStarted = true;
         
-        // Initialize weapon ammo for starting weapon (pistol)
-        const pistolConfig = this.WEAPON_AMMO_CONFIG['pistol'];
-        if (pistolConfig) {
-            gameData.maxAmmo = pistolConfig.clipSize;
-            gameData.currentAmmo = pistolConfig.clipSize;
-            gameData.reserveAmmo = pistolConfig.reserveSize;
-        }
+        // Reset stats first (this will initialize all weapon ammo)
+        this.playerManager.resetStats(this.WEAPON_AMMO_CONFIG);
         
         // Initialize weapon slot highlighting for starting weapon
+        // This will also sync the legacy ammo properties for the current weapon
         const currentWeapon = this.getCurrentWeaponId();
         if (currentWeapon === 'pistol') {
             this.switchCurrentWeapon('pistol');
         }
-        
-        this.playerManager.resetStats(this.WEAPON_AMMO_CONFIG);
         
         // Reset power-ups
         this.powerUpManager.clear();

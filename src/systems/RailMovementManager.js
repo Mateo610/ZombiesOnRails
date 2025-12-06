@@ -57,6 +57,63 @@ export class RailMovementManager {
         // Callbacks
         this.onEnemySpawn = null;
         this.onPathComplete = null; // Callback for when a path completes (for zombie spawning)
+        
+        // Walking animation (side-to-side camera rotation)
+        this.walkAnimationTime = 0;
+        this.walkAnimationSpeed = 3.0; // Speed of the walking animation (increased for more noticeable effect)
+        this.walkAnimationAmplitude = 0.05; // Maximum rotation angle in radians (about 2.9 degrees, increased for more noticeable effect)
+        
+        // Footstep sound
+        this.footstepSound = null;
+        this.footstepSoundLoaded = false;
+        this._loadFootstepSound();
+    }
+    
+    /**
+     * Load footstep sound
+     */
+    _loadFootstepSound() {
+        try {
+            this.footstepSound = new Audio('/sounds/player/player_step_4.wav');
+            this.footstepSound.preload = 'auto';
+            this.footstepSound.loop = true;
+            this.footstepSound.volume = 0.5;
+            this.footstepSoundLoaded = true;
+            console.log('✅ Footstep sound loaded');
+        } catch (error) {
+            console.error('❌ Failed to load footstep sound:', error);
+            this.footstepSoundLoaded = false;
+        }
+    }
+    
+    /**
+     * Start footstep sound
+     */
+    _startFootstepSound() {
+        if (this.footstepSound && this.footstepSoundLoaded) {
+            try {
+                this.footstepSound.currentTime = 0;
+                this.footstepSound.play().catch(err => {
+                    console.warn('⚠️ Failed to play footstep sound:', err);
+                });
+            } catch (error) {
+                console.warn('⚠️ Error playing footstep sound:', error);
+            }
+        }
+    }
+    
+    /**
+     * Stop footstep sound
+     */
+    _stopFootstepSound() {
+        if (this.footstepSound && this.footstepSoundLoaded) {
+            try {
+                this.footstepSound.pause();
+                this.footstepSound.currentTime = 0;
+            } catch (error) {
+                console.warn('⚠️ Error stopping footstep sound:', error);
+            }
+        }
     }
     
     /**
@@ -128,6 +185,7 @@ export class RailMovementManager {
             target = lookAheadPos;
         }
         
+        // Calculate base direction to target
         const direction = new THREE.Vector3().subVectors(target, this.camera.position).normalize();
         
         const lookAt = new THREE.Vector3()
@@ -137,7 +195,27 @@ export class RailMovementManager {
         // Keep lookAt at appropriate height (use target's Y if it's higher)
         lookAt.y = Math.max(this.camera.position.y, target.y) + 0.5;
         
+        // Set the base lookAt first
         this.camera.lookAt(lookAt);
+        
+        // Apply walking animation (side-to-side camera rotation)
+        this.walkAnimationTime += this.clock.getDelta() * this.walkAnimationSpeed;
+        const sideRotation = Math.sin(this.walkAnimationTime) * this.walkAnimationAmplitude;
+        
+        // Get the camera's right vector (side direction in world space)
+        const right = new THREE.Vector3();
+        right.setFromMatrixColumn(this.camera.matrixWorld, 0);
+        right.normalize();
+        
+        // Rotate around the right axis (pitch) for up/down head bob
+        // OR rotate around forward axis (roll) for left/right tilt
+        // For walking, we want roll (tilt left/right)
+        const forward = new THREE.Vector3();
+        this.camera.getWorldDirection(forward);
+        
+        // Apply roll rotation around the forward axis
+        // This creates a side-to-side tilt as if the head is swaying
+        this.camera.rotateOnWorldAxis(forward, sideRotation);
         
         // CRITICAL: Force ALL matrix updates to ensure rendering
         this.camera.updateMatrixWorld();
@@ -183,6 +261,12 @@ export class RailMovementManager {
      * Complete the current movement
      */
     completeMovement() {
+        // Stop footstep sound when movement completes
+        this._stopFootstepSound();
+        
+        // Reset walk animation
+        this.walkAnimationTime = 0;
+        
         // CRITICAL: If exact target position is set (from moveToScenePosition), snap to exact values
         if (this.exactTargetPosition && this.exactTargetLookAt) {
             // Snap camera to EXACT position from SceneConfig
@@ -323,6 +407,12 @@ export class RailMovementManager {
         this.startTime = null;
         this.targetLookAt = null;
         this.currentPath = null; // Clear current path reference
+        
+        // Stop footstep sound
+        this._stopFootstepSound();
+        
+        // Reset walk animation
+        this.walkAnimationTime = 0;
         
         // Clear global flag to re-enable camera breathing/shake
         if (typeof window !== 'undefined' && typeof window.isRailMovementActive !== 'undefined') {
@@ -504,6 +594,12 @@ export class RailMovementManager {
         // Reset debug counter
         this._updateLogCount = 0;
         
+        // Reset walk animation
+        this.walkAnimationTime = 0;
+        
+        // Start footstep sound
+        this._startFootstepSound();
+        
         console.log('▶️ Rail movement started - using spline interpolation');
         console.log(`  ⏱️ Start time: ${this.startTime}, Duration: ${this.duration}ms`);
         
@@ -613,6 +709,12 @@ export class RailMovementManager {
         // Reset debug counter
         this._updateLogCount = 0;
         
+        // Reset walk animation
+        this.walkAnimationTime = 0;
+        
+        // Start footstep sound
+        this._startFootstepSound();
+        
         console.log(`▶️ Rail movement to scene started - duration: ${this.duration}ms`);
         
         return true;
@@ -629,6 +731,12 @@ export class RailMovementManager {
         this.targetLookAt = null;
         // Don't clear currentPath here - it's needed for the next movement
         // Don't increment currentPathIndex here - that happens in completeMovement()
+        
+        // Stop footstep sound
+        this._stopFootstepSound();
+        
+        // Reset walk animation
+        this.walkAnimationTime = 0;
     }
     
     /**

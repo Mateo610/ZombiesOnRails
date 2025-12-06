@@ -300,15 +300,32 @@ railMovementManager.setPathCompleteCallback((sceneIndex, sceneConfig) => {
             // Update shooting system with lock manager reference
             setLockManager(lockManager);
         }
+        // Update zombie manager with lock manager reference
+        if (zombieManager) {
+            zombieManager.setLockManager(lockManager);
+        }
         // Load lock at specified position (using Scene 1 position coordinates)
         // Position based on Scene 1 camera position, adjusted for door lock placement
         const lockPosition = new THREE.Vector3(-9.64, 0.16, 5.76);
-        lockManager.loadLock(lockPosition);
+        // Wait for lock to load before continuing - this prevents premature scene clearing
+        lockManager.loadLock(lockPosition).then((loaded) => {
+            if (loaded) {
+                console.log('✅ Lock loaded successfully - scene ready');
+            } else {
+                console.warn('⚠️ Lock failed to load');
+            }
+        }).catch((error) => {
+            console.error('❌ Error loading lock:', error);
+        });
     } else {
         // Dispose lock if we're not on Scene 5
         if (lockManager) {
             lockManager.dispose();
             setLockManager(null);
+        }
+        // Clear lock manager reference from zombie manager
+        if (zombieManager) {
+            zombieManager.setLockManager(null);
         }
     }
     
@@ -498,21 +515,13 @@ function switchCurrentWeapon(id) {
         weaponModelManager.switchWeapon(id);
     }
     
-    // Update ammo values for the new weapon
+    // Update ammo values for the new weapon - use per-weapon ammo storage
     const weaponConfig = WEAPON_AMMO_CONFIG[id];
-    if (weaponConfig) {
-        // If switching weapons, preserve current ammo ratio or set to full
-        const oldMaxAmmo = gameData.maxAmmo;
-        const ammoRatio = oldMaxAmmo > 0 ? gameData.currentAmmo / oldMaxAmmo : 1;
-        
-        gameData.maxAmmo = weaponConfig.clipSize;
-        gameData.currentAmmo = Math.round(weaponConfig.clipSize * ammoRatio);
-        gameData.reserveAmmo = weaponConfig.reserveSize;
-        
-        // Ensure we don't exceed max ammo
-        if (gameData.currentAmmo > gameData.maxAmmo) {
-            gameData.currentAmmo = gameData.maxAmmo;
-        }
+    if (weaponConfig && gameData.weaponAmmo[id]) {
+        // Load ammo from per-weapon storage
+        gameData.maxAmmo = gameData.weaponAmmo[id].max;
+        gameData.currentAmmo = gameData.weaponAmmo[id].current;
+        gameData.reserveAmmo = gameData.weaponAmmo[id].reserve;
     }
     
     const weaponLabel = {

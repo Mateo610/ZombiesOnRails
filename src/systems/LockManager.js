@@ -16,10 +16,12 @@ export class LockManager {
         
         this.lockModel = null;
         this.lockGroup = null;
+        this.lockCollisionBox = null; // Larger invisible collision box for easier hitting
         this.mixer = null;
         this.animationAction = null;
         this.isOpened = false;
         this.isFalling = false;
+        this.isLoading = false; // Track if lock is currently loading
         this.fallVelocity = new THREE.Vector3(0, 0, 0);
         this.gravity = -9.8;
         this.groundY = 0;
@@ -37,6 +39,9 @@ export class LockManager {
             console.warn('⚠️ Lock already loaded, skipping duplicate load');
             return false;
         }
+        
+        this.isLoading = true; // Mark as loading
+        console.log('📦 Loading lock model...');
         
         try {
             const gltf = await this.loader.loadAsync('/models/objects/lock/scene.glb');
@@ -84,6 +89,23 @@ export class LockManager {
             this.lockGroup.add(this.lockModel);
             // Position: forward 0.5 units, up 0.75 units
             this.lockGroup.position.set(position.x + 0.5, position.y + 0.75, position.z);
+            
+            // Create a larger invisible collision box for easier hitting
+            // Make it larger in all dimensions for a more forgiving hitbox
+            const collisionSize = 0.8; // Size of the collision box (larger than the lock)
+            const collisionGeometry = new THREE.BoxGeometry(collisionSize, collisionSize, collisionSize);
+            const collisionMaterial = new THREE.MeshBasicMaterial({
+                visible: false, // Invisible
+                transparent: true,
+                opacity: 0
+            });
+            this.lockCollisionBox = new THREE.Mesh(collisionGeometry, collisionMaterial);
+            this.lockCollisionBox.userData.isLock = true;
+            this.lockCollisionBox.userData.lockManager = this;
+            // Position the collision box at the center of the lock
+            this.lockCollisionBox.position.set(0, 0, 0);
+            this.lockGroup.add(this.lockCollisionBox);
+            console.log(`✅ Lock collision box created (size: ${collisionSize})`);
             
             // Add emissive glow for visibility
             this.lockModel.traverse((child) => {
@@ -147,10 +169,12 @@ export class LockManager {
             }
             this.groundY = position.y - 0.5;
             
+            this.isLoading = false; // Mark as loaded
             console.log('✅ Lock loaded and positioned at:', position);
             
             return true;
         } catch (error) {
+            this.isLoading = false; // Mark as not loading (failed)
             console.error('❌ Failed to load lock model:', error);
             return false;
         }
@@ -243,21 +267,39 @@ export class LockManager {
         if (!this.lockModel || this.isOpened) return [];
         
         const meshes = [];
+        
+        // Include the larger collision box first (for easier hitting)
+        if (this.lockCollisionBox) {
+            meshes.push(this.lockCollisionBox);
+        }
+        
+        // Also include the actual lock meshes as a fallback
         this.lockModel.traverse((child) => {
             if (child.isMesh && child.userData.isLock !== false) {
                 // Only include meshes that are marked as lock (exclude test objects)
                 meshes.push(child);
             }
         });
+        
         return meshes;
     }
     
     /**
      * Check if lock is active (not opened yet)
+     * Returns true if lock is still loading or not opened
      * @returns {boolean}
      */
     isActive() {
-        return this.lockModel !== null && !this.isOpened;
+        // If lock is still loading, consider it active (blocking) to prevent premature transitions
+        if (this.isLoading) {
+            return true;
+        }
+        // If lockModel is null and not loading, lock doesn't exist (shouldn't happen on lock scene)
+        if (this.lockModel === null) {
+            return false; // No lock present
+        }
+        // Lock is loaded, check if it's opened
+        return !this.isOpened;
     }
     
     /**
@@ -276,6 +318,17 @@ export class LockManager {
                     }
                 }
             });
+        }
+        
+        // Clean up collision box geometry and material
+        if (this.lockCollisionBox) {
+            if (this.lockCollisionBox.geometry) {
+                this.lockCollisionBox.geometry.dispose();
+            }
+            if (this.lockCollisionBox.material) {
+                this.lockCollisionBox.material.dispose();
+            }
+            this.lockCollisionBox = null;
         }
         
         if (this.mixer) {

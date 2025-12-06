@@ -246,9 +246,21 @@ export class SceneTransitionManager {
     onSceneCleared(SCENE_INDICES) {
         console.log(`🎯 onSceneCleared called for Scene ${gameData.currentScene + 1}`);
         
-        // For Front of Door Pivot (Scene 6), fade to black and jump directly to interior
+        // For Front of Door Pivot (Scene 5, index 5), check if lock is opened before transitioning
+        // Note: SCENE_INDICES.FRONT_OF_DOOR_PIVOT is 5 (Scene 6 in 1-indexed)
         if (gameData.currentScene === SCENE_INDICES.FRONT_OF_DOOR_PIVOT) {
-            console.log('🎬 Scene 6 cleared - using fade-to-black transition to interior');
+            // Check if lock is blocking (lock exists and is still active/not opened)
+            const lockBlocking = this.zombieManager && 
+                                 this.zombieManager.lockManager && 
+                                 this.zombieManager.lockManager.isActive();
+            
+            if (lockBlocking) {
+                console.log('🔒 Lock scene cleared but lock not opened - cannot transition until lock is shot');
+                console.log(`   Lock manager exists: ${!!(this.zombieManager && this.zombieManager.lockManager)}, Lock active: ${this.zombieManager?.lockManager?.isActive()}`);
+                return 'lock_blocked';
+            }
+            
+            console.log('🎬 Scene 5 (Front of Door Pivot) cleared - lock opened, using fade-to-black transition to interior');
             this.stopRailMovement();
             gameData.currentState = GameState.SCENE_TRANSITION;
             this.fadeToBlackAndJumpToInterior();

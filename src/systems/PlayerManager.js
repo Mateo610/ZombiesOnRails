@@ -80,8 +80,12 @@ export class PlayerManager {
     
     reload(weaponId = 'pistol') {
         if (gameData.isReloading) return;
-        if (gameData.currentAmmo === gameData.maxAmmo) return;
-        if (gameData.reserveAmmo === 0) return;
+        
+        // Use per-weapon ammo storage
+        const weaponAmmo = gameData.weaponAmmo[weaponId];
+        if (!weaponAmmo) return;
+        if (weaponAmmo.current === weaponAmmo.max) return;
+        if (weaponAmmo.reserve === 0) return;
         
         // Play reload sound
         soundManager.playReload(weaponId);
@@ -128,12 +132,18 @@ export class PlayerManager {
             if (progress < 1) {
                 requestAnimationFrame(updateProgress);
             } else {
-                // Reload complete
-                const ammoNeeded = gameData.maxAmmo - gameData.currentAmmo;
-                const ammoToReload = Math.min(ammoNeeded, gameData.reserveAmmo);
+                // Reload complete - update per-weapon ammo storage
+                const ammoNeeded = weaponAmmo.max - weaponAmmo.current;
+                const ammoToReload = Math.min(ammoNeeded, weaponAmmo.reserve);
                 
-                gameData.currentAmmo += ammoToReload;
-                gameData.reserveAmmo -= ammoToReload;
+                weaponAmmo.current += ammoToReload;
+                weaponAmmo.reserve -= ammoToReload;
+                
+                // Sync legacy properties for UI compatibility
+                gameData.currentAmmo = weaponAmmo.current;
+                gameData.maxAmmo = weaponAmmo.max;
+                gameData.reserveAmmo = weaponAmmo.reserve;
+                
                 gameData.isReloading = false;
                 
                 if (reloadIndicator) {
@@ -158,14 +168,24 @@ export class PlayerManager {
         gameData.currentCombo = 0;
         gameData.maxCombo = 0;
         gameData.score = 0;
-        gameData.currentAmmo = gameData.maxAmmo;
         
-        // Set reserve ammo based on current weapon config if provided
+        // Reset ammo for all weapons
         if (weaponAmmoConfig) {
-            const currentWeaponConfig = weaponAmmoConfig['pistol']; // Default to pistol on reset
-            if (currentWeaponConfig) {
-                gameData.reserveAmmo = currentWeaponConfig.reserveSize;
-            }
+            Object.keys(weaponAmmoConfig).forEach(weaponId => {
+                const config = weaponAmmoConfig[weaponId];
+                if (config && gameData.weaponAmmo[weaponId]) {
+                    gameData.weaponAmmo[weaponId].max = config.clipSize;
+                    gameData.weaponAmmo[weaponId].current = config.clipSize;
+                    gameData.weaponAmmo[weaponId].reserve = config.reserveSize;
+                }
+            });
+        }
+        
+        // Sync legacy properties for starting weapon (pistol)
+        if (gameData.weaponAmmo['pistol']) {
+            gameData.maxAmmo = gameData.weaponAmmo['pistol'].max;
+            gameData.currentAmmo = gameData.weaponAmmo['pistol'].current;
+            gameData.reserveAmmo = gameData.weaponAmmo['pistol'].reserve;
         }
         
         gameData.isReloading = false;

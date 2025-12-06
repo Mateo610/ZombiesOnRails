@@ -135,25 +135,11 @@ export default class AmmoPickup {
             this.onCollect(this.weaponType, this.ammoAmount);
         }
 
-        // Simple fade-out / scale-out effect before removal
-        const mesh = this.mesh;
-        let life = 0.3;
-
-        const fadeUpdate = (delta) => {
-            if (!mesh.material) return;
-            life -= delta;
-            const t = Math.max(life / 0.3, 0);
-            mesh.scale.setScalar(t);
-            mesh.material.emissiveIntensity = t * 1.2;
-
-            if (life <= 0) {
-                this._dispose();
-                if (fadeUpdate._removeMe) fadeUpdate._removeMe();
-            }
-        };
-
-        // Expose hook so external game loop can unregister this temporary updater if needed
-        this._fadeUpdate = fadeUpdate;
+        // Immediately hide the pickup when collected (shot)
+        this.group.visible = false;
+        
+        // Dispose immediately
+        this._dispose();
     }
 
     /**

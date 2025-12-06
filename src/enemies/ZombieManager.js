@@ -12,6 +12,7 @@ export default class ZombieManager {
         this.gameData = gameData;
         this.damagePlayer = damagePlayer;
         this.incrementCombo = incrementCombo;
+        this.lockManager = null; // Will be set externally when lock is loaded
         
         this.zombies = [];
         this.sceneZombiesKilled = 0;
@@ -27,6 +28,8 @@ export default class ZombieManager {
         this._waitingForAnimations = false;
         this._lastSceneIndex = -1; // Track last scene index to detect scene changes
         this._spawningNextWave = false; // Flag to prevent premature transitions during wave spawn
+        this._spawningZombies = false; // Flag to track if zombies are currently being spawned
+        this._expectedZombieCount = 0; // Expected number of zombies to spawn
     }
     
     /**
@@ -65,20 +68,38 @@ export default class ZombieManager {
             this.clearZombies();
         }
         
-        spawnPoints.forEach((spawn, index) => {
-            setTimeout(() => {
-                const zombie = new Zombie(
-                    new THREE.Vector3(spawn.x, spawn.y, spawn.z),
-                    spawn.type,
-                    this.scene,
-                    this.camera,
-                    this.gameData,
-                    this.damagePlayer,
-                    this.incrementCombo
-                );
-                this.zombies.push(zombie);
-            }, index * 300);
-        });
+        // Track spawning state
+        this._spawningZombies = true;
+        this._expectedZombieCount = spawnPoints.length;
+        let spawnedCount = 0;
+        
+        if (spawnPoints.length === 0) {
+            // No zombies to spawn, mark spawning as complete immediately
+            this._spawningZombies = false;
+            this._expectedZombieCount = 0;
+        } else {
+            spawnPoints.forEach((spawn, index) => {
+                setTimeout(() => {
+                    const zombie = new Zombie(
+                        new THREE.Vector3(spawn.x, spawn.y, spawn.z),
+                        spawn.type,
+                        this.scene,
+                        this.camera,
+                        this.gameData,
+                        this.damagePlayer,
+                        this.incrementCombo
+                    );
+                    this.zombies.push(zombie);
+                    spawnedCount++;
+                    
+                    // Mark spawning as complete when all zombies have been added to the array
+                    if (spawnedCount >= this._expectedZombieCount) {
+                        this._spawningZombies = false;
+                        console.log(`✅ All ${spawnedCount} zombies added to array`);
+                    }
+                }, index * 300);
+            });
+        }
     }
     
     /**
@@ -118,12 +139,37 @@ export default class ZombieManager {
         const allWavesComplete = this.currentWave >= this.maxWaves;
         
         // Check if scene is cleared (all zombies dead AND all waves complete)
+        // For Scene 5 (Front of Door Pivot), also check if lock is opened
+        const isLockScene = this.gameData.currentScene === 5; // FRONT_OF_DOOR_PIVOT
+        
+        // Check if lock is blocking transition (lock exists and is still active/not opened)
+        const lockBlocking = isLockScene && this.lockManager && this.lockManager.isActive();
+        
+        // Special case: If this is the lock scene with no zombies, always check lock first
+        if (isLockScene && aliveCount === 0 && allWavesComplete) {
+            if (lockBlocking) {
+                if (!this._sceneClearedNotified) {
+                    const isLoading = this.lockManager?.isLoading || false;
+                    const isOpened = this.lockManager?.isOpened || false;
+                    const hasModel = this.lockManager?.lockModel !== null;
+                    console.log('🔒 Lock scene with no zombies - waiting for lock to be shot before transitioning');
+                    console.log(`   Lock manager exists: ${!!this.lockManager}, Loading: ${isLoading}, Opened: ${isOpened}, Has model: ${hasModel}, Active: ${this.lockManager?.isActive()}`);
+                    this._sceneClearedNotified = true; // Prevent duplicate logs
+                }
+                return; // Block transition until lock is opened
+            } else if (!this._sceneClearedNotified) {
+                console.log('🔓 Lock scene cleared - lock opened or not present, proceeding with transition');
+            }
+        }
+        
         if (
             aliveCount === 0 && // All zombies are dead
             currentState === gameplayStateConst &&
             allWavesComplete && // Only transition if all waves are done
             !this._spawningNextWave && // Don't transition if we're spawning a new wave
-            !this._sceneClearedNotified // Only notify once per scene - GUARD to prevent duplicate calls
+            !this._spawningZombies && // Don't transition if zombies are still being spawned
+            !this._sceneClearedNotified && // Only notify once per scene - GUARD to prevent duplicate calls
+            !lockBlocking // Lock must be opened if on lock scene
         ) {
             // All waves cleared - proceed with scene transition
             // Set guard immediately to prevent duplicate calls
@@ -159,6 +205,12 @@ export default class ZombieManager {
             // Wave cleared but more waves coming - log and wait
             if (!this._sceneClearedNotified) {
                 console.log(`✅ Wave ${this.currentWave}/${this.maxWaves} cleared - waiting for next wave...`);
+                this._sceneClearedNotified = true; // Mark as notified to prevent duplicate logs
+            }
+        } else if (aliveCount === 0 && allWavesComplete && lockBlocking) {
+            // Scene cleared but lock is blocking transition
+            if (!this._sceneClearedNotified) {
+                console.log('🔒 All zombies cleared but lock not opened - shoot the lock to proceed');
                 this._sceneClearedNotified = true; // Mark as notified to prevent duplicate logs
             }
         }
@@ -201,6 +253,10 @@ export default class ZombieManager {
                 const spawnCount = this.currentSpawnPoints.length;
                 let spawnedCount = 0;
                 
+                // Track spawning state for next wave
+                this._spawningZombies = true;
+                this._expectedZombieCount = spawnCount;
+                
                 this.currentSpawnPoints.forEach((spawn, index) => {
                     setTimeout(() => {
                         const zombie = new Zombie(
@@ -218,12 +274,15 @@ export default class ZombieManager {
                         // Clear flag once all zombies are spawned
                         if (spawnedCount >= spawnCount) {
                             this._spawningNextWave = false;
+                            this._spawningZombies = false;
+                            console.log(`✅ All ${spawnedCount} zombies added for next wave`);
                         }
                     }, index * 300);
                 });
             } else {
                 // No spawn points, clear flag immediately
                 this._spawningNextWave = false;
+                this._spawningZombies = false;
             }
         }
         
@@ -243,6 +302,8 @@ export default class ZombieManager {
                 this.sceneZombiesKilled = 0;
                 this._waitingForAnimations = false;
                 this._sceneClearedNotified = false; // Reset guard when clearing
+                this._spawningZombies = false; // Reset spawning flag when clearing
+                this._expectedZombieCount = 0; // Reset expected count
                 console.log('✅ All zombies cleared after animations');
             });
         } else {
@@ -255,6 +316,8 @@ export default class ZombieManager {
             this.sceneZombiesKilled = 0;
             this._waitingForAnimations = false;
             this._sceneClearedNotified = false; // Reset guard when clearing
+            this._spawningZombies = false; // Reset spawning flag when clearing
+            this._expectedZombieCount = 0; // Reset expected count
         }
     }
     
@@ -318,5 +381,13 @@ export default class ZombieManager {
         };
         
         checkAnimations();
+    }
+    
+    /**
+     * Set the lock manager reference (called when lock is loaded/unloaded)
+     * @param {LockManager|null} lockManager - The lock manager instance or null
+     */
+    setLockManager(lockManager) {
+        this.lockManager = lockManager;
     }
 }

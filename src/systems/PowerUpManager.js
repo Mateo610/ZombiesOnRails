@@ -81,6 +81,13 @@ export class PowerUpManager {
             );
             break;
         case 'ammo':
+            // Add ammo to all weapons' reserves
+            Object.keys(this.gameData.weaponAmmo).forEach(weaponId => {
+                if (this.gameData.weaponAmmo[weaponId]) {
+                    this.gameData.weaponAmmo[weaponId].reserve += 12;
+                }
+            });
+            // Sync legacy property for UI compatibility
             this.gameData.reserveAmmo += 12;
             break;
         case 'double_damage':
@@ -97,9 +104,14 @@ export class PowerUpManager {
     }
     
     update(deltaTime) {
-        this.powerUps.forEach(p => {
+        // Filter out collected power-ups and update remaining ones
+        this.powerUps = this.powerUps.filter(p => {
+            if (p.collected) {
+                // Already disposed, remove from array
+                return false;
+            }
             p.update(deltaTime, this.camera);
-            p.updateFade(deltaTime);
+            return true;
         });
     }
     

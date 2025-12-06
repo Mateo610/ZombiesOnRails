@@ -39,7 +39,13 @@ export const gameData = {
     // Score
     score: 0,
     
-    // Ammo (will be updated based on current weapon)
+    // Ammo - stored per weapon to prevent sharing ammo between weapons
+    weaponAmmo: {
+        pistol: { current: 11, max: 11, reserve: 22 },
+        shotgun: { current: 6, max: 6, reserve: 12 },
+        rifle: { current: 24, max: 24, reserve: 48 }
+    },
+    // Legacy ammo properties (for backward compatibility, will be synced with weaponAmmo)
     currentAmmo: 11,
     maxAmmo: 11,
     reserveAmmo: 22, // 2 clips for pistol

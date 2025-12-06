@@ -65,15 +65,24 @@ export function setLockManager(lockManager) {
 export function shoot(mouseX, mouseY, currentWeaponId) {
     if (gameData.currentState !== 'GAMEPLAY') return;
     if (gameData.isReloading) return;
-    if (gameData.currentAmmo <= 0) {
-        if (gameData.reserveAmmo > 0 && reloadFn) {
+    
+    // Use per-weapon ammo storage
+    const weaponAmmo = gameData.weaponAmmo[currentWeaponId];
+    if (!weaponAmmo || weaponAmmo.current <= 0) {
+        if (weaponAmmo && weaponAmmo.reserve > 0 && reloadFn) {
             // Reload sound will be played by PlayerManager.reload()
             reloadFn();
         }
         return;
     }
     
-    gameData.currentAmmo--;
+    // Decrement ammo from per-weapon storage
+    weaponAmmo.current--;
+    // Sync legacy properties for UI compatibility
+    gameData.currentAmmo = weaponAmmo.current;
+    gameData.maxAmmo = weaponAmmo.max;
+    gameData.reserveAmmo = weaponAmmo.reserve;
+    
     gameData.shotsFired++;
     
     // Play shot sound (can overlap for rapid firing)
@@ -101,6 +110,7 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
         
         // Lock hit
         if (hitObject.userData.isLock && lockManagerRef) {
+            console.log('🎯 Lock hit! Opening lock...');
             lockManagerRef.onShot();
             // Create impact effect
             createImpactSphere(hitPoint);

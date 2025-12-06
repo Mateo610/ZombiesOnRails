@@ -121,9 +121,14 @@ export class AmmoPickupManager {
      * @param {number} deltaTime 
      */
     update(deltaTime) {
-        this.ammoPickups.forEach(p => {
+        // Filter out collected pickups and update remaining ones
+        this.ammoPickups = this.ammoPickups.filter(p => {
+            if (p.collected) {
+                // Already disposed, remove from array
+                return false;
+            }
             p.update(deltaTime, this.camera);
-            p.updateFade(deltaTime);
+            return true;
         });
     }
     
