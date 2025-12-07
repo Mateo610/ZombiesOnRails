@@ -6,6 +6,8 @@ Download models from Google Drive and replace the models folder
 import os
 import shutil
 import urllib.request
+import urllib.parse
+import http.cookiejar
 import zipfile
 import re
 from pathlib import Path
@@ -24,36 +26,89 @@ def extract_file_id(link):
 # Download file from Google Drive
 def download_from_google_drive(file_id, destination):
     """Download a file from Google Drive using the file ID"""
-    # Direct download URL format
-    download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
-    
     print(f"📥 Downloading from Google Drive...")
     print(f"   File ID: {file_id}")
     
-    # For large files, Google Drive may require confirmation
-    # Try direct download first
+    # First, try using gdown library (best for Google Drive)
     try:
-        urllib.request.urlretrieve(download_url, destination)
-        print(f"✅ Downloaded to: {destination}")
-        return True
-    except Exception as e:
-        print(f"⚠️ Direct download failed: {e}")
-        print("   Trying alternative method...")
+        import gdown
+        url = f"https://drive.google.com/uc?id={file_id}"
+        print("   Using gdown library...")
+        gdown.download(url, destination, quiet=False)
         
-        # Alternative: Use gdown library if available
-        try:
-            import gdown
-            url = f"https://drive.google.com/uc?id={file_id}"
-            gdown.download(url, destination, quiet=False)
-            print(f"✅ Downloaded using gdown to: {destination}")
-            return True
-        except ImportError:
-            print("❌ gdown not available. Install it with: pip install gdown")
-            print("   Or try downloading manually and place zip file in project root")
-            return False
-        except Exception as e2:
-            print(f"❌ Alternative download also failed: {e2}")
-            return False
+        # Verify the downloaded file is valid
+        if os.path.exists(destination) and os.path.getsize(destination) > 0:
+            # Check if it's a zip file by reading first bytes
+            with open(destination, 'rb') as f:
+                header = f.read(4)
+                if header == b'PK\x03\x04' or header == b'PK\x05\x06':  # ZIP file magic bytes
+                    print(f"✅ Downloaded using gdown to: {destination}")
+                    return True
+                else:
+                    print(f"⚠️ Downloaded file doesn't appear to be a zip file")
+        
+        print(f"⚠️ gdown download may have failed, trying direct method...")
+    except ImportError:
+        print("   gdown not available, using direct download method...")
+        print("   (Install gdown for better reliability: pip install gdown)")
+    except Exception as e:
+        print(f"⚠️ gdown download failed: {e}")
+        print("   Trying direct download method...")
+    
+    # Fallback: Try direct download with virus scan warning handling
+    download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+    
+    try:
+        # Create a cookie jar to handle Google Drive's virus scan warning
+        cookie_jar = http.cookiejar.CookieJar()
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
+        urllib.request.install_opener(opener)
+        
+        # First request to get the confirmation page
+        with opener.open(download_url) as response:
+            html = response.read().decode('utf-8')
+            
+            # Check if we got a virus scan warning page
+            if 'virus scan warning' in html.lower() or 'download anyway' in html.lower():
+                # Extract the confirmation token
+                match = re.search(r'confirm=([a-zA-Z0-9_-]+)', html)
+                if match:
+                    confirm_token = match.group(1)
+                    # Download with confirmation
+                    download_url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={confirm_token}"
+                    print("   Handling virus scan warning...")
+        
+        # Download the file
+        urllib.request.urlretrieve(download_url, destination)
+        
+        # Verify it's a valid zip file
+        if os.path.exists(destination) and os.path.getsize(destination) > 0:
+            with open(destination, 'rb') as f:
+                header = f.read(4)
+                if header == b'PK\x03\x04' or header == b'PK\x05\x06':
+                    print(f"✅ Downloaded to: {destination}")
+                    return True
+                else:
+                    print(f"❌ Downloaded file is not a valid zip file (got HTML error page?)")
+                    print(f"   File size: {os.path.getsize(destination)} bytes")
+                    # Show first 200 chars to help debug
+                    with open(destination, 'rb') as f:
+                        preview = f.read(200)
+                        if b'<html' in preview.lower() or b'<!doctype' in preview.lower():
+                            print(f"   This appears to be an HTML page, not a zip file")
+                    return False
+        
+        print(f"❌ Downloaded file is empty")
+        return False
+        
+    except Exception as e:
+        print(f"❌ Direct download failed: {e}")
+        print("\n💡 Suggestions:")
+        print("   1. Install gdown for better Google Drive support:")
+        print("      pip install gdown")
+        print("   2. Or download the file manually from Google Drive")
+        print("   3. Or check if the Google Drive link is publicly accessible")
+        return False
 
 # Extract zip file
 def extract_zip(zip_path, extract_to):
@@ -132,6 +187,22 @@ def main():
         
         file_size_mb = zip_file.stat().st_size / (1024 * 1024)
         print(f"   ✅ Downloaded: {file_size_mb:.2f} MB")
+        
+        # Validate that it's actually a zip file before extracting
+        print("   🔍 Validating zip file...")
+        try:
+            with zipfile.ZipFile(str(zip_file), 'r') as test_zip:
+                test_zip.testzip()  # Test the integrity
+                print("   ✅ Zip file is valid")
+        except zipfile.BadZipFile:
+            print("   ❌ Downloaded file is not a valid zip file")
+            print("   💡 This might be an HTML error page from Google Drive")
+            print("   💡 Try installing gdown: pip install gdown")
+            print("   💡 Or download the file manually from Google Drive")
+            return
+        except Exception as e:
+            print(f"   ❌ Error validating zip file: {e}")
+            return
         
         # Step 3: Extract zip file
         print("\n3️⃣ Extracting zip file...")

@@ -178,7 +178,7 @@
             <strong>Status:</strong> <span id="status">Ready</span><br>
             <strong>Path:</strong> Complete Exterior Path<br>
             <strong>Waypoints:</strong> 19<br>
-            <strong>Duration:</strong> <span id="duration-text">3000</span>ms<br>
+            <strong>Duration:</strong> <span id="duration-text">6000</span>ms<br>
             <strong>State:</strong> <span id="rail-state" style="color: #666;">Stopped</span>
         </div>
         <div class="speed-control" style="margin-top: 15px;">
@@ -306,46 +306,49 @@
                 { x: 19.64, y: 1.11, z: 0.67 },
                 { x: 18.26, y: 1.11, z: 0.52 },
                 { x: 14.01, y: 1.11, z: 0.36 },
-                { x: 12.26, y: 1.11, z: -1.49 },
-                { x: 12.15, y: 1.11, z: -0.92 },
+                { x: 12.38, y: 1.11, z: 0.16 },
                 { x: 10.49, y: 1.11, z: 0.99 },
                 { x: 8.29, y: 1.11, z: 2.33 },
                 { x: 4.07, y: 1.11, z: 2.62 },
                 { x: 4.14, y: 1.11, z: 2.65 },
-                { x: 4.14, y: 1.11, z: 2.65 },
                 { x: -0.86, y: 1.11, z: 0.79 },
                 { x: -4.46, y: 1.11, z: 0.10 },
-                { x: -4.46, y: 1.11, z: 0.10 },
                 { x: -4.70, y: 1.11, z: 3.32 },
-                { x: -6.92, y: 1.11, z: 5.21 },
                 { x: -6.92, y: 1.11, z: 5.21 },
                 { x: -6.92, y: 1.11, z: 5.21 }
             ],
             lookAt: { x: -16.45, y: 0.86, z: 8.22 },
-            duration: 3000
+            duration: 6000,  // Doubled from 3000 to slow movement by 50%
+            // Segment speed multipliers (1.0 = normal speed, > 1.0 = slower, < 1.0 = faster)
+            // Index corresponds to segment: segmentSpeedMultipliers[0] = waypoint 1->2, etc.
+            segmentSpeedMultipliers: [
+                2.0, 2.0, 2.0, 2.0, 2.0,  // Segments 0-4 (waypoints 1->2 through 5->7, intro scene - 50% slower)
+                1.0,  // Segment 5 (waypoint 7->8)
+                4.0,  // Segment 6 (waypoint 8->9) - 4x slower to make movement more visible
+                1.0, 1.0, 1.0,  // Segments 7-9 (waypoints 9->10 through 11->12)
+                1.0,  // Segment 10 (waypoint 12->14, waypoint 13 removed)
+                1.0, 1.0, 1.0  // Segments 11-13 (waypoints 14->17 through 17->18, waypoints 15-16 removed)
+            ]
         };
 
         // Individual lookAt points for each waypoint
+        // Index 0 = Waypoint 1, Index 1 = Waypoint 2, etc.
+        // Modify the x, y, z values below to change where the camera looks at each waypoint
         const waypointLookAts = [
-            { x: 10.25, y: 0.56, z: 0.35 },
-            { x: 10.25, y: 0.56, z: 0.35 },
-            { x: 12.36, y: 1.58, z: -6.17 },
-            { x: 11.64, y: 1.84, z: 7.98 },
-            { x: 9.17, y: 2.18, z: -8.32 },
-            { x: 10.33, y: 0.56, z: -11.29 },
-            { x: 10.75, y: 1.08, z: 8.98 },
-            { x: 0.98, y: 1.40, z: 4.06 },
-            { x: -1.68, y: 1.24, z: 3.13 },
-            { x: -1.99, y: 0.96, z: 10.57 },
-            { x: 3.75, y: 1.34, z: -7.34 },
-            { x: -5.10, y: 1.08, z: -1.19 },
-            { x: -10.63, y: 1.00, z: -1.33 },
-            { x: -13.70, y: 0.74, z: -3.70 },
-            { x: -3.49, y: 0.70, z: 10.04 },
-            { x: -12.07, y: 0.64, z: 10.07 },
-            { x: -16.72, y: 0.50, z: 7.07 },
-            { x: -2.34, y: 0.94, z: 14.10 },
-            { x: -16.45, y: 0.86, z: 8.22 }
+            { x: 10.25, y: 0.56, z: 0.35 },     // Waypoint 1
+            { x: 10.25, y: 0.56, z: 0.35 },     // Waypoint 2
+            { x: 12.36, y: 1.58, z: -6.17 },    // Waypoint 3
+            { x: 11.64, y: 1.84, z: 7.98 },     // Waypoint 4
+            { x: 9.17, y: 2.18, z: -8.32 },     // Waypoint 5
+            { x: 9.98, y: 1.29, z: -8.92 },     // Waypoint 7 (waypoint 6 removed)
+            { x: 9.93, y: 1.31, z: -10.15 },      // Waypoint 8
+            { x: 8.92, y: 1.41, z: 8.95 },        // Waypoint 9
+            { x: -1.99, y: 0.96, z: 10.57 },      // Waypoint 10
+            { x: 3.75, y: 1.34, z: -7.34 },       // Waypoint 11
+            { x: -5.10, y: 1.08, z: -1.19 },    // Waypoint 12
+            { x: -5.15, y: 1.04, z: 14.37 },    // Waypoint 14 (waypoint 13 removed, direct from 12 to 14)
+            { x: -16.72, y: 0.50, z: 7.07 },    // Waypoint 17 (waypoints 15-16 removed)
+            { x: -2.34, y: 0.94, z: 14.10 }     // Waypoint 18 (final waypoint)
         ];
 
         // ============================================
@@ -411,7 +414,7 @@
         let baseDuration = railPath.duration;
         let speedMultiplier = 1.0;
         let isScrubbing = false;
-        const waypointPauseDuration = 800; // Pause for 800ms at each waypoint (adjustable)
+        const waypointPauseDuration = 3000; // Pause for 800ms at each waypoint (adjustable)
 
         function easeInOutCubic(t) {
             return t < 0.5
@@ -422,6 +425,7 @@
         /**
          * Map progress with waypoint pauses
          * Adds pause time at each waypoint, making the camera dwell longer
+         * Returns: { progress: 0-1, isAtWaypoint: bool, waypointIndex: int }
          */
         function getProgressWithPauses(rawProgress) {
             // Clamp progress to 0-1 range
@@ -430,35 +434,73 @@
             const numWaypoints = railPath.waypoints.length;
             const numSegments = numWaypoints - 1;
             
-            if (numSegments <= 0) return 0;
+            if (numSegments <= 0) return { progress: 0, isAtWaypoint: false, waypointIndex: 0 };
             
             // Total duration including all pauses
-            const totalPauseTime = (numWaypoints - 1) * waypointPauseDuration;
+            // Intro scene (waypoints 1-5, segments 0-4): pause time reduced by half
+            // After removing waypoint 6, intro waypoints are 1-5 (4 pauses between them)
+            const introPauseCount = 4; // Pauses after waypoints 2, 3, 4, 5 (segments 0-3 end at waypoints 2-5)
+            const regularPauseCount = (numWaypoints - 1) - introPauseCount;
+            const totalPauseTime = (introPauseCount * waypointPauseDuration * 0.5) + (regularPauseCount * waypointPauseDuration);
             const totalDuration = baseDuration + totalPauseTime;
             
-            // Calculate which segment we're in based on time
+            // Get segment speed multipliers (if any)
+            const segmentSpeedMultipliers = railPath.segmentSpeedMultipliers || [];
+            const baseSegmentDuration = baseDuration / numSegments;
+            
+            // Calculate which segment/pause we're in based on time
             const currentTime = clampedProgress * totalDuration;
             let accumulatedTime = 0;
             
-            // Find which segment we're in
+            // Find which segment or pause we're in
             for (let i = 0; i < numSegments; i++) {
-                const segmentDuration = baseDuration / numSegments;
+                // Get speed multiplier for this segment (default 1.0)
+                const multiplier = segmentSpeedMultipliers[i] || 1.0;
+                const segmentDuration = baseSegmentDuration * multiplier;
                 const segmentEndTime = accumulatedTime + segmentDuration;
                 
+                // Intro scene (waypoints 1-5, segments 0-4): no pauses, smooth movement
+                // Pause time reduced by half for intro waypoints
+                const isIntroSegment = i < 5; // Segments 0-4 are intro (waypoints 1->2 through 4->5)
+                const pauseDuration = isIntroSegment ? (waypointPauseDuration * 0.5) : waypointPauseDuration;
+                const pauseEndTime = segmentEndTime + pauseDuration;
+                
+                // For intro segments, skip pauses entirely (make pause duration effectively 0)
+                const actualPauseEndTime = isIntroSegment ? segmentEndTime : pauseEndTime;
+                
+                // Check if we're in the pause zone (at waypoint) - skip for intro
+                if (!isIntroSegment && currentTime > segmentEndTime && currentTime <= pauseEndTime) {
+                    // We're paused at waypoint i+1
+                    return {
+                        progress: (i + 1) / numSegments,
+                        isAtWaypoint: true,
+                        waypointIndex: i + 1
+                    };
+                }
+                
+                // Check if we're moving in this segment
                 if (currentTime <= segmentEndTime) {
-                    // We're in this segment
+                    // We're moving in this segment
                     const timeInSegment = currentTime - accumulatedTime;
                     const segmentProgress = Math.max(0, Math.min(1, timeInSegment / segmentDuration));
                     const finalProgress = (i + segmentProgress) / numSegments;
-                    return Math.max(0, Math.min(1, finalProgress)); // Ensure 0-1
+                    return {
+                        progress: Math.max(0, Math.min(1, finalProgress)),
+                        isAtWaypoint: false,
+                        waypointIndex: i
+                    };
                 }
                 
-                // Move past this segment and its pause
-                accumulatedTime = segmentEndTime + waypointPauseDuration;
+                // Move past this segment and its pause (or no pause for intro)
+                accumulatedTime = actualPauseEndTime;
             }
             
-            // Past all segments, at final waypoint
-            return 1.0;
+            // Past all segments and pauses, at final waypoint
+            return {
+                progress: 1.0,
+                isAtWaypoint: true,
+                waypointIndex: numSegments
+            };
         }
 
         function startRailMovement() {
@@ -479,14 +521,17 @@
             
             const startPos = camera.position.clone();
             
+            // Regenerate points array from current waypoints (don't use cached points)
+            const currentPoints = railPath.waypoints.map(wp => new THREE.Vector3(wp.x, wp.y, wp.z));
+            
             // Ensure points array is valid
-            if (!points || points.length === 0) {
+            if (!currentPoints || currentPoints.length === 0) {
                 console.error('❌ No waypoints defined!');
                 return;
             }
             
             // Validate all points
-            const validPoints = points.filter(p => p && p.x !== undefined && p.y !== undefined && p.z !== undefined);
+            const validPoints = currentPoints.filter(p => p && p.x !== undefined && p.y !== undefined && p.z !== undefined);
             if (validPoints.length === 0) {
                 console.error('❌ No valid waypoints!');
                 return;
@@ -547,15 +592,18 @@
         }
         
         function scrubToProgress(percent) {
+            // Regenerate points array from current waypoints (don't use cached points)
+            const currentPoints = railPath.waypoints.map(wp => new THREE.Vector3(wp.x, wp.y, wp.z));
+            
             // Ensure points array exists and is valid
-            if (!points || points.length === 0) {
+            if (!currentPoints || currentPoints.length === 0) {
                 console.error('❌ Points array not available in scrubToProgress!');
                 return;
             }
             
             if (!splineCurve) {
                 const startPos = camera.position.clone();
-                const validPoints = points.filter(p => p && p.x !== undefined && p.y !== undefined && p.z !== undefined);
+                const validPoints = currentPoints.filter(p => p && p.x !== undefined && p.y !== undefined && p.z !== undefined);
                 if (validPoints.length === 0) {
                     console.error('❌ No valid points for spline curve!');
                     return;
@@ -573,7 +621,11 @@
             currentProgress = progress;
             
             // Apply waypoint pauses to progress
-            const progressWithPauses = getProgressWithPauses(progress);
+            const pauseResult = getProgressWithPauses(progress);
+            const progressWithPauses = pauseResult.progress;
+            const isAtWaypoint = pauseResult.isAtWaypoint;
+            const waypointIndex = pauseResult.waypointIndex;
+            
             const easedProgress = Math.max(0, Math.min(1, easeInOutCubic(progressWithPauses)));
             
             // Safety check for spline curve
@@ -581,8 +633,18 @@
                 console.error('❌ Spline curve not initialized in scrubToProgress!');
                 // Create it if it doesn't exist
                 const startPos = camera.position.clone();
-                const allPoints = [startPos, ...points];
-                splineCurve = new THREE.CatmullRomCurve3(allPoints, false, 'centripetal');
+                const validPoints = points.filter(p => p && p.x !== undefined && p.y !== undefined && p.z !== undefined);
+                if (validPoints.length === 0) {
+                    console.error('❌ No valid points for spline curve!');
+                    return;
+                }
+                const allPoints = [startPos, ...validPoints];
+                try {
+                    splineCurve = new THREE.CatmullRomCurve3(allPoints, false, 'centripetal');
+                } catch (error) {
+                    console.error('❌ Error creating spline curve in scrub:', error);
+                    return;
+                }
             }
             
             try {
@@ -596,38 +658,28 @@
                 console.error('❌ Error getting point from spline in scrub:', error, 'Progress:', easedProgress);
             }
             
-            const numLookAtPoints = waypointLookAts.length;
-            const waypointProgress = progressWithPauses * (numLookAtPoints - 1);
-            const waypointIndex = Math.floor(waypointProgress);
-            const waypointLocalProgress = waypointProgress - waypointIndex;
-            
-            const currentLookAtIndex = Math.min(waypointIndex, numLookAtPoints - 1);
-            const nextLookAtIndex = Math.min(waypointIndex + 1, numLookAtPoints - 1);
-            
-            const currentLookAt = waypointLookAts[currentLookAtIndex];
-            const nextLookAt = waypointLookAts[nextLookAtIndex];
-            
-            // Check if we're in pause zone (at a waypoint)
-            const numWaypoints = railPath.waypoints.length;
-            const numSegments = numWaypoints - 1;
-            const segmentProgress = progressWithPauses * numSegments;
-            const segmentIndex = Math.floor(segmentProgress);
-            const segmentLocalProgress = segmentProgress - segmentIndex;
-            const pauseZoneStart = 0.85; // Start pausing at 85% through segment
-            
-            // Determine if we're at a waypoint or moving between waypoints
-            const isAtWaypoint = segmentLocalProgress >= pauseZoneStart && segmentIndex < numSegments;
-            
+            // Handle lookAt based on whether we're at a waypoint or moving
             let interpolatedLookAt;
             if (isAtWaypoint) {
-                // Pausing at waypoint - use exact lookAt for this waypoint
+                // We're paused at a waypoint - use exact lookAt for this waypoint
+                const lookAtIndex = Math.min(waypointIndex, waypointLookAts.length - 1);
+                const waypointLookAt = waypointLookAts[lookAtIndex];
                 interpolatedLookAt = new THREE.Vector3(
-                    currentLookAt.x,
-                    currentLookAt.y,
-                    currentLookAt.z
+                    waypointLookAt.x,
+                    waypointLookAt.y,
+                    waypointLookAt.z
                 );
             } else {
-                // Moving between waypoints - interpolate
+                // We're moving between waypoints - interpolate lookAt
+                const numLookAtPoints = waypointLookAts.length;
+                const waypointProgress = progressWithPauses * (numLookAtPoints - 1);
+                const currentLookAtIndex = Math.floor(waypointProgress);
+                const nextLookAtIndex = Math.min(currentLookAtIndex + 1, numLookAtPoints - 1);
+                const waypointLocalProgress = waypointProgress - currentLookAtIndex;
+                
+                const currentLookAt = waypointLookAts[currentLookAtIndex];
+                const nextLookAt = waypointLookAts[nextLookAtIndex];
+                
                 interpolatedLookAt = new THREE.Vector3().lerpVectors(
                     new THREE.Vector3(currentLookAt.x, currentLookAt.y, currentLookAt.z),
                     new THREE.Vector3(nextLookAt.x, nextLookAt.y, nextLookAt.z),
@@ -637,13 +689,15 @@
             
             camera.lookAt(interpolatedLookAt);
             
-            // Update state display for scrubToProgress (reuse variables already calculated above)
+            // Update state display for scrubToProgress
             const railStateElement = document.getElementById('rail-state');
             if (isAtWaypoint) {
-                railStateElement.textContent = `At Waypoint ${segmentIndex + 2}`;
+                railStateElement.textContent = `At Waypoint ${waypointIndex + 1}`;
                 railStateElement.style.color = '#ffff00';
             } else {
-                railStateElement.textContent = `Moving (${segmentIndex + 1} → ${segmentIndex + 2})`;
+                const fromWaypoint = waypointIndex + 1;
+                const toWaypoint = waypointIndex + 2;
+                railStateElement.textContent = `Moving (${fromWaypoint} → ${toWaypoint})`;
                 railStateElement.style.color = '#00ff00';
             }
             
@@ -666,6 +720,7 @@
             startTime = null;
             pausedElapsed = 0;
             currentProgress = 0;
+            splineCurve = null; // Force regeneration of spline curve with updated waypoints
             
             camera.position.set(20.22, 1.11, 0.69);
             camera.lookAt(10.25, 0.56, 0.35);
@@ -719,7 +774,11 @@
                     console.log('✅ Rail movement complete');
                 } else {
                     // Apply waypoint pauses to progress
-                    const progressWithPauses = getProgressWithPauses(progress);
+                    const pauseResult = getProgressWithPauses(progress);
+                    const progressWithPauses = pauseResult.progress;
+                    const isAtWaypoint = pauseResult.isAtWaypoint;
+                    const waypointIndex = pauseResult.waypointIndex;
+                    
                     const easedProgress = Math.max(0, Math.min(1, easeInOutCubic(progressWithPauses)));
                     
                     // Safety check for spline curve
@@ -739,37 +798,28 @@
                         console.error('❌ Error getting point from spline:', error, 'Progress:', easedProgress);
                     }
                     
-                    const numLookAtPoints = waypointLookAts.length;
-                    const waypointProgress = progressWithPauses * (numLookAtPoints - 1);
-                    const waypointIndex = Math.floor(waypointProgress);
-                    const waypointLocalProgress = waypointProgress - waypointIndex;
-                    
-                    const currentLookAtIndex = Math.min(waypointIndex, numLookAtPoints - 1);
-                    const nextLookAtIndex = Math.min(waypointIndex + 1, numLookAtPoints - 1);
-                    
-                    const currentLookAt = waypointLookAts[currentLookAtIndex];
-                    const nextLookAt = waypointLookAts[nextLookAtIndex];
-                    
-                    // Check if we're at a waypoint or moving between waypoints
-                    const numWaypoints = railPath.waypoints.length;
-                    const numSegments = numWaypoints - 1;
-                    const segmentProgress = progressWithPauses * numSegments;
-                    const segmentIndex = Math.floor(segmentProgress);
-                    const segmentLocalProgress = segmentProgress - segmentIndex;
-                    const pauseZoneStart = 0.85; // Start pausing at 85% through segment
-                    
-                    const isAtWaypoint = segmentLocalProgress >= pauseZoneStart && segmentIndex < numSegments;
-                    
+                    // Handle lookAt based on whether we're at a waypoint or moving
                     let interpolatedLookAt;
                     if (isAtWaypoint) {
-                        // Pausing at waypoint - use exact lookAt
+                        // We're paused at a waypoint - use exact lookAt for this waypoint
+                        const lookAtIndex = Math.min(waypointIndex, waypointLookAts.length - 1);
+                        const waypointLookAt = waypointLookAts[lookAtIndex];
                         interpolatedLookAt = new THREE.Vector3(
-                            currentLookAt.x,
-                            currentLookAt.y,
-                            currentLookAt.z
+                            waypointLookAt.x,
+                            waypointLookAt.y,
+                            waypointLookAt.z
                         );
                     } else {
-                        // Moving between waypoints - interpolate
+                        // We're moving between waypoints - interpolate lookAt
+                        const numLookAtPoints = waypointLookAts.length;
+                        const waypointProgress = progressWithPauses * (numLookAtPoints - 1);
+                        const currentLookAtIndex = Math.floor(waypointProgress);
+                        const nextLookAtIndex = Math.min(currentLookAtIndex + 1, numLookAtPoints - 1);
+                        const waypointLocalProgress = waypointProgress - currentLookAtIndex;
+                        
+                        const currentLookAt = waypointLookAts[currentLookAtIndex];
+                        const nextLookAt = waypointLookAts[nextLookAtIndex];
+                        
                         interpolatedLookAt = new THREE.Vector3().lerpVectors(
                             new THREE.Vector3(currentLookAt.x, currentLookAt.y, currentLookAt.z),
                             new THREE.Vector3(nextLookAt.x, nextLookAt.y, nextLookAt.z),
@@ -782,16 +832,13 @@
                     // Update state display
                     const railStateElement = document.getElementById('rail-state');
                     if (isAtWaypoint) {
-                        railStateElement.textContent = `At Waypoint ${waypointIndex + 2}`;
+                        railStateElement.textContent = `At Waypoint ${waypointIndex + 1}`;
                         railStateElement.style.color = '#ffff00';
                     } else {
-                        railStateElement.textContent = `Moving (${waypointIndex + 1} → ${waypointIndex + 2})`;
+                        const fromWaypoint = waypointIndex + 1;
+                        const toWaypoint = waypointIndex + 2;
+                        railStateElement.textContent = `Moving (${fromWaypoint} → ${toWaypoint})`;
                         railStateElement.style.color = '#00ff00';
-                    }
-                    
-                    const prevWaypointIndex = Math.floor((currentProgress - 0.01) * (numLookAtPoints - 1));
-                    if (prevWaypointIndex !== waypointIndex) {
-                        console.log(`📍 At Waypoint ${waypointIndex + 1}: LookAt=(${currentLookAt.x.toFixed(2)}, ${currentLookAt.y.toFixed(2)}, ${currentLookAt.z.toFixed(2)})`);
                     }
                     
                     const progressPercent = Math.round(progress * 100);
@@ -867,10 +914,22 @@
         console.log('✅ Rail System Test 2 initialized');
         console.log('📋 Path has', railPath.waypoints.length, 'waypoints');
         console.log('⏱️  Duration:', baseDuration, 'ms');
-        console.log('📋 LookAt points:');
-        waypointLookAts.forEach((lookAt, i) => {
-            console.log(`  Waypoint ${i + 1}: LookAt(${lookAt.x.toFixed(2)}, ${lookAt.y.toFixed(2)}, ${lookAt.z.toFixed(2)})`);
+        console.log('\n📍 ALL WAYPOINT POSITIONS:');
+        railPath.waypoints.forEach((wp, i) => {
+            const wpNum = i === 0 ? 1 : (i <= 4 ? i + 1 : i + 2); // Account for removed waypoint 6
+            console.log(`  Waypoint ${wpNum} (index ${i}): Position(${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}, ${wp.z.toFixed(2)})`);
         });
+        console.log('\n📋 LookAt points:');
+        waypointLookAts.forEach((lookAt, i) => {
+            const wpNum = i === 0 ? 1 : (i <= 4 ? i + 1 : i + 2); // Account for removed waypoint 6
+            console.log(`  Waypoint ${wpNum} (index ${i}): LookAt(${lookAt.x.toFixed(2)}, ${lookAt.y.toFixed(2)}, ${lookAt.z.toFixed(2)})`);
+        });
+        
+        // Debug: Log waypoint 7 specifically
+        console.log('\n🔍 Waypoint 7 Details:');
+        console.log('  Index in array: 5');
+        console.log('  Position:', railPath.waypoints[5]);
+        console.log('  LookAt:', waypointLookAts[5]);
     </script>
 </body>
 </html>

@@ -6,84 +6,84 @@ import { ReaperProjectile } from './ReaperProjectile.js';
 // ZOMBIE TYPES CONFIG
 // ============================================================================
 export const ZOMBIE_TYPES = {
-    walker: {
-        name: 'Walker',
-        health: 100,
-        speed: 0.5,
-        damage: 10,
-        points: 100,
-        color: 0xff0000,
-        scale: 0.35,
-        modelPath: '/models/zombies/walker/scene.glb',
-        animations: {
-            move: 'walk',
-            attack: 'attack',
-            die: 'death'
-        }
-    },
-    runner: {
-        name: 'Runner',
-        health: 100,
-        speed: 1.2,
-        damage: 15,
-        points: 150,
-        color: 0xff6600,
-        scale: 0.35,
-        modelPath: '/models/zombies/runner/scene.glb',
-        animations: {
-            move: 'run',
-            attack: 'attack',
-            die: 'death'
-        }
-    },
-    tank: {
-        name: 'Tank',
-        health: 200,
-        speed: 0.3,
-        damage: 25,
-        points: 200,
-        color: 0x660000,
-        scale: 1.3,
-        modelPath: '/models/zombies/walker/scene.glb',
-        animations: {
-            move: 'walk',
-            attack: 'attack',
-            die: 'death'
-        }
-    },
-    crawler: {
-        name: 'Crawler',
-        health: 50,
-        speed: 1.5,
-        damage: 5,
-        points: 75,
-        color: 0x00ff00,
-        scale: 0.5,
-        modelPath: '/models/zombies/spider/scene.glb',
-        animations: {
-            move: 'Armature|run',
-            attack: 'Armature|attack',
-            die: 'Armature|die'
-        }
-    },
-    reaper: {
-        name: 'Grim Reaper',
-        health: 3000,
-        speed: 0.2, // Very slow
-        damage: 30, // Projectile damage
-        points: 1000,
-        color: 0x000000,
-        scale: 1.0, // Normal size
-        modelPath: '/models/zombies/reaper/scene.glb',
-        animations: {
-            move: 'Armature|run',
-            attack: 'Armature|attack',
-            die: 'Armature|die'
-        },
-        isBoss: true,
-        shootsProjectiles: true,
-        projectileCooldown: 2.5 // 2.5 seconds between shots
-    }
+walker: {
+name: 'Walker',
+health: 100,
+speed: 0.5,
+damage: 10,
+points: 100,
+color: 0xff0000,
+scale: 0.35,
+modelPath: '/models/zombies/walker/scene.glb',
+animations: {
+move: 'walk',
+attack: 'attack',
+die: 'death'
+}
+},
+runner: {
+name: 'Runner',
+health: 100,
+speed: 1.2,
+damage: 15,
+points: 150,
+color: 0xff6600,
+scale: 0.35,
+modelPath: '/models/zombies/runner/scene.glb',
+animations: {
+move: 'run',
+attack: 'attack',
+die: 'death'
+}
+},
+tank: {
+name: 'Tank',
+health: 200,
+speed: 0.3,
+damage: 25,
+points: 200,
+color: 0x660000,
+scale: 1.3,
+modelPath: '/models/zombies/walker/scene.glb',
+animations: {
+move: 'walk',
+attack: 'attack',
+die: 'death'
+}
+},
+crawler: {
+name: 'Crawler',
+health: 50,
+speed: 1.5,
+damage: 5,
+points: 75,
+color: 0x00ff00,
+scale: 0.5,
+modelPath: '/models/zombies/spider/scene.glb',
+animations: {
+move: 'Armature|run',
+attack: 'Armature|attack',
+die: 'Armature|die'
+}
+},
+reaper: {
+name: 'Grim Reaper',
+health: 3000,
+speed: 0.2, // Very slow
+damage: 30, // Projectile damage
+points: 1000,
+color: 0x000000,
+scale: 1.0, // Normal size
+modelPath: '/models/zombies/reaper/scene.glb',
+animations: {
+move: 'Armature|run',
+attack: 'Armature|attack',
+die: 'Armature|die'
+},
+isBoss: true,
+shootsProjectiles: true,
+projectileCooldown: 2.5 // 2.5 seconds between shots
+}
 };
 
 // ModelCache handles all loading and caching (imported above)
@@ -92,952 +92,952 @@ export const ZOMBIE_TYPES = {
 // ZOMBIE CLASS
 // ============================================================================
 export default class Zombie {
-    /**
-     * @param {THREE.Vector3} position
-     * @param {'walker' | 'runner' | 'tank' | 'crawler'} type
-     * @param {THREE.Scene} scene
-     * @param {THREE.Camera} camera
-     * @param {object} gameData
-     * @param {(amount: number) => void} damagePlayer
-     * @param {() => void} incrementCombo
-     */
-    constructor(position, type = 'walker', scene, camera, gameData, damagePlayer, incrementCombo) {
-        this.type = type;
-        this.config = ZOMBIE_TYPES[type];
-        this.scene = scene;
-        this.camera = camera;
-        this.gameData = gameData;
-        this.damagePlayer = damagePlayer;
-        this.incrementCombo = incrementCombo;
-        this.scaleMultiplier = 1.0; // Scene-specific scale multiplier (default 1.0)
-        
-        // Create temporary placeholder mesh (will be replaced by GLB)
-        const geometry = this.type === 'crawler'
-            ? new THREE.BoxGeometry(0.8, 0.5, 0.8)
-            : new THREE.BoxGeometry(0.5, 1.5, 0.5);
-        const material = new THREE.MeshStandardMaterial({ 
-            color: this.config.color,
-            emissive: this.config.color,
-            emissiveIntensity: 0.3
-        });
-        this.mesh = new THREE.Mesh(geometry, material);
-        this.mesh.position.copy(position);
-        // Note: scaleMultiplier will be applied later when model loads, placeholder uses base scale
-        this.mesh.position.y = (this.type === 'crawler' ? 0.25 : 0.75) * this.config.scale;
-        this.mesh.scale.setScalar(this.config.scale);
-        this.mesh.castShadow = true;
-        this.mesh.receiveShadow = true;
-        this.isPlaceholder = true;
-        
-        // Stats
-        this.health = this.config.health;
-        this.maxHealth = this.config.health;
-        this.baseSpeed = this.config.speed;
-        this.currentSpeed = this.baseSpeed;
-        
-        // Update speed when scale multiplier changes
-        this._updateSpeed();
-        this.isDead = false;
-        this.isAttacking = false;
-        this.isAnimatingDeath = false; // Track if death animation is still playing
-        
-        // AI
-        this.target = new THREE.Vector3(
-            this.camera.position.x,
-            0.75,
-            this.camera.position.z
-        );
-        this.distanceToPlayer = 999;
-        this.baseAttackRange = 1.5; // Base attack range (will be scaled)
-        this.attackRange = this.baseAttackRange; // Will be updated when scaleMultiplier is set
-        
-        // Visual
-        this.hitFlashTimer = 0;
-        this.scuttleTime = 0;
-        this.baseX = this.mesh.position.x;
-        this.lastScuttleOffset = 0; // Track previous scuttle offset for velocity calculation
-        
-        // Animation
-        this.mixer = null;
-        this.animations = {};
-        this.currentAnimationAction = null;
-        this.currentAnimationName = null;
-        
-        // Sound system
-        this.soundManager = null; // Will be set externally
-        this.groanTimer = 0;
-        this.groanInterval = 2.0; // 2 seconds between groans
-        this.currentMovementSound = null; // Track playing movement sound
-        this.isPlayingMovementSound = false;
-        
-        // Projectile system (for reaper boss)
-        this.projectiles = []; // Initialize empty array
-        this.lastProjectileTime = 0;
-        this.projectileCooldown = this.config.projectileCooldown || 0;
-        
-        // CRITICAL: Set userData for raycasting
-        this.mesh.userData.zombie = this;
-        this.mesh.userData.isZombie = true;
-        
-        this.scene.add(this.mesh);
-        
-        // Load GLB model asynchronously if path configured
-        if (this.config.modelPath) {
-            this.loadModel();
-        }
-        
-        console.log(`🧟 Spawned ${this.config.name} at`, position);
-    }
-    
-    /**
-     * Update attack range based on current scale multiplier
-     * Called when scaleMultiplier is set externally
-     */
-    _updateAttackRange() {
-        this.attackRange = this.baseAttackRange * (this.scaleMultiplier || 1.0);
-    }
-    
-    /**
-     * Update speed based on current scale multiplier
-     * Smaller zombies should move slower proportionally
-     */
-    _updateSpeed() {
-        // Speed scales with size - smaller zombies move slower
-        const speedMultiplier = this.scaleMultiplier || 1.0;
-        this.currentSpeed = this.baseSpeed * speedMultiplier;
-    }
-    
-    /**
-     * Load GLB model for this zombie
-     */
-    async loadModel() {
-        try {
-            if (!this.config.modelPath) {
-                console.warn(`⚠️ No model path configured for ${this.config.name}`);
-                return;
-            }
-            
-            // Use model cache for faster loading (browser cache makes this fast)
-            // Each zombie gets a fresh instance to avoid sharing conflicts
-            const { scene: model, gltf } = await modelCache.load(this.config.modelPath);
-            
-            if (!model) {
-                console.error(`❌ Model loaded but is null for ${this.config.name} at ${this.config.modelPath}`);
-                return;
-            }
-            
-            // Reset any existing scale on the model from cache
-            model.scale.set(1, 1, 1);
-            
-            // GLTF object is returned directly from load() for animation setup
-            if (!gltf) {
-                console.warn(`⚠️ GLTF object not available for ${this.config.modelPath} - animations may not work`);
-                // Continue without animations
-            }
-            
-            // Enable shadows and SET USERDATA on all child meshes
-            model.traverse((child) => {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                    
-                    // CRITICAL: Set userData on EVERY mesh for raycasting
-                    child.userData.zombie = this;
-                    child.userData.isZombie = true;
-                    
-                    // Ensure materials are visible (fix for dark/invisible models)
-                    if (child.material) {
-                        if (Array.isArray(child.material)) {
-                            child.material.forEach(mat => {
-                                if (mat) {
-                                    mat.needsUpdate = true;
-                                    if (!mat.emissive) mat.emissive = new THREE.Color(0x000000);
-                                    if (mat.color) {
-                                        if (mat.color.r < 0.1 && mat.color.g < 0.1 && mat.color.b < 0.1) {
-                                            mat.color.multiplyScalar(2);
-                                        }
-                                    }
-                                }
-                            });
-                        } else {
-                            child.material.needsUpdate = true;
-                            if (!child.material.emissive) child.material.emissive = new THREE.Color(0x000000);
-                            if (child.material.color) {
-                                if (child.material.color.r < 0.1 && child.material.color.g < 0.1 && child.material.color.b < 0.1) {
-                                    child.material.color.multiplyScalar(2);
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Store original material for hit flash
-                    if (!child.userData.originalMaterial) {
-                        child.userData.originalMaterial = child.material;
-                    }
-                }
-            });
-            
-            // Position model at EXACT same location as placeholder FIRST
-            model.position.copy(this.mesh.position);
-            model.rotation.y = this.mesh.rotation.y;
-            
-            // Special handling for reaper - ensure it's on the ground
-            if (this.type === 'reaper') {
-                // Reaper models might have different origin points, ensure Y is at ground level
-                model.position.y = 0.0;
-            } else {
-                // For other zombies, ensure Y position is correct based on type and scale
-                // The placeholder Y was set based on config.scale, but we need to account for scaleMultiplier
-                const baseY = (this.type === 'crawler' ? 0.25 : 0.75) * this.config.scale;
-                const scaledY = baseY * (this.scaleMultiplier || 1.0);
-                model.position.y = scaledY;
-            }
-            
-            // Apply scale directly from config first
-            // Then apply scene-specific scale multiplier to the FINAL size
-            // This ensures the final rendered size is what gets scaled, not the base config.scale
-            let finalScale = this.config.scale;
-            
-            // If scaleMultiplier is set, apply it to the FINAL scale (not to config.scale)
-            // This way the final rendered size is what gets scaled down
-            if (this.scaleMultiplier !== 1.0) {
-                finalScale = finalScale * this.scaleMultiplier;
-            }
-            
-            // Apply scale to the entire model hierarchy
-            // Store the final scale so we can re-apply it if needed
-            this.finalScale = finalScale;
-            model.scale.setScalar(finalScale);
-            
-            // Lock the scale on all children to prevent them from changing
-            model.traverse((child) => {
-                if (child !== model && child.isObject3D) {
-                    // Ensure children inherit the parent scale
-                    // Don't modify child scales directly - parent scale affects all
-                }
-            });
-            
-            // Store reference to model for potential re-scaling
-            this.loadedModel = model;
-            
-            if (this.scaleMultiplier !== 1.0) {
-                console.log(`📏 ${this.config.name} SCALED for interior scene: base=${this.config.scale}, multiplier=${this.scaleMultiplier}, final=${finalScale.toFixed(3)}`);
-                console.log(`   Model scale after setting: x=${model.scale.x.toFixed(3)}, y=${model.scale.y.toFixed(3)}, z=${model.scale.z.toFixed(3)}`);
-            }
-            console.log(`📏 ${this.config.name} positioned at: x=${model.position.x.toFixed(2)}, y=${model.position.y.toFixed(2)}, z=${model.position.z.toFixed(2)}, scale: ${finalScale.toFixed(3)}`);
-            
-            // Setup animations (only if GLTF object is available)
-            if (gltf && gltf.animations && gltf.animations.length > 0) {
-                this.mixer = new THREE.AnimationMixer(model);
-                
-                const animConfig = this.config.animations;
-                const availableAnimations = gltf.animations.map(clip => clip.name);
-                
-                // Only log animation details if animations are missing (for debugging)
-                let hasAllAnimations = true;
-                
-                ['move', 'attack', 'die'].forEach(animType => {
-                    const animName = animConfig[animType];
-                    
-                    // Try to find exact match first
-                    let clip = gltf.animations.find(a => a.name === animName);
-                    
-                    // If not found, try case-insensitive and partial matches
-                    if (!clip) {
-                        if (animType === 'move') {
-                            // Try to find movement animations
-                            clip = gltf.animations.find(a => {
-                                const lower = a.name.toLowerCase();
-                                return lower.includes('run') || 
-                                       lower.includes('walk') ||
-                                       lower.includes('move') ||
-                                       lower.includes('idle');
-                            });
-                        } else if (animType === 'attack') {
-                            // Try to find attack animations
-                            clip = gltf.animations.find(a => {
-                                const lower = a.name.toLowerCase();
-                                return lower.includes('attack') || 
-                                       lower.includes('hit') ||
-                                       lower.includes('strike');
-                            });
-                        } else if (animType === 'die') {
-                            // Try to find death animations
-                            clip = gltf.animations.find(a => {
-                                const lower = a.name.toLowerCase();
-                                return lower.includes('death') || 
-                                       lower.includes('die') ||
-                                       lower.includes('killed') ||
-                                       lower.includes('fall');
-                            });
-                        }
-                    }
-                    
-                    if (clip) {
-                        const action = this.mixer.clipAction(clip);
-                        action.setLoop(animType === 'die' ? THREE.LoopOnce : THREE.LoopRepeat);
-                        action.clampWhenFinished = animType === 'die';
-                        this.animations[animType] = action;
-                    } else {
-                        hasAllAnimations = false;
-                        // Only warn if it's a critical animation (move or die)
-                        if (animType === 'move' || animType === 'die') {
-                            console.warn(`⚠️ Animation "${animName}" not found for ${this.config.name}`);
-                        }
-                    }
-                });
-                
-                // Log animation summary only if there are issues
-                if (!hasAllAnimations) {
-                    console.log(`🎬 ${this.config.name} animations:`, availableAnimations);
-                }
-                
-                // Start with move animation if available
-                if (this.animations.move) {
-                    this.playAnimation('move');
-                }
-            }
-            
-            // Replace placeholder with model
-            const oldMesh = this.mesh;
-            this.mesh = model;
-            
-            // Set userData on parent too
-            this.mesh.userData.zombie = this;
-            this.mesh.userData.isZombie = true;
-            
-            // Remove placeholder and safely dispose
-            if (oldMesh && oldMesh.parent) {
-                this.scene.remove(oldMesh);
-            }
-            
-            if (oldMesh) {
-                if (oldMesh.geometry) oldMesh.geometry.dispose();
-                if (oldMesh.material) {
-                    if (Array.isArray(oldMesh.material)) {
-                        oldMesh.material.forEach(mat => mat && mat.dispose());
-                    } else {
-                        oldMesh.material.dispose();
-                    }
-                }
-            }
-            
-            // Add new model to scene (only if not already added)
-            if (this.mesh && !this.mesh.parent) {
-                this.scene.add(this.mesh);
-            }
-            
-            // Re-apply scale after adding to scene (in case it was reset)
-            // Use stored finalScale to ensure consistency
-            if (this.finalScale !== undefined) {
-                this.mesh.scale.setScalar(this.finalScale);
-                if (this.scaleMultiplier !== 1.0) {
-                    // Also update attack range again (in case scaleMultiplier was set after loadModel started)
-                    this.attackRange = this.baseAttackRange * this.scaleMultiplier;
-                    this._updateSpeed();
-                    console.log(`🔧 Re-applied FINAL scale after scene add: ${this.finalScale.toFixed(3)} (config.scale=${this.config.scale}, multiplier=${this.scaleMultiplier}), attack range: ${this.attackRange.toFixed(2)}, speed: ${this.currentSpeed.toFixed(3)}`);
-                }
-            } else if (this.scaleMultiplier !== 1.0) {
-                // Fallback if finalScale wasn't set yet
-                const finalScale = this.config.scale * this.scaleMultiplier;
-                this.mesh.scale.setScalar(finalScale);
-                this.finalScale = finalScale;
-                this.attackRange = this.baseAttackRange * this.scaleMultiplier;
-                this._updateSpeed();
-                console.log(`🔧 Re-applied scale after scene add (fallback): ${finalScale.toFixed(3)}, attack range: ${this.attackRange.toFixed(2)}`);
-            }
-            
-            this.isPlaceholder = false;
-            console.log(`✅ Loaded GLB model for ${this.config.name}`);
-        } catch (error) {
-            console.error(`❌ Failed to load zombie model for ${this.config.name}:`, error);
-            console.error(`   Model path: ${this.config.modelPath}`);
-            console.error(`   Error details:`, error.message || error);
-            // Keep placeholder mesh if loading fails
-        }
-    }
-    
-    /**
-     * Play a specific animation
-     * @param {string} animType - 'move', 'attack', or 'die'
-     */
-    playAnimation(animType) {
-        if (!this.mixer) {
-            // Only warn once per zombie instance, not every frame
-            if (!this._mixerWarningShown) {
-                console.warn(`⚠️ No mixer available for ${this.config.name} - animations disabled`);
-                this._mixerWarningShown = true;
-            }
-            return;
-        }
-        
-        // CRITICAL: If dead, ONLY allow die animation
-        if (this.isDead && animType !== 'die') {
-            return; // Silently refuse to play any animation except die
-        }
-        
-        // If dead and playing die animation, don't interrupt it
-        if (this.isDead && animType === 'die') {
-            return; // Die animation is already playing, don't restart it
-        }
-        
-        const action = this.animations[animType];
-        if (!action) {
-            console.warn(`⚠️ No action found for ${animType} on ${this.config.name}`);
-            return;
-        }
-        
-        if (this.currentAnimationName === animType && action.isRunning()) {
-            return;
-        }
-        
-        console.log(`🎬 Playing animation: ${animType} for ${this.config.name}`);
-        console.log(`   Action enabled: ${action.enabled}, weight: ${action.weight}, time: ${action.time}`);
-        
-        // Handle movement sound when move animation starts
-        if (animType === 'move' && !this.isPlayingMovementSound && this.soundManager && this.mesh && !this.isDead) {
-            const animationName = this.config.animations.move || 'walk';
-            const movementSound = this.soundManager.playMovementSound(
-                this.type,
-                animationName,
-                this.mesh.position
-            );
-            if (movementSound) {
-                this.currentMovementSound = movementSound;
-                this.isPlayingMovementSound = true;
-            }
-        }
-        
-        // Stop movement sound when attack starts
-        if (animType === 'attack' && this.isPlayingMovementSound) {
-            this.stopMovementSound();
-        }
-        
-        // Fade out current animation
-        if (this.currentAnimationAction && this.currentAnimationAction !== action) {
-            this.currentAnimationAction.fadeOut(0.2);
-        }
-        
-        // Fade in new animation
-        action.reset();
-        action.fadeIn(0.2);
-        action.play();
-        
-        console.log(`   After play - isRunning: ${action.isRunning()}, paused: ${action.paused}`);
-        
-        this.currentAnimationAction = action;
-        this.currentAnimationName = animType;
-    }
-    
-    update(deltaTime, slowMoActive) {
-        // Always update animation mixer (even when dead for death animation)
-        if (this.mixer) {
-            this.mixer.update(deltaTime);
-            
-            // Debug: Log animation state when dead
-            if (this.isDead && this.currentAnimationAction) {
-                const action = this.currentAnimationAction;
-                if (action.isRunning()) {
-                    console.log(`💀 Death anim playing - time: ${action.time.toFixed(2)}/${action.getClip().duration.toFixed(2)}, weight: ${action.getEffectiveWeight()}`);
-                }
-            }
-        }
-        
-        // Ensure scale stays locked to finalScale (prevent any accidental changes)
-        if (!this.isPlaceholder && this.finalScale !== undefined) {
-            const currentScale = this.mesh.scale.x; // Assuming uniform scaling
-            if (Math.abs(currentScale - this.finalScale) > 0.001) {
-                // Scale was changed - restore it
-                this.mesh.scale.setScalar(this.finalScale);
-            }
-        }
-        
-        // Don't move or attack if dead, but keep animating
-        if (this.isDead) return;
-        
-        // Update hit flash
-        if (this.hitFlashTimer > 0) {
-            this.hitFlashTimer -= deltaTime;
-            if (this.hitFlashTimer <= 0) {
-                if (this.isPlaceholder) {
-                    this.mesh.material.emissiveIntensity = 0.3;
-                } else {
-                    // Reset all mesh materials in the model
-                    this.mesh.traverse((child) => {
-                        if (child.isMesh && child.userData.originalMaterial) {
-                            child.material = child.userData.originalMaterial;
-                        }
-                    });
-                }
-            }
-        }
-        
-        // Calculate HORIZONTAL distance to player (ignore Y so zombies don't get "stuck"
-        // when their height doesn't exactly match the target height)
-        const toPlayer = new THREE.Vector3().subVectors(this.target, this.mesh.position);
-        toPlayer.y = 0;
-        this.distanceToPlayer = toPlayer.length();
-        
-        // Speed up as zombie gets closer (tension!)
-        const speedMultiplier = THREE.MathUtils.mapLinear(
-            this.distanceToPlayer,
-            10, 2,  // From 10 units away to 2 units away
-            1, 2    // Speed goes from 1x to 2x
-        );
-        const slowFactor = slowMoActive ? 0.5 : 1;
-        
-        // Apply difficulty speed multiplier
-        const difficultyMultipliers = {
-            easy: 1.0,
-            medium: 1.3,
-            hard: 1.6
-        };
-        const difficultyMultiplier = difficultyMultipliers[this.gameData.difficulty] || 1.0;
-        
-        // Base speed should already be scaled by scaleMultiplier (via _updateSpeed)
-        // But we need to apply it here too in case it wasn't set yet
-        const scaleSpeedMultiplier = this.scaleMultiplier || 1.0;
-        this.currentSpeed = this.baseSpeed * scaleSpeedMultiplier * Math.max(1, speedMultiplier) * slowFactor * difficultyMultiplier;
-        
-        // Reaper boss: melee attack when close, projectiles when far
-        if (this.config.shootsProjectiles && this.config.isBoss) {
-            // Check if in melee range first
-            if (this.distanceToPlayer < this.attackRange) {
-                // In melee range - use melee attack (no projectiles)
-                if (!this.isAttacking) {
-                    this.attack(true); // Pass true to indicate melee attack (use runner sound)
-                }
-                return;
-            } else {
-                // Not in melee range - shoot projectiles
-                const currentTime = Date.now() / 1000;
-                if (currentTime - this.lastProjectileTime >= this.projectileCooldown) {
-                    this.shootProjectile();
-                    this.lastProjectileTime = currentTime;
-                }
-            }
-            
-            // Still move slowly toward player
-            // Continue with movement logic below
-        } else {
-            // Normal zombies use melee attack
-            // Check if in attack range
-            if (this.distanceToPlayer < this.attackRange) {
-                if (!this.isAttacking) {
-                    this.attack();
-                }
-                return;
-            }
-        }
-        
-        // Move toward player (horizontal plane only)
-        const direction = toPlayer;
-        
-        if (direction.length() > this.attackRange) {
-            direction.normalize();
-            
-            // Forward movement
-            this.mesh.position.x += direction.x * this.currentSpeed * deltaTime;
-            this.mesh.position.z += direction.z * this.currentSpeed * deltaTime;
-            
-            // Crawlers "scuttle" side-to-side
-            if (this.type === 'crawler') {
-                const scuttleSpeed = 2.0; // Oscillation speed (frequency)
-                const scuttleAmplitude = 1 * this.config.scale; // Maximum distance from center
-                
-                // Update scuttle time for oscillation
-                this.scuttleTime += deltaTime * scuttleSpeed;
-                
-                // Calculate current target offset (where we want to be)
-                const targetOffset = Math.sin(this.scuttleTime) * scuttleAmplitude;
-                
-                // Calculate velocity needed to reach target (maintains constant distance)
-                const scuttleVelocity = (targetOffset - this.lastScuttleOffset) / deltaTime;
-                
-                // Side vector perpendicular to direction
-                const side = new THREE.Vector3(-direction.z, 0, direction.x).normalize();
-                
-                // Apply movement based on velocity to maintain constant distance
-                this.mesh.position.x += side.x * scuttleVelocity * deltaTime;
-                this.mesh.position.z += side.z * scuttleVelocity * deltaTime;
-                
-                // Update last offset for next frame
-                this.lastScuttleOffset = targetOffset;
-            }
-            
-            // Face direction
-            const angle = Math.atan2(direction.x, direction.z);
-            this.mesh.rotation.y = angle;
-            
-            // Play movement animation
-            if (!this.isAttacking) {
-                this.playAnimation('move');
-            }
-        }
-        
-        // Update movement sound position if playing
-        if (this.currentMovementSound && this.currentMovementSound.isPlaying) {
-            this.currentMovementSound.position.copy(this.mesh.position);
-        }
-        
-        // Groan sound logic - randomly groan every 2 seconds (or every 3 seconds for reaper)
-        if (this.soundManager && !this.isDead && !this.isAttacking) {
-            this.groanTimer += deltaTime;
-            // Reaper groans every 3 seconds, other zombies use random intervals
-            const groanInterval = (this.type === 'reaper') ? 3.0 : this.groanInterval;
-            if (this.groanTimer >= groanInterval) {
-                if (this.type === 'reaper' || Math.random() < 0.3) { // Reaper always groans, others 30% chance
-                    this.playGroan();
-                }
-                this.groanTimer = 0;
-                // Reaper always uses 3 seconds, others use random interval
-                if (this.type !== 'reaper') {
-                    this.groanInterval = 1.5 + Math.random(); // Reset for next random interval (1.5-2.5 seconds)
-                }
-            }
-        }
-        
-        // Update projectiles for reaper boss
-        if (this.config && this.config.shootsProjectiles) {
-            this.updateProjectiles(deltaTime);
-        }
-    }
-    
-    attack(isMeleeAttack = false) {
-        if (this.isAttacking) return;
-        
-        this.isAttacking = true;
-        console.log(`💥 ${this.config.name} attacking! Damage: ${this.config.damage}`);
-        
-        // Stop movement sound when attacking
-        this.stopMovementSound();
-        
-        // Play attack sound
-        // For reaper melee attacks, use runner sound; otherwise use zombie's own sound
-        if (this.soundManager && this.mesh) {
-            const soundType = (isMeleeAttack && this.type === 'reaper') ? 'runner' : this.type;
-            this.soundManager.playAttackSound(soundType, this.mesh.position);
-        }
-        
-        // Play attack animation
-        this.playAnimation('attack');
-        
-        // Deal damage to player
-        this.damagePlayer(this.config.damage);
-        
-        // Reset attack state after animation duration
-        const attackAction = this.animations.attack;
-        const duration = attackAction ? attackAction.getClip().duration : 0.5;
-        
-        setTimeout(() => {
-            if (this.mesh && !this.isDead) {
-                this.isAttacking = false;
-                this.playAnimation('move');
-            }
-        }, duration * 1000);
-    }
-    
-    takeDamage(amount, isHeadshot = false) {
-        if (this.isDead) return { killed: false, headshot: false };
-        
-        // Use the damage amount directly (headshot damage is already calculated in ShootingSystem)
-        // No need to multiply again - the amount parameter already contains the correct headshot damage
-        this.health -= amount;
-        
-        // Flash effect
-        if (this.isPlaceholder) {
-            this.mesh.material.emissiveIntensity = 1.0;
-        } else {
-            // Flash all meshes in the model
-            this.mesh.traverse((child) => {
-                if (child.isMesh) {
-                    const flashMaterial = child.material.clone();
-                    flashMaterial.emissive = new THREE.Color(this.config.color);
-                    flashMaterial.emissiveIntensity = 1.0;
-                    child.material = flashMaterial;
-                }
-            });
-        }
-        this.hitFlashTimer = 0.1;
-        
-        console.log(`🎯 ${this.config.name} hit! ${isHeadshot ? '💀 HEADSHOT!' : ''} HP: ${this.health}/${this.maxHealth}`);
-        
-        if (this.health <= 0) {
-            this.die(isHeadshot);
-            return { killed: true, headshot: isHeadshot };
-        }
-        
-        return { killed: false, headshot: isHeadshot };
-    }
-    
-    die(wasHeadshot = false) {
-        this.isDead = true;
-        
-        // Clear hit flash immediately so death animation is visible
-        this.hitFlashTimer = 0;
-        if (!this.isPlaceholder) {
-            this.mesh.traverse((child) => {
-                if (child.isMesh && child.userData.originalMaterial) {
-                    child.material = child.userData.originalMaterial;
-                }
-            });
-        } else {
-            this.mesh.material.emissiveIntensity = 0.3;
-        }
-        
-        // Score and stats
-        let points = this.config.points;
-        if (wasHeadshot) points *= 2;
-        
-        this.gameData.score += points;
-        this.gameData.totalZombiesKilled++;
-        
-        // Combo
-        this.incrementCombo();
-        
-        console.log(`💀 ${this.config.name} killed! ${wasHeadshot ? 'HEADSHOT! ' : ''}+${points} points`);
-        
-        // Play death animation if available
-        const dieAction = this.animations.die;
-        if (dieAction && this.mixer) {
-            console.log(`🎬 Playing death animation for ${this.config.name}`);
-            console.log(`   Model visible: ${this.mesh.visible}, position:`, this.mesh.position);
-            console.log(`   Model scale:`, this.mesh.scale);
-            
-            // Mark that we're animating death
-            this.isAnimatingDeath = true;
-            
-            // Don't stop anything - just play death with full weight immediately
-            // The high weight will override other animations
-            dieAction.reset();
-            dieAction.enabled = true;
-            dieAction.setLoop(THREE.LoopOnce, 1); // Play once
-            dieAction.clampWhenFinished = true;
-            dieAction.timeScale = 1.0;
-            dieAction.weight = 1.0;
-            
-            // Play immediately with no fade
-            dieAction.play();
-            dieAction.setEffectiveWeight(1.0);
-            
-            // NOW stop other animations after death is playing
-            setTimeout(() => {
-                Object.keys(this.animations).forEach(key => {
-                    if (key !== 'die' && this.animations[key]) {
-                        this.animations[key].setEffectiveWeight(0);
-                        this.animations[key].stop();
-                    }
-                });
-            }, 50);
-            
-            this.currentAnimationAction = dieAction;
-            this.currentAnimationName = 'die';
-            
-            const duration = dieAction.getClip().duration;
-            console.log(`   Death animation duration: ${duration.toFixed(2)}s`);
-            console.log(`   Death action - running: ${dieAction.isRunning()}, paused: ${dieAction.paused}, weight: ${dieAction.weight}`);
-            
-            // Make sure model stays visible during death
-            this.mesh.visible = true;
-            
-            // Simple timeout approach - remove after animation completes
-            setTimeout(() => {
-                console.log(`   Death animation finished, removing zombie`);
-                this.isAnimatingDeath = false;
-                this.remove();
-            }, duration * 1000);
-        } else {
-            console.log(`⚠️ No death animation found for ${this.config.name}, using fallback`);
-            // Fallback death animation
-            this.isAnimatingDeath = true;
-            const startY = this.mesh.position.y;
-            const duration = 1000;
-            const startTime = Date.now();
-            
-            const animate = () => {
-                if (!this.mesh || !this.scene.children.includes(this.mesh)) return;
-                
-                const elapsed = Date.now() - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                
-                this.mesh.position.y = startY * (1 - progress);
-                this.mesh.rotation.x = progress * Math.PI / 2;
-                
-                if (this.isPlaceholder) {
-                    this.mesh.material.opacity = 1 - progress;
-                    this.mesh.material.transparent = true;
-                } else {
-                    this.mesh.traverse((child) => {
-                        if (child.isMesh && child.material) {
-                            if (Array.isArray(child.material)) {
-                                child.material.forEach(mat => {
-                                    if (mat) {
-                                        mat.opacity = 1 - progress;
-                                        mat.transparent = true;
-                                    }
-                                });
-                            } else {
-                                child.material.opacity = 1 - progress;
-                                child.material.transparent = true;
-                            }
-                        }
-                    });
-                }
-            
-                if (progress < 1) {
-                    requestAnimationFrame(animate);
-                } else {
-                    this.isAnimatingDeath = false;
-                    this.remove();
-                }
-            };
-            
-            animate();
-        }
-    }
-    
-    /**
-     * Play a groan sound
-     */
-    playGroan() {
-        if (!this.soundManager || this.isDead || this.isAttacking || !this.mesh) return;
-        
-        this.soundManager.playGroan(this.type, this.mesh.position);
-    }
-    
-    /**
-     * Stop movement sound
-     */
-    stopMovementSound() {
-        if (this.currentMovementSound && this.currentMovementSound.isPlaying) {
-            this.currentMovementSound.stop();
-            this.currentMovementSound.disconnect();
-            this.currentMovementSound = null;
-        }
-        this.isPlayingMovementSound = false;
-    }
-    
-    remove() {
-        // Stop all sounds
-        this.stopMovementSound();
-        
-        // Destroy all projectiles
-        if (this.projectiles && this.projectiles.length > 0) {
-            this.projectiles.forEach(projectile => {
-                if (projectile && !projectile.isDestroyed) {
-                    projectile.destroy();
-                }
-            });
-            this.projectiles = [];
-        }
-        
-        // Stop all animations
-        if (this.mixer) {
-            Object.values(this.animations).forEach(action => {
-                if (action) {
-                    action.stop();
-                }
-            });
-            this.mixer = null;
-        }
-        
-        this.scene.remove(this.mesh);
-        
-        if (this.isPlaceholder) {
-            this.mesh.geometry.dispose();
-            this.mesh.material.dispose();
-        } else {
-            // Dispose GLB model resources
-            this.mesh.traverse((child) => {
-                if (child.isMesh) {
-                    if (child.geometry) child.geometry.dispose();
-                    if (child.material) {
-                        if (Array.isArray(child.material)) {
-                            child.material.forEach(mat => {
-                                if (mat.map) mat.map.dispose();
-                                if (mat.normalMap) mat.normalMap.dispose();
-                                mat.dispose();
-                            });
-                        } else {
-                            if (child.material.map) child.material.map.dispose();
-                            if (child.material.normalMap) child.material.normalMap.dispose();
-                            child.material.dispose();
-                        }
-                    }
-                }
-            });
-        }
-    }
-    
-    /**
-     * Shoot a projectile at the player (reaper boss only)
-     */
-    shootProjectile() {
-        if (!this.config.shootsProjectiles || !this.mesh || this.isDead) return;
-        
-        // Get position from the model (mesh is replaced with model after loading)
-        // Use world position to get the actual model position in the scene
-        const worldPosition = new THREE.Vector3();
-        this.mesh.getWorldPosition(worldPosition);
-        
-        // Scale the Y offset based on the model's scale (for 3x reaper, offset should be 3x too)
-        const modelScale = this.mesh.scale.x; // Assuming uniform scaling
-        const startPosition = worldPosition.clone();
-        startPosition.y += 1.5 * modelScale; // Shoot from upper body, scaled with model size
-        
-        const targetPosition = this.camera.position.clone();
-        
-        // Play attack sound when shooting projectile
-        if (this.soundManager) {
-            console.log(`⚡ Reaper shooting projectile, playing attack sound at`, startPosition);
-            this.soundManager.playAttackSound(this.type, startPosition);
-        } else {
-            console.warn(`⚠️ Sound manager not available for reaper projectile sound`);
-        }
-        
-        const projectile = new ReaperProjectile(startPosition, targetPosition, this.scene);
-        this.projectiles.push(projectile);
-    }
-    
-    /**
-     * Update projectiles
-     * @param {number} deltaTime 
-     */
-    updateProjectiles(deltaTime) {
-        if (!this.config.shootsProjectiles) return;
-        
-        // Ensure projectiles array exists
-        if (!this.projectiles) {
-            this.projectiles = [];
-            return;
-        }
-        
-        // Update and check projectiles
-        this.projectiles = this.projectiles.filter(projectile => {
-            if (projectile.isDestroyed) {
-                return false;
-            }
-            
-            projectile.update(deltaTime);
-            
-            // Check if projectile hit player
-            if (projectile.checkHit(this.camera.position, 0.8)) {
-                // Deal damage to player
-                if (this.damagePlayer) {
-                    this.damagePlayer(this.config.damage);
-                }
-                projectile.destroy();
-                return false;
-            }
-            
-            // Remove if too far away
-            const distance = projectile.position.distanceTo(this.mesh.position);
-            if (distance > 50) {
-                projectile.destroy();
-                return false;
-            }
-            
-            return true;
-        });
-    }
+/**
+* @param {THREE.Vector3} position
+* @param {'walker' | 'runner' | 'tank' | 'crawler'} type
+* @param {THREE.Scene} scene
+* @param {THREE.Camera} camera
+* @param {object} gameData
+* @param {(amount: number) => void} damagePlayer
+* @param {() => void} incrementCombo
+*/
+constructor(position, type = 'walker', scene, camera, gameData, damagePlayer, incrementCombo) {
+this.type = type;
+this.config = ZOMBIE_TYPES[type];
+this.scene = scene;
+this.camera = camera;
+this.gameData = gameData;
+this.damagePlayer = damagePlayer;
+this.incrementCombo = incrementCombo;
+this.scaleMultiplier = 1.0; // Scene-specific scale multiplier (default 1.0)
+
+// Create temporary placeholder mesh (will be replaced by GLB)
+const geometry = this.type === 'crawler'
+? new THREE.BoxGeometry(0.8, 0.5, 0.8)
+: new THREE.BoxGeometry(0.5, 1.5, 0.5);
+const material = new THREE.MeshStandardMaterial({ 
+color: this.config.color,
+emissive: this.config.color,
+emissiveIntensity: 0.3
+});
+this.mesh = new THREE.Mesh(geometry, material);
+this.mesh.position.copy(position);
+// Note: scaleMultiplier will be applied later when model loads, placeholder uses base scale
+this.mesh.position.y = (this.type === 'crawler' ? 0.25: 0.75) * this.config.scale;
+this.mesh.scale.setScalar(this.config.scale);
+this.mesh.castShadow = true;
+this.mesh.receiveShadow = true;
+this.isPlaceholder = true;
+
+// Stats
+this.health = this.config.health;
+this.maxHealth = this.config.health;
+this.baseSpeed = this.config.speed;
+this.currentSpeed = this.baseSpeed;
+
+// Update speed when scale multiplier changes
+this._updateSpeed();
+this.isDead = false;
+this.isAttacking = false;
+this.isAnimatingDeath = false; // Track if death animation is still playing
+
+// AI
+this.target = new THREE.Vector3(
+this.camera.position.x,
+0.75,
+this.camera.position.z
+);
+this.distanceToPlayer = 999;
+this.baseAttackRange = 1.5; // Base attack range (will be scaled)
+this.attackRange = this.baseAttackRange; // Will be updated when scaleMultiplier is set
+
+// Visual
+this.hitFlashTimer = 0;
+this.scuttleTime = 0;
+this.baseX = this.mesh.position.x;
+this.lastScuttleOffset = 0; // Track previous scuttle offset for velocity calculation
+
+// Animation
+this.mixer = null;
+this.animations = {};
+this.currentAnimationAction = null;
+this.currentAnimationName = null;
+
+// Sound system
+this.soundManager = null; // Will be set externally
+this.groanTimer = 0;
+this.groanInterval = 2.0; // 2 seconds between groans
+this.currentMovementSound = null; // Track playing movement sound
+this.isPlayingMovementSound = false;
+
+// Projectile system (for reaper boss)
+this.projectiles = []; // Initialize empty array
+this.lastProjectileTime = 0;
+this.projectileCooldown = this.config.projectileCooldown || 0;
+
+// CRITICAL: Set userData for raycasting
+this.mesh.userData.zombie = this;
+this.mesh.userData.isZombie = true;
+
+this.scene.add(this.mesh);
+
+// Load GLB model asynchronously if path configured
+if (this.config.modelPath) {
+this.loadModel();
+}
+
+console.log(`Spawned ${this.config.name} at`, position);
+}
+
+/**
+* Update attack range based on current scale multiplier
+* Called when scaleMultiplier is set externally
+*/
+_updateAttackRange() {
+this.attackRange = this.baseAttackRange * (this.scaleMultiplier || 1.0);
+}
+
+/**
+* Update speed based on current scale multiplier
+* Smaller zombies should move slower proportionally
+*/
+_updateSpeed() {
+// Speed scales with size - smaller zombies move slower
+const speedMultiplier = this.scaleMultiplier || 1.0;
+this.currentSpeed = this.baseSpeed * speedMultiplier;
+}
+
+/**
+* Load GLB model for this zombie
+*/
+async loadModel() {
+try {
+if (!this.config.modelPath) {
+console.warn(`No model path configured for ${this.config.name}`);
+return;
+}
+
+// Use model cache for faster loading (browser cache makes this fast)
+// Each zombie gets a fresh instance to avoid sharing conflicts
+const { scene: model, gltf } = await modelCache.load(this.config.modelPath);
+
+if (!model) {
+console.error(`Model loaded but is null for ${this.config.name} at ${this.config.modelPath}`);
+return;
+}
+
+// Reset any existing scale on the model from cache
+model.scale.set(1, 1, 1);
+
+// GLTF object is returned directly from load() for animation setup
+if (!gltf) {
+console.warn(`GLTF object not available for ${this.config.modelPath} - animations may not work`);
+// Continue without animations
+}
+
+// Enable shadows and SET USERDATA on all child meshes
+model.traverse((child) => {
+if (child.isMesh) {
+child.castShadow = true;
+child.receiveShadow = true;
+
+// CRITICAL: Set userData on EVERY mesh for raycasting
+child.userData.zombie = this;
+child.userData.isZombie = true;
+
+// Ensure materials are visible (fix for dark/invisible models)
+if (child.material) {
+if (Array.isArray(child.material)) {
+child.material.forEach(mat => {
+if (mat) {
+mat.needsUpdate = true;
+if (!mat.emissive) mat.emissive = new THREE.Color(0x000000);
+if (mat.color) {
+if (mat.color.r < 0.1 && mat.color.g < 0.1 && mat.color.b < 0.1) {
+mat.color.multiplyScalar(2);
+}
+}
+}
+});
+} else {
+child.material.needsUpdate = true;
+if (!child.material.emissive) child.material.emissive = new THREE.Color(0x000000);
+if (child.material.color) {
+if (child.material.color.r < 0.1 && child.material.color.g < 0.1 && child.material.color.b < 0.1) {
+child.material.color.multiplyScalar(2);
+}
+}
+}
+}
+
+// Store original material for hit flash
+if (!child.userData.originalMaterial) {
+child.userData.originalMaterial = child.material;
+}
+}
+});
+
+// Position model at EXACT same location as placeholder FIRST
+model.position.copy(this.mesh.position);
+model.rotation.y = this.mesh.rotation.y;
+
+// Special handling for reaper - ensure it's on the ground
+if (this.type === 'reaper') {
+// Reaper models might have different origin points, ensure Y is at ground level
+model.position.y = 0.0;
+} else {
+// For other zombies, ensure Y position is correct based on type and scale
+// The placeholder Y was set based on config.scale, but we need to account for scaleMultiplier
+const baseY = (this.type === 'crawler' ? 0.25: 0.75) * this.config.scale;
+const scaledY = baseY * (this.scaleMultiplier || 1.0);
+model.position.y = scaledY;
+}
+
+// Apply scale directly from config first
+// Then apply scene-specific scale multiplier to the FINAL size
+// This ensures the final rendered size is what gets scaled, not the base config.scale
+let finalScale = this.config.scale;
+
+// If scaleMultiplier is set, apply it to the FINAL scale (not to config.scale)
+// This way the final rendered size is what gets scaled down
+if (this.scaleMultiplier !== 1.0) {
+finalScale = finalScale * this.scaleMultiplier;
+}
+
+// Apply scale to the entire model hierarchy
+// Store the final scale so we can re-apply it if needed
+this.finalScale = finalScale;
+model.scale.setScalar(finalScale);
+
+// Lock the scale on all children to prevent them from changing
+model.traverse((child) => {
+if (child !== model && child.isObject3D) {
+// Ensure children inherit the parent scale
+// Don't modify child scales directly - parent scale affects all
+}
+});
+
+// Store reference to model for potential re-scaling
+this.loadedModel = model;
+
+if (this.scaleMultiplier !== 1.0) {
+console.log(`${this.config.name} SCALED for interior scene: base=${this.config.scale}, multiplier=${this.scaleMultiplier}, final=${finalScale.toFixed(3)}`);
+console.log(`Model scale after setting: x=${model.scale.x.toFixed(3)}, y=${model.scale.y.toFixed(3)}, z=${model.scale.z.toFixed(3)}`);
+}
+console.log(`${this.config.name} positioned at: x=${model.position.x.toFixed(2)}, y=${model.position.y.toFixed(2)}, z=${model.position.z.toFixed(2)}, scale: ${finalScale.toFixed(3)}`);
+
+// Setup animations (only if GLTF object is available)
+if (gltf && gltf.animations && gltf.animations.length > 0) {
+this.mixer = new THREE.AnimationMixer(model);
+
+const animConfig = this.config.animations;
+const availableAnimations = gltf.animations.map(clip => clip.name);
+
+// Only log animation details if animations are missing (for debugging)
+let hasAllAnimations = true;
+
+['move', 'attack', 'die'].forEach(animType => {
+const animName = animConfig[animType];
+
+// Try to find exact match first
+let clip = gltf.animations.find(a => a.name === animName);
+
+// If not found, try case-insensitive and partial matches
+if (!clip) {
+if (animType === 'move') {
+// Try to find movement animations
+clip = gltf.animations.find(a => {
+const lower = a.name.toLowerCase();
+return lower.includes('run') || 
+lower.includes('walk') ||
+lower.includes('move') ||
+lower.includes('idle');
+});
+} else if (animType === 'attack') {
+// Try to find attack animations
+clip = gltf.animations.find(a => {
+const lower = a.name.toLowerCase();
+return lower.includes('attack') || 
+lower.includes('hit') ||
+lower.includes('strike');
+});
+} else if (animType === 'die') {
+// Try to find death animations
+clip = gltf.animations.find(a => {
+const lower = a.name.toLowerCase();
+return lower.includes('death') || 
+lower.includes('die') ||
+lower.includes('killed') ||
+lower.includes('fall');
+});
+}
+}
+
+if (clip) {
+const action = this.mixer.clipAction(clip);
+action.setLoop(animType === 'die' ? THREE.LoopOnce: THREE.LoopRepeat);
+action.clampWhenFinished = animType === 'die';
+this.animations[animType] = action;
+} else {
+hasAllAnimations = false;
+// Only warn if it's a critical animation (move or die)
+if (animType === 'move' || animType === 'die') {
+console.warn(`Animation "${animName}" not found for ${this.config.name}`);
+}
+}
+});
+
+// Log animation summary only if there are issues
+if (!hasAllAnimations) {
+console.log(`${this.config.name} animations:`, availableAnimations);
+}
+
+// Start with move animation if available
+if (this.animations.move) {
+this.playAnimation('move');
+}
+}
+
+// Replace placeholder with model
+const oldMesh = this.mesh;
+this.mesh = model;
+
+// Set userData on parent too
+this.mesh.userData.zombie = this;
+this.mesh.userData.isZombie = true;
+
+// Remove placeholder and safely dispose
+if (oldMesh && oldMesh.parent) {
+this.scene.remove(oldMesh);
+}
+
+if (oldMesh) {
+if (oldMesh.geometry) oldMesh.geometry.dispose();
+if (oldMesh.material) {
+if (Array.isArray(oldMesh.material)) {
+oldMesh.material.forEach(mat => mat && mat.dispose());
+} else {
+oldMesh.material.dispose();
+}
+}
+}
+
+// Add new model to scene (only if not already added)
+if (this.mesh && !this.mesh.parent) {
+this.scene.add(this.mesh);
+}
+
+// Re-apply scale after adding to scene (in case it was reset)
+// Use stored finalScale to ensure consistency
+if (this.finalScale !== undefined) {
+this.mesh.scale.setScalar(this.finalScale);
+if (this.scaleMultiplier !== 1.0) {
+// Also update attack range again (in case scaleMultiplier was set after loadModel started)
+this.attackRange = this.baseAttackRange * this.scaleMultiplier;
+this._updateSpeed();
+console.log(`🔧 Re-applied FINAL scale after scene add: ${this.finalScale.toFixed(3)} (config.scale=${this.config.scale}, multiplier=${this.scaleMultiplier}), attack range: ${this.attackRange.toFixed(2)}, speed: ${this.currentSpeed.toFixed(3)}`);
+}
+} else if (this.scaleMultiplier !== 1.0) {
+// Fallback if finalScale wasn't set yet
+const finalScale = this.config.scale * this.scaleMultiplier;
+this.mesh.scale.setScalar(finalScale);
+this.finalScale = finalScale;
+this.attackRange = this.baseAttackRange * this.scaleMultiplier;
+this._updateSpeed();
+console.log(`🔧 Re-applied scale after scene add (fallback): ${finalScale.toFixed(3)}, attack range: ${this.attackRange.toFixed(2)}`);
+}
+
+this.isPlaceholder = false;
+console.log(`Loaded GLB model for ${this.config.name}`);
+} catch (error) {
+console.error(`Failed to load zombie model for ${this.config.name}:`, error);
+console.error(`Model path: ${this.config.modelPath}`);
+console.error(`Error details:`, error.message || error);
+// Keep placeholder mesh if loading fails
+}
+}
+
+/**
+* Play a specific animation
+* @param {string} animType - 'move', 'attack', or 'die'
+*/
+playAnimation(animType) {
+if (!this.mixer) {
+// Only warn once per zombie instance, not every frame
+if (!this._mixerWarningShown) {
+console.warn(`No mixer available for ${this.config.name} - animations disabled`);
+this._mixerWarningShown = true;
+}
+return;
+}
+
+// CRITICAL: If dead, ONLY allow die animation
+if (this.isDead && animType !== 'die') {
+return; // Silently refuse to play any animation except die
+}
+
+// If dead and playing die animation, don't interrupt it
+if (this.isDead && animType === 'die') {
+return; // Die animation is already playing, don't restart it
+}
+
+const action = this.animations[animType];
+if (!action) {
+console.warn(`No action found for ${animType} on ${this.config.name}`);
+return;
+}
+
+if (this.currentAnimationName === animType && action.isRunning()) {
+return;
+}
+
+console.log(`Playing animation: ${animType} for ${this.config.name}`);
+console.log(`Action enabled: ${action.enabled}, weight: ${action.weight}, time: ${action.time}`);
+
+// Handle movement sound when move animation starts
+if (animType === 'move' && !this.isPlayingMovementSound && this.soundManager && this.mesh && !this.isDead) {
+const animationName = this.config.animations.move || 'walk';
+const movementSound = this.soundManager.playMovementSound(
+this.type,
+animationName,
+this.mesh.position
+);
+if (movementSound) {
+this.currentMovementSound = movementSound;
+this.isPlayingMovementSound = true;
+}
+}
+
+// Stop movement sound when attack starts
+if (animType === 'attack' && this.isPlayingMovementSound) {
+this.stopMovementSound();
+}
+
+// Fade out current animation
+if (this.currentAnimationAction && this.currentAnimationAction !== action) {
+this.currentAnimationAction.fadeOut(0.2);
+}
+
+// Fade in new animation
+action.reset();
+action.fadeIn(0.2);
+action.play();
+
+console.log(`After play - isRunning: ${action.isRunning()}, paused: ${action.paused}`);
+
+this.currentAnimationAction = action;
+this.currentAnimationName = animType;
+}
+
+update(deltaTime, slowMoActive) {
+// Always update animation mixer (even when dead for death animation)
+if (this.mixer) {
+this.mixer.update(deltaTime);
+
+// Debug: Log animation state when dead
+if (this.isDead && this.currentAnimationAction) {
+const action = this.currentAnimationAction;
+if (action.isRunning()) {
+console.log(`💀 Death anim playing - time: ${action.time.toFixed(2)}/${action.getClip().duration.toFixed(2)}, weight: ${action.getEffectiveWeight()}`);
+}
+}
+}
+
+// Ensure scale stays locked to finalScale (prevent any accidental changes)
+if (!this.isPlaceholder && this.finalScale !== undefined) {
+const currentScale = this.mesh.scale.x; // Assuming uniform scaling
+if (Math.abs(currentScale - this.finalScale) > 0.001) {
+// Scale was changed - restore it
+this.mesh.scale.setScalar(this.finalScale);
+}
+}
+
+// Don't move or attack if dead, but keep animating
+if (this.isDead) return;
+
+// Update hit flash
+if (this.hitFlashTimer > 0) {
+this.hitFlashTimer -= deltaTime;
+if (this.hitFlashTimer <= 0) {
+if (this.isPlaceholder) {
+this.mesh.material.emissiveIntensity = 0.3;
+} else {
+// Reset all mesh materials in the model
+this.mesh.traverse((child) => {
+if (child.isMesh && child.userData.originalMaterial) {
+child.material = child.userData.originalMaterial;
+}
+});
+}
+}
+}
+
+// Calculate HORIZONTAL distance to player (ignore Y so zombies don't get "stuck"
+// when their height doesn't exactly match the target height)
+const toPlayer = new THREE.Vector3().subVectors(this.target, this.mesh.position);
+toPlayer.y = 0;
+this.distanceToPlayer = toPlayer.length();
+
+// Speed up as zombie gets closer (tension!)
+const speedMultiplier = THREE.MathUtils.mapLinear(
+this.distanceToPlayer,
+10, 2, // From 10 units away to 2 units away
+1, 2 // Speed goes from 1x to 2x
+);
+const slowFactor = slowMoActive ? 0.5: 1;
+
+// Apply difficulty speed multiplier
+const difficultyMultipliers = {
+easy: 1.0,
+medium: 1.3,
+hard: 1.6
+};
+const difficultyMultiplier = difficultyMultipliers[this.gameData.difficulty] || 1.0;
+
+// Base speed should already be scaled by scaleMultiplier (via _updateSpeed)
+// But we need to apply it here too in case it wasn't set yet
+const scaleSpeedMultiplier = this.scaleMultiplier || 1.0;
+this.currentSpeed = this.baseSpeed * scaleSpeedMultiplier * Math.max(1, speedMultiplier) * slowFactor * difficultyMultiplier;
+
+// Reaper boss: melee attack when close, projectiles when far
+if (this.config.shootsProjectiles && this.config.isBoss) {
+// Check if in melee range first
+if (this.distanceToPlayer < this.attackRange) {
+// In melee range - use melee attack (no projectiles)
+if (!this.isAttacking) {
+this.attack(true); // Pass true to indicate melee attack (use runner sound)
+}
+return;
+} else {
+// Not in melee range - shoot projectiles
+const currentTime = Date.now() / 1000;
+if (currentTime - this.lastProjectileTime >= this.projectileCooldown) {
+this.shootProjectile();
+this.lastProjectileTime = currentTime;
+}
+}
+
+// Still move slowly toward player
+// Continue with movement logic below
+} else {
+// Normal zombies use melee attack
+// Check if in attack range
+if (this.distanceToPlayer < this.attackRange) {
+if (!this.isAttacking) {
+this.attack();
+}
+return;
+}
+}
+
+// Move toward player (horizontal plane only)
+const direction = toPlayer;
+
+if (direction.length() > this.attackRange) {
+direction.normalize();
+
+// Forward movement
+this.mesh.position.x += direction.x * this.currentSpeed * deltaTime;
+this.mesh.position.z += direction.z * this.currentSpeed * deltaTime;
+
+// Crawlers "scuttle" side-to-side
+if (this.type === 'crawler') {
+const scuttleSpeed = 2.0; // Oscillation speed (frequency)
+const scuttleAmplitude = 1 * this.config.scale; // Maximum distance from center
+
+// Update scuttle time for oscillation
+this.scuttleTime += deltaTime * scuttleSpeed;
+
+// Calculate current target offset (where we want to be)
+const targetOffset = Math.sin(this.scuttleTime) * scuttleAmplitude;
+
+// Calculate velocity needed to reach target (maintains constant distance)
+const scuttleVelocity = (targetOffset - this.lastScuttleOffset) / deltaTime;
+
+// Side vector perpendicular to direction
+const side = new THREE.Vector3(-direction.z, 0, direction.x).normalize();
+
+// Apply movement based on velocity to maintain constant distance
+this.mesh.position.x += side.x * scuttleVelocity * deltaTime;
+this.mesh.position.z += side.z * scuttleVelocity * deltaTime;
+
+// Update last offset for next frame
+this.lastScuttleOffset = targetOffset;
+}
+
+// Face direction
+const angle = Math.atan2(direction.x, direction.z);
+this.mesh.rotation.y = angle;
+
+// Play movement animation
+if (!this.isAttacking) {
+this.playAnimation('move');
+}
+}
+
+// Update movement sound position if playing
+if (this.currentMovementSound && this.currentMovementSound.isPlaying) {
+this.currentMovementSound.position.copy(this.mesh.position);
+}
+
+// Groan sound logic - randomly groan every 2 seconds (or every 3 seconds for reaper)
+if (this.soundManager && !this.isDead && !this.isAttacking) {
+this.groanTimer += deltaTime;
+// Reaper groans every 3 seconds, other zombies use random intervals
+const groanInterval = (this.type === 'reaper') ? 3.0: this.groanInterval;
+if (this.groanTimer >= groanInterval) {
+if (this.type === 'reaper' || Math.random() < 0.3) { // Reaper always groans, others 30% chance
+this.playGroan();
+}
+this.groanTimer = 0;
+// Reaper always uses 3 seconds, others use random interval
+if (this.type !== 'reaper') {
+this.groanInterval = 1.5 + Math.random(); // Reset for next random interval (1.5-2.5 seconds)
+}
+}
+}
+
+// Update projectiles for reaper boss
+if (this.config && this.config.shootsProjectiles) {
+this.updateProjectiles(deltaTime);
+}
+}
+
+attack(isMeleeAttack = false) {
+if (this.isAttacking) return;
+
+this.isAttacking = true;
+console.log(`💥 ${this.config.name} attacking! Damage: ${this.config.damage}`);
+
+// Stop movement sound when attacking
+this.stopMovementSound();
+
+// Play attack sound
+// For reaper melee attacks, use runner sound; otherwise use zombie's own sound
+if (this.soundManager && this.mesh) {
+const soundType = (isMeleeAttack && this.type === 'reaper') ? 'runner': this.type;
+this.soundManager.playAttackSound(soundType, this.mesh.position);
+}
+
+// Play attack animation
+this.playAnimation('attack');
+
+// Deal damage to player
+this.damagePlayer(this.config.damage);
+
+// Reset attack state after animation duration
+const attackAction = this.animations.attack;
+const duration = attackAction ? attackAction.getClip().duration: 0.5;
+
+setTimeout(() => {
+if (this.mesh && !this.isDead) {
+this.isAttacking = false;
+this.playAnimation('move');
+}
+}, duration * 1000);
+}
+
+takeDamage(amount, isHeadshot = false) {
+if (this.isDead) return { killed: false, headshot: false };
+
+// Use the damage amount directly (headshot damage is already calculated in ShootingSystem)
+// No need to multiply again - the amount parameter already contains the correct headshot damage
+this.health -= amount;
+
+// Flash effect
+if (this.isPlaceholder) {
+this.mesh.material.emissiveIntensity = 1.0;
+} else {
+// Flash all meshes in the model
+this.mesh.traverse((child) => {
+if (child.isMesh) {
+const flashMaterial = child.material.clone();
+flashMaterial.emissive = new THREE.Color(this.config.color);
+flashMaterial.emissiveIntensity = 1.0;
+child.material = flashMaterial;
+}
+});
+}
+this.hitFlashTimer = 0.1;
+
+console.log(`${this.config.name} hit! ${isHeadshot ? '💀 HEADSHOT!': ''} HP: ${this.health}/${this.maxHealth}`);
+
+if (this.health <= 0) {
+this.die(isHeadshot);
+return { killed: true, headshot: isHeadshot };
+}
+
+return { killed: false, headshot: isHeadshot };
+}
+
+die(wasHeadshot = false) {
+this.isDead = true;
+
+// Clear hit flash immediately so death animation is visible
+this.hitFlashTimer = 0;
+if (!this.isPlaceholder) {
+this.mesh.traverse((child) => {
+if (child.isMesh && child.userData.originalMaterial) {
+child.material = child.userData.originalMaterial;
+}
+});
+} else {
+this.mesh.material.emissiveIntensity = 0.3;
+}
+
+// Score and stats
+let points = this.config.points;
+if (wasHeadshot) points *= 2;
+
+this.gameData.score += points;
+this.gameData.totalZombiesKilled++;
+
+// Combo
+this.incrementCombo();
+
+console.log(`💀 ${this.config.name} killed! ${wasHeadshot ? 'HEADSHOT! ': ''}+${points} points`);
+
+// Play death animation if available
+const dieAction = this.animations.die;
+if (dieAction && this.mixer) {
+console.log(`Playing death animation for ${this.config.name}`);
+console.log(`Model visible: ${this.mesh.visible}, position:`, this.mesh.position);
+console.log(`Model scale:`, this.mesh.scale);
+
+// Mark that we're animating death
+this.isAnimatingDeath = true;
+
+// Don't stop anything - just play death with full weight immediately
+// The high weight will override other animations
+dieAction.reset();
+dieAction.enabled = true;
+dieAction.setLoop(THREE.LoopOnce, 1); // Play once
+dieAction.clampWhenFinished = true;
+dieAction.timeScale = 1.0;
+dieAction.weight = 1.0;
+
+// Play immediately with no fade
+dieAction.play();
+dieAction.setEffectiveWeight(1.0);
+
+// NOW stop other animations after death is playing
+setTimeout(() => {
+Object.keys(this.animations).forEach(key => {
+if (key !== 'die' && this.animations[key]) {
+this.animations[key].setEffectiveWeight(0);
+this.animations[key].stop();
+}
+});
+}, 50);
+
+this.currentAnimationAction = dieAction;
+this.currentAnimationName = 'die';
+
+const duration = dieAction.getClip().duration;
+console.log(`Death animation duration: ${duration.toFixed(2)}s`);
+console.log(`Death action - running: ${dieAction.isRunning()}, paused: ${dieAction.paused}, weight: ${dieAction.weight}`);
+
+// Make sure model stays visible during death
+this.mesh.visible = true;
+
+// Simple timeout approach - remove after animation completes
+setTimeout(() => {
+console.log(`Death animation finished, removing zombie`);
+this.isAnimatingDeath = false;
+this.remove();
+}, duration * 1000);
+} else {
+console.log(`No death animation found for ${this.config.name}, using fallback`);
+// Fallback death animation
+this.isAnimatingDeath = true;
+const startY = this.mesh.position.y;
+const duration = 1000;
+const startTime = Date.now();
+
+const animate = () => {
+if (!this.mesh || !this.scene.children.includes(this.mesh)) return;
+
+const elapsed = Date.now() - startTime;
+const progress = Math.min(elapsed / duration, 1);
+
+this.mesh.position.y = startY * (1 - progress);
+this.mesh.rotation.x = progress * Math.PI / 2;
+
+if (this.isPlaceholder) {
+this.mesh.material.opacity = 1 - progress;
+this.mesh.material.transparent = true;
+} else {
+this.mesh.traverse((child) => {
+if (child.isMesh && child.material) {
+if (Array.isArray(child.material)) {
+child.material.forEach(mat => {
+if (mat) {
+mat.opacity = 1 - progress;
+mat.transparent = true;
+}
+});
+} else {
+child.material.opacity = 1 - progress;
+child.material.transparent = true;
+}
+}
+});
+}
+
+if (progress < 1) {
+requestAnimationFrame(animate);
+} else {
+this.isAnimatingDeath = false;
+this.remove();
+}
+};
+
+animate();
+}
+}
+
+/**
+* Play a groan sound
+*/
+playGroan() {
+if (!this.soundManager || this.isDead || this.isAttacking || !this.mesh) return;
+
+this.soundManager.playGroan(this.type, this.mesh.position);
+}
+
+/**
+* Stop movement sound
+*/
+stopMovementSound() {
+if (this.currentMovementSound && this.currentMovementSound.isPlaying) {
+this.currentMovementSound.stop();
+this.currentMovementSound.disconnect();
+this.currentMovementSound = null;
+}
+this.isPlayingMovementSound = false;
+}
+
+remove() {
+// Stop all sounds
+this.stopMovementSound();
+
+// Destroy all projectiles
+if (this.projectiles && this.projectiles.length > 0) {
+this.projectiles.forEach(projectile => {
+if (projectile && !projectile.isDestroyed) {
+projectile.destroy();
+}
+});
+this.projectiles = [];
+}
+
+// Stop all animations
+if (this.mixer) {
+Object.values(this.animations).forEach(action => {
+if (action) {
+action.stop();
+}
+});
+this.mixer = null;
+}
+
+this.scene.remove(this.mesh);
+
+if (this.isPlaceholder) {
+this.mesh.geometry.dispose();
+this.mesh.material.dispose();
+} else {
+// Dispose GLB model resources
+this.mesh.traverse((child) => {
+if (child.isMesh) {
+if (child.geometry) child.geometry.dispose();
+if (child.material) {
+if (Array.isArray(child.material)) {
+child.material.forEach(mat => {
+if (mat.map) mat.map.dispose();
+if (mat.normalMap) mat.normalMap.dispose();
+mat.dispose();
+});
+} else {
+if (child.material.map) child.material.map.dispose();
+if (child.material.normalMap) child.material.normalMap.dispose();
+child.material.dispose();
+}
+}
+}
+});
+}
+}
+
+/**
+* Shoot a projectile at the player (reaper boss only)
+*/
+shootProjectile() {
+if (!this.config.shootsProjectiles || !this.mesh || this.isDead) return;
+
+// Get position from the model (mesh is replaced with model after loading)
+// Use world position to get the actual model position in the scene
+const worldPosition = new THREE.Vector3();
+this.mesh.getWorldPosition(worldPosition);
+
+// Scale the Y offset based on the model's scale (for 3x reaper, offset should be 3x too)
+const modelScale = this.mesh.scale.x; // Assuming uniform scaling
+const startPosition = worldPosition.clone();
+startPosition.y += 1.5 * modelScale; // Shoot from upper body, scaled with model size
+
+const targetPosition = this.camera.position.clone();
+
+// Play attack sound when shooting projectile
+if (this.soundManager) {
+console.log(`⚡ Reaper shooting projectile, playing attack sound at`, startPosition);
+this.soundManager.playAttackSound(this.type, startPosition);
+} else {
+console.warn(`Sound manager not available for reaper projectile sound`);
+}
+
+const projectile = new ReaperProjectile(startPosition, targetPosition, this.scene);
+this.projectiles.push(projectile);
+}
+
+/**
+* Update projectiles
+* @param {number} deltaTime 
+*/
+updateProjectiles(deltaTime) {
+if (!this.config.shootsProjectiles) return;
+
+// Ensure projectiles array exists
+if (!this.projectiles) {
+this.projectiles = [];
+return;
+}
+
+// Update and check projectiles
+this.projectiles = this.projectiles.filter(projectile => {
+if (projectile.isDestroyed) {
+return false;
+}
+
+projectile.update(deltaTime);
+
+// Check if projectile hit player
+if (projectile.checkHit(this.camera.position, 0.8)) {
+// Deal damage to player
+if (this.damagePlayer) {
+this.damagePlayer(this.config.damage);
+}
+projectile.destroy();
+return false;
+}
+
+// Remove if too far away
+const distance = projectile.position.distanceTo(this.mesh.position);
+if (distance > 50) {
+projectile.destroy();
+return false;
+}
+
+return true;
+});
+}
 }
