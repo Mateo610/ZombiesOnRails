@@ -74,6 +74,12 @@ export class SceneCameraManager {
             return;
         }
         
+        // CRITICAL: Reset mouse look rotation to center FIRST
+        // This ensures we start from a neutral position regardless of previous scene's aim
+        if (this.mouseLookManager) {
+            this.mouseLookManager.reset();
+        }
+        
         this._configureCamera();
         this._setCameraLookAt(sceneConfig.lookAt);
         this.enableFreeLook();

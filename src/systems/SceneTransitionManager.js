@@ -505,6 +505,20 @@ export class SceneTransitionManager {
                 if (this.sceneCameraManager) {
                     this.sceneCameraManager.setInitialDirection(this.currentCameraScene);
                 } else if (this.mouseLookManager) {
+                    // CRITICAL: Reset mouse look rotation to center FIRST
+                    this.mouseLookManager.reset();
+                    // Reset camera rotation before setting lookAt
+                    this.camera.up.set(0, 1, 0);
+                    this.camera.rotation.set(0, 0, 0);
+                    this.camera.rotation.order = 'YXZ';
+                    if (this.currentCameraScene?.lookAt) {
+                        this.camera.lookAt(
+                            this.currentCameraScene.lookAt.x,
+                            this.currentCameraScene.lookAt.y,
+                            this.currentCameraScene.lookAt.z
+                        );
+                        this.camera.updateMatrixWorld(true);
+                    }
                     this.mouseLookManager.updateRotationFromCamera();
                     this.mouseLookManager.unlock();
                     this.mouseLookManager.enable();

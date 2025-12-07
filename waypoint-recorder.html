@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rail Path Waypoint Recorder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+        }
+        
+        #ui-overlay {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #0f0;
+            padding: 20px;
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            z-index: 1000;
+            max-width: 400px;
+            font-size: 14px;
+        }
+        
+        #ui-overlay h2 {
+            color: #0f0;
+            margin-bottom: 15px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+        
+        #ui-overlay .controls {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 255, 0, 0.1);
+            border-left: 3px solid #0f0;
+        }
+        
+        #ui-overlay .waypoints-list {
+            margin-top: 15px;
+            max-height: 250px;
+            overflow-y: auto;
+            font-size: 11px;
+        }
+        
+        #ui-overlay .waypoint-item {
+            padding: 5px;
+            margin: 3px 0;
+            background: rgba(0, 255, 0, 0.05);
+            font-size: 12px;
+        }
+        
+        #stats {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #0f0;
+            padding: 15px;
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            z-index: 1000;
+            font-size: 12px;
+        }
+        
+        #export-output {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.9);
+            color: #0f0;
+            padding: 15px;
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            z-index: 1000;
+            font-size: 11px;
+            display: none;
+        }
+        
+        #export-output.show {
+            display: block;
+        }
+        
+        .button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 8px 15px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .button:hover {
+            background: #0a0;
+        }
+        
+        .button:active {
+            background: #050;
+        }
+        
+        .success-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 255, 0, 0.9);
+            color: #000;
+            padding: 20px 40px;
+            border: 3px solid #0f0;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 2000;
+            display: none;
+        }
+        
+        .success-message.show {
+            display: block;
+            animation: flash 0.5s ease-out;
+        }
+        
+        @keyframes flash {
+            0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-overlay">
+        <h2>🎯 Waypoint Recorder</h2>
+        <div class="controls">
+            <strong>Controls:</strong><br>
+            <strong>WASD</strong> - Move<br>
+            <strong>Mouse</strong> - Look around<br>
+            <strong>R</strong> - Record waypoint + lookAt<br>
+            <strong>E</strong> - Export waypoints<br>
+            <strong>C</strong> - Clear all<br>
+            <strong>Delete/Backspace</strong> - Remove last<br>
+            <strong>Shift</strong> - Move faster<br>
+            <strong>Space</strong> - Move up<br>
+            <strong>Ctrl</strong> - Move down<br>
+            <strong>O</strong> - Toggle Orbit/Free controls<br><br>
+            <strong>Visual Guide:</strong><br>
+            🟢 Green sphere = Waypoint<br>
+            🟡 Yellow sphere = LookAt target<br>
+            ⚪ White arrow = Current look direction<br>
+            🔵 Cyan line = Path preview
+        </div>
+        <div>
+            <button class="button" onclick="exportWaypoints()">Export (E)</button>
+            <button class="button" onclick="clearAll()">Clear (C)</button>
+            <button class="button" onclick="copyToClipboard()">Copy to Clipboard</button>
+        </div>
+        <div class="waypoints-list" id="waypoints-list">
+            <strong>Waypoints: <span id="waypoint-count">0</span></strong>
+        </div>
+    </div>
+    
+    <div id="stats">
+        <strong>Camera Position:</strong><br>
+        X: <span id="pos-x">0.00</span><br>
+        Y: <span id="pos-y">0.00</span><br>
+        Z: <span id="pos-z">0.00</span><br><br>
+        <strong>Looking At:</strong><br>
+        X: <span id="look-x">0.00</span><br>
+        Y: <span id="look-y">0.00</span><br>
+        Z: <span id="look-z">0.00</span>
+    </div>
+    
+    <div id="export-output"></div>
+    
+    <div class="success-message" id="success-message">Waypoint Recorded!</div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // ============================================
+        // SCENE SETUP
+        // ============================================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+        scene.fog = new THREE.FogExp2(0x1a1a2e, 0.01);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 15); // Start at a good viewing position
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // ============================================
+        // LIGHTING
+        // ============================================
+        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambient);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(50, 100, 50);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 500;
+        directionalLight.shadow.camera.left = -100;
+        directionalLight.shadow.camera.right = 100;
+        directionalLight.shadow.camera.top = 100;
+        directionalLight.shadow.camera.bottom = -100;
+        scene.add(directionalLight);
+
+        // ============================================
+        // FALLBACK GROUND (always visible)
+        // ============================================
+        const groundGeo = new THREE.PlaneGeometry(200, 200);
+        const groundMat = new THREE.MeshStandardMaterial({ 
+            color: 0x444444,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+        
+        // Add grid helper for better visibility
+        const gridHelper = new THREE.GridHelper(200, 50, 0x666666, 0x333333);
+        scene.add(gridHelper);
+        
+        // Add some test boxes for visibility
+        const testBoxGeo = new THREE.BoxGeometry(5, 5, 5);
+        const testBoxMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        const testBox1 = new THREE.Mesh(testBoxGeo, testBoxMat);
+        testBox1.position.set(10, 2.5, 0);
+        testBox1.castShadow = true;
+        scene.add(testBox1);
+        
+        const testBox2 = new THREE.Mesh(testBoxGeo, new THREE.MeshStandardMaterial({ color: 0x0000ff }));
+        testBox2.position.set(-10, 2.5, 0);
+        testBox2.castShadow = true;
+        scene.add(testBox2);
+
+        // ============================================
+        // LOAD SCENE MODEL
+        // ============================================
+        const loader = new GLTFLoader();
+        let sceneModel = null;
+        let modelLoading = false;
+
+        // Show loading indicator
+        const loadingInfo = document.createElement('div');
+        loadingInfo.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #0f0;
+            padding: 20px;
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            z-index: 3000;
+            font-family: 'Courier New', monospace;
+        `;
+        loadingInfo.textContent = 'Loading scene model...';
+        document.body.appendChild(loadingInfo);
+
+        loader.loadAsync('/models/scenes/factory_scene/source/scene.glb')
+            .then(gltf => {
+                console.log('✅ Scene model loaded successfully');
+                sceneModel = gltf.scene;
+                sceneModel.name = 'factory_scene';
+                
+                // Enable shadows
+                sceneModel.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                scene.add(sceneModel);
+                
+                // Remove test boxes if model loaded
+                scene.remove(testBox1);
+                scene.remove(testBox2);
+                scene.remove(gridHelper);
+                
+                loadingInfo.textContent = '✅ Scene loaded! Click to start.';
+                setTimeout(() => {
+                    loadingInfo.style.display = 'none';
+                }, 2000);
+            })
+            .catch(error => {
+                console.error('❌ Failed to load scene model:', error);
+                console.log('⚠️ Using fallback scene. Model may need to be served from a local server.');
+                console.log('💡 Tip: Run a local server (e.g., python -m http.server) and access via http://localhost:8000');
+                
+                loadingInfo.textContent = '⚠️ Model not found. Using fallback scene.';
+                loadingInfo.style.color = '#ff0';
+                setTimeout(() => {
+                    loadingInfo.style.display = 'none';
+                }, 3000);
+            });
+
+        // ============================================
+        // CONTROLS
+        // ============================================
+        const controls = new PointerLockControls(camera, document.body);
+        
+        // Also add OrbitControls as fallback/alternative
+        const orbitControls = new OrbitControls(camera, renderer.domElement);
+        orbitControls.enabled = false; // Start with pointer lock
+        orbitControls.enableDamping = true;
+        orbitControls.dampingFactor = 0.05;
+        orbitControls.target.set(0, 0, 0);
+        
+        // Toggle between pointer lock and orbit controls with 'O' key
+        let useOrbitControls = false;
+        
+        // Movement state
+        const moveState = {
+            forward: false,
+            backward: false,
+            left: false,
+            right: false,
+            up: false,
+            down: false,
+            shift: false
+        };
+        
+        const moveSpeed = 5.0;
+        const fastSpeed = 15.0;
+        
+        // Click to enable pointer lock (or just start using orbit controls)
+        renderer.domElement.addEventListener('click', () => {
+            if (!useOrbitControls) {
+                controls.lock();
+            }
+        });
+        
+        // Toggle controls mode with 'O' key
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyO') {
+                useOrbitControls = !useOrbitControls;
+                if (useOrbitControls) {
+                    controls.unlock();
+                    orbitControls.enabled = true;
+                    console.log('🔄 Switched to Orbit Controls (mouse drag to look, scroll to zoom)');
+                } else {
+                    orbitControls.enabled = false;
+                    controls.lock();
+                    console.log('🔄 Switched to Pointer Lock Controls');
+                }
+                e.preventDefault();
+            }
+        });
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            switch(e.code) {
+                case 'KeyW': moveState.forward = true; break;
+                case 'KeyS': moveState.backward = true; break;
+                case 'KeyA': moveState.left = true; break;
+                case 'KeyD': moveState.right = true; break;
+                case 'Space': moveState.up = true; e.preventDefault(); break;
+                case 'ControlLeft':
+                case 'ControlRight':
+                    moveState.down = true;
+                    e.preventDefault();
+                    break;
+                case 'ShiftLeft':
+                case 'ShiftRight':
+                    moveState.shift = true;
+                    break;
+                case 'KeyR':
+                    recordWaypoint();
+                    e.preventDefault();
+                    break;
+                case 'KeyE':
+                    exportWaypoints();
+                    e.preventDefault();
+                    break;
+                case 'KeyC':
+                    clearAll();
+                    e.preventDefault();
+                    break;
+                case 'Delete':
+                case 'Backspace':
+                    removeLastWaypoint();
+                    e.preventDefault();
+                    break;
+                case 'KeyO':
+                    // Toggle controls - handled separately
+                    break;
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            switch(e.code) {
+                case 'KeyW': moveState.forward = false; break;
+                case 'KeyS': moveState.backward = false; break;
+                case 'KeyA': moveState.left = false; break;
+                case 'KeyD': moveState.right = false; break;
+                case 'Space': moveState.up = false; break;
+                case 'ControlLeft':
+                case 'ControlRight':
+                    moveState.down = false;
+                    break;
+                case 'ShiftLeft':
+                case 'ShiftRight':
+                    moveState.shift = false;
+                    break;
+            }
+        });
+
+        // ============================================
+        // WAYPOINT SYSTEM
+        // ============================================
+        const waypoints = [];
+        const waypointMarkers = new THREE.Group();
+        scene.add(waypointMarkers);
+        
+        // Real-time look direction indicator
+        let lookDirectionHelper = null;
+        
+        // Helper to get camera look-at point
+        function getCameraLookAtPoint() {
+            const direction = new THREE.Vector3();
+            camera.getWorldDirection(direction);
+            const lookAtPoint = camera.position.clone().add(direction.multiplyScalar(10));
+            return lookAtPoint;
+        }
+        
+        // Update real-time look direction indicator
+        function updateLookDirectionHelper() {
+            const lookAt = getCameraLookAtPoint();
+            const direction = new THREE.Vector3().subVectors(lookAt, camera.position);
+            const distance = direction.length();
+            
+            if (lookDirectionHelper) {
+                // Update existing helper
+                waypointMarkers.remove(lookDirectionHelper);
+                lookDirectionHelper.line.geometry.dispose();
+                lookDirectionHelper.cone.geometry.dispose();
+                lookDirectionHelper = null;
+            }
+            
+            lookDirectionHelper = new THREE.ArrowHelper(
+                direction.normalize(),
+                camera.position,
+                Math.min(distance, 20), // Limit arrow length for visibility
+                0xffffff,
+                0.5,
+                0.3
+            );
+            lookDirectionHelper.name = 'LookDirectionHelper';
+            waypointMarkers.add(lookDirectionHelper);
+        }
+        
+        function recordWaypoint() {
+            const pos = camera.position;
+            const lookAt = getCameraLookAtPoint();
+            
+            const waypoint = {
+                x: parseFloat(pos.x.toFixed(2)),
+                y: parseFloat(pos.y.toFixed(2)),
+                z: parseFloat(pos.z.toFixed(2)),
+                lookAt: {
+                    x: parseFloat(lookAt.x.toFixed(2)),
+                    y: parseFloat(lookAt.y.toFixed(2)),
+                    z: parseFloat(lookAt.z.toFixed(2))
+                }
+            };
+            
+            waypoints.push(waypoint);
+            
+            // Create visual marker (green sphere)
+            const markerGeo = new THREE.SphereGeometry(0.3, 16, 16);
+            const markerMat = new THREE.MeshBasicMaterial({
+                color: 0x00ff00,
+                transparent: true,
+                opacity: 0.8
+            });
+            const marker = new THREE.Mesh(markerGeo, markerMat);
+            marker.position.set(waypoint.x, waypoint.y, waypoint.z);
+            marker.userData.index = waypoints.length - 1;
+            waypointMarkers.add(marker);
+            
+            // Add number label
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#00ff00';
+            ctx.font = '48px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText((waypoints.length).toString(), 32, 32);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.position.set(waypoint.x, waypoint.y + 0.5, waypoint.z);
+            sprite.scale.set(0.5, 0.5, 1);
+            waypointMarkers.add(sprite);
+            
+            // Create look-at indicator (yellow arrow/line to show where camera looks)
+            const lookAtMarkerGeo = new THREE.SphereGeometry(0.15, 8, 8);
+            const lookAtMarkerMat = new THREE.MeshBasicMaterial({
+                color: 0xffff00,
+                transparent: true,
+                opacity: 0.6
+            });
+            const lookAtMarker = new THREE.Mesh(lookAtMarkerGeo, lookAtMarkerMat);
+            lookAtMarker.position.set(waypoint.lookAt.x, waypoint.lookAt.y, waypoint.lookAt.z);
+            waypointMarkers.add(lookAtMarker);
+            
+            // Create arrow/line from waypoint to look-at point
+            const arrowHelper = new THREE.ArrowHelper(
+                new THREE.Vector3().subVectors(
+                    new THREE.Vector3(waypoint.lookAt.x, waypoint.lookAt.y, waypoint.lookAt.z),
+                    new THREE.Vector3(waypoint.x, waypoint.y, waypoint.z)
+                ).normalize(),
+                new THREE.Vector3(waypoint.x, waypoint.y, waypoint.z),
+                new THREE.Vector3().subVectors(
+                    new THREE.Vector3(waypoint.lookAt.x, waypoint.lookAt.y, waypoint.lookAt.z),
+                    new THREE.Vector3(waypoint.x, waypoint.y, waypoint.z)
+                ).length(),
+                0xffff00,
+                0.3,
+                0.2
+            );
+            waypointMarkers.add(arrowHelper);
+            
+            // Update path line
+            updatePathLine();
+            
+            // Update UI
+            updateUI();
+            
+            // Show success message
+            showSuccessMessage(`Waypoint #${waypoints.length} + LookAt Recorded!`);
+            
+            console.log(`📍 Waypoint #${waypoints.length} recorded:`, waypoint);
+            console.log(`   Position: (${waypoint.x}, ${waypoint.y}, ${waypoint.z})`);
+            console.log(`   LookAt: (${waypoint.lookAt.x}, ${waypoint.lookAt.y}, ${waypoint.lookAt.z})`);
+        }
+        
+        function removeLastWaypoint() {
+            if (waypoints.length === 0) return;
+            
+            waypoints.pop();
+            
+            // Remove last waypoint's markers (sphere, sprite, lookAt marker, arrow)
+            // Each waypoint creates 4 objects: marker, sprite, lookAt marker, arrow
+            let removed = 0;
+            for (let i = waypointMarkers.children.length - 1; i >= 0 && removed < 4; i--) {
+                const child = waypointMarkers.children[i];
+                if (child === lookDirectionHelper) continue; // Don't remove the real-time helper
+                
+                waypointMarkers.remove(child);
+                removed++;
+                
+                // Dispose geometry and materials
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(mat => {
+                            if (mat.map) mat.map.dispose();
+                            mat.dispose();
+                        });
+                    } else {
+                        if (child.material.map) child.material.map.dispose();
+                        child.material.dispose();
+                    }
+                }
+                // Arrow helper cleanup
+                if (child.line) {
+                    child.line.geometry.dispose();
+                    child.line.material.dispose();
+                }
+                if (child.cone) {
+                    child.cone.geometry.dispose();
+                    child.cone.material.dispose();
+                }
+            }
+            
+            updatePathLine();
+            updateUI();
+        }
+        
+        function clearAll() {
+            waypoints.length = 0;
+            
+            // Remove all markers except the look direction helper
+            const childrenToRemove = [];
+            waypointMarkers.children.forEach(child => {
+                if (child !== lookDirectionHelper) {
+                    childrenToRemove.push(child);
+                }
+            });
+            
+            childrenToRemove.forEach(child => {
+                waypointMarkers.remove(child);
+                
+                // Dispose geometry and materials
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(mat => {
+                            if (mat.map) mat.map.dispose();
+                            mat.dispose();
+                        });
+                    } else {
+                        if (child.material.map) child.material.map.dispose();
+                        child.material.dispose();
+                    }
+                }
+                // Arrow helper cleanup
+                if (child.line) child.line.geometry.dispose();
+                if (child.line) child.line.material.dispose();
+                if (child.cone) child.cone.geometry.dispose();
+                if (child.cone) child.cone.material.dispose();
+            });
+            
+            updatePathLine();
+            updateUI();
+        }
+        
+        let pathLine = null;
+        
+        function updatePathLine() {
+            if (pathLine) {
+                waypointMarkers.remove(pathLine);
+                pathLine.geometry.dispose();
+                pathLine.material.dispose();
+            }
+            
+            if (waypoints.length < 2) return;
+            
+            const points = waypoints.map(wp => new THREE.Vector3(wp.x, wp.y, wp.z));
+            const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
+            const curvePoints = curve.getPoints(200);
+            
+            const geometry = new THREE.BufferGeometry().setFromPoints(curvePoints);
+            const material = new THREE.LineBasicMaterial({
+                color: 0x00ffff,
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.6
+            });
+            
+            pathLine = new THREE.Line(geometry, material);
+            waypointMarkers.add(pathLine);
+        }
+        
+        function updateUI() {
+            document.getElementById('waypoint-count').textContent = waypoints.length;
+            
+            const list = document.getElementById('waypoints-list');
+            list.innerHTML = `<strong>Waypoints: ${waypoints.length}</strong>`;
+            
+            waypoints.forEach((wp, index) => {
+                const item = document.createElement('div');
+                item.className = 'waypoint-item';
+                item.innerHTML = `
+                    <strong>#${index + 1}:</strong> Pos(${wp.x}, ${wp.y}, ${wp.z})<br>
+                    &nbsp;&nbsp;&nbsp;LookAt(${wp.lookAt.x}, ${wp.lookAt.y}, ${wp.lookAt.z})
+                `;
+                list.appendChild(item);
+            });
+        }
+        
+        function exportWaypoints() {
+            if (waypoints.length === 0) {
+                alert('No waypoints to export!');
+                return;
+            }
+            
+            // Export waypoints array
+            let waypointsOutput = `waypoints: [\n`;
+            waypoints.forEach((wp, index) => {
+                const isLast = index === waypoints.length - 1;
+                waypointsOutput += `            { x: ${wp.x.toFixed(2)}, y: ${wp.y.toFixed(2)}, z: ${wp.z.toFixed(2)} }${isLast ? '' : ','}\n`;
+            });
+            waypointsOutput += `        ]`;
+            
+            // Use last waypoint's lookAt as the path's main lookAt
+            const lastLookAt = waypoints[waypoints.length - 1].lookAt;
+            const lookAtOutput = `lookAt: { x: ${lastLookAt.x.toFixed(2)}, y: ${lastLookAt.y.toFixed(2)}, z: ${lastLookAt.z.toFixed(2)} }`;
+            
+            const fullOutput = `${waypointsOutput},\n        ${lookAtOutput}`;
+            
+            const exportDiv = document.getElementById('export-output');
+            exportDiv.textContent = fullOutput;
+            exportDiv.classList.add('show');
+            
+            console.log('\n═══════════════════════════════════════════════');
+            console.log('📋 WAYPOINTS FOR RailPathConfig.js');
+            console.log('═══════════════════════════════════════════════');
+            console.log(fullOutput);
+            console.log('═══════════════════════════════════════════════\n');
+            
+            // Also show full path config format
+            const fullConfig = `{\n        id: 'path_X',\n        name: 'Path Name',\n        ${fullOutput},\n        duration: 3000,\n        sceneIndex: X,\n        enemySpawns: []\n    }`;
+            console.log('\n📋 Full path config:\n' + fullConfig);
+            
+            // Show lookAt info for all waypoints
+            console.log('\n📋 All LookAt points (for reference):');
+            waypoints.forEach((wp, index) => {
+                console.log(`  Waypoint #${index + 1} LookAt: { x: ${wp.lookAt.x.toFixed(2)}, y: ${wp.lookAt.y.toFixed(2)}, z: ${wp.lookAt.z.toFixed(2)} }`);
+            });
+        }
+        
+        function copyToClipboard() {
+            if (waypoints.length === 0) {
+                alert('No waypoints to copy!');
+                return;
+            }
+            
+            let waypointsOutput = `waypoints: [\n`;
+            waypoints.forEach((wp, index) => {
+                const isLast = index === waypoints.length - 1;
+                waypointsOutput += `            { x: ${wp.x.toFixed(2)}, y: ${wp.y.toFixed(2)}, z: ${wp.z.toFixed(2)} }${isLast ? '' : ','}\n`;
+            });
+            waypointsOutput += `        ]`;
+            
+            const lastLookAt = waypoints[waypoints.length - 1].lookAt;
+            const lookAtOutput = `lookAt: { x: ${lastLookAt.x.toFixed(2)}, y: ${lastLookAt.y.toFixed(2)}, z: ${lastLookAt.z.toFixed(2)} }`;
+            
+            const fullOutput = `${waypointsOutput},\n        ${lookAtOutput}`;
+            
+            navigator.clipboard.writeText(fullOutput).then(() => {
+                showSuccessMessage('Copied to Clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+        
+        function showSuccessMessage(text) {
+            const msg = document.getElementById('success-message');
+            msg.textContent = text;
+            msg.classList.add('show');
+            setTimeout(() => {
+                msg.classList.remove('show');
+            }, 500);
+        }
+        
+        // Expose functions globally for onclick handlers
+        window.exportWaypoints = exportWaypoints;
+        window.clearAll = clearAll;
+        window.copyToClipboard = copyToClipboard;
+
+        // ============================================
+        // ANIMATION LOOP
+        // ============================================
+        const clock = new THREE.Clock();
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            const speed = moveState.shift ? fastSpeed : moveSpeed;
+            const moveVector = new THREE.Vector3();
+            
+            if (moveState.forward) moveVector.z -= 1;
+            if (moveState.backward) moveVector.z += 1;
+            if (moveState.left) moveVector.x -= 1;
+            if (moveState.right) moveVector.x += 1;
+            if (moveState.up) moveVector.y += 1;
+            if (moveState.down) moveVector.y -= 1;
+            
+            moveVector.normalize();
+            moveVector.multiplyScalar(speed * delta);
+            
+            // Apply movement relative to camera direction (only for pointer lock mode)
+            if (!useOrbitControls) {
+                const direction = new THREE.Vector3();
+                camera.getWorldDirection(direction);
+                direction.y = 0; // Keep horizontal
+                direction.normalize();
+                
+                const right = new THREE.Vector3();
+                right.crossVectors(direction, camera.up).normalize();
+                
+                const forwardMove = direction.multiplyScalar(moveVector.z);
+                const rightMove = right.multiplyScalar(moveVector.x);
+                const upMove = new THREE.Vector3(0, moveVector.y, 0);
+                
+                camera.position.add(forwardMove);
+                camera.position.add(rightMove);
+                camera.position.add(upMove);
+            } else {
+                // For orbit controls, movement is handled differently
+                const direction = new THREE.Vector3();
+                camera.getWorldDirection(direction);
+                direction.y = 0;
+                direction.normalize();
+                
+                const right = new THREE.Vector3();
+                right.crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize();
+                
+                const forwardMove = direction.multiplyScalar(moveVector.z);
+                const rightMove = right.multiplyScalar(moveVector.x);
+                const upMove = new THREE.Vector3(0, moveVector.y, 0);
+                
+                camera.position.add(forwardMove);
+                camera.position.add(rightMove);
+                camera.position.add(upMove);
+                orbitControls.target.add(forwardMove);
+                orbitControls.target.add(rightMove);
+            }
+            
+            // Update UI
+            const pos = camera.position;
+            document.getElementById('pos-x').textContent = pos.x.toFixed(2);
+            document.getElementById('pos-y').textContent = pos.y.toFixed(2);
+            document.getElementById('pos-z').textContent = pos.z.toFixed(2);
+            
+            // Update look-at display
+            const lookAt = getCameraLookAtPoint();
+            document.getElementById('look-x').textContent = lookAt.x.toFixed(2);
+            document.getElementById('look-y').textContent = lookAt.y.toFixed(2);
+            document.getElementById('look-z').textContent = lookAt.z.toFixed(2);
+            
+            // Update appropriate controls
+            if (useOrbitControls) {
+                orbitControls.update();
+            }
+            // Note: PointerLockControls doesn't need update() - it handles updates internally when locked
+            
+            // Update real-time look direction indicator
+            updateLookDirectionHelper();
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Startup message
+        console.log('🎯 Waypoint Recorder initialized');
+        console.log('📋 Controls:');
+        console.log('  - WASD: Move');
+        console.log('  - Mouse: Look (after clicking screen for pointer lock)');
+        console.log('  - R: Record waypoint');
+        console.log('  - E: Export waypoints');
+        console.log('  - C: Clear all');
+        console.log('  - O: Toggle Orbit/Free controls');
+        console.log('');
+        console.log('💡 Tip: If the model doesn\'t load, press O to use Orbit Controls (mouse drag)');
+        
+        animate();
+        
+        // Window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

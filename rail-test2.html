@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rail System Test 2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background: #000;
+        }
+        
+        #ui-overlay {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #0f0;
+            padding: 20px;
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            z-index: 1000;
+            max-width: 400px;
+            font-size: 14px;
+        }
+        
+        #ui-overlay h2 {
+            color: #0f0;
+            margin-bottom: 15px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+        
+        .button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 8px 15px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 14px;
+        }
+        
+        .button:hover {
+            background: #0a0;
+        }
+        
+        .button:active {
+            background: #050;
+        }
+        
+        .button:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+        
+        #stats {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #0f0;
+            padding: 15px;
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            z-index: 1000;
+            font-size: 12px;
+        }
+        
+        #progress {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #0f0;
+            padding: 15px;
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            z-index: 1000;
+            font-size: 12px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #0f0;
+            border-radius: 3px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #0f0;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+        
+        #scrubber {
+            width: 100%;
+            height: 30px;
+            margin-top: 10px;
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #0f0;
+            border-radius: 3px;
+            outline: none;
+        }
+        
+        #scrubber::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #0f0;
+            border: 2px solid #000;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        #scrubber::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #0f0;
+            border: 2px solid #000;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .controls-row {
+            display: flex;
+            gap: 5px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        
+        .speed-control {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .speed-control input {
+            flex: 1;
+            cursor: pointer;
+        }
+        
+        .speed-control label {
+            min-width: 80px;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-overlay">
+        <h2>🚂 Rail System Test 2</h2>
+        <div class="controls-row">
+            <button class="button" id="start-btn">Start</button>
+            <button class="button" id="pause-btn" disabled>Pause</button>
+            <button class="button" id="reset-btn">Reset</button>
+        </div>
+        <div style="margin-top: 15px;">
+            <strong>Status:</strong> <span id="status">Ready</span><br>
+            <strong>Path:</strong> Complete Exterior Path<br>
+            <strong>Waypoints:</strong> 19<br>
+            <strong>Duration:</strong> <span id="duration-text">3000</span>ms<br>
+            <strong>State:</strong> <span id="rail-state" style="color: #666;">Stopped</span>
+        </div>
+        <div class="speed-control" style="margin-top: 15px;">
+            <label><strong>Speed:</strong></label>
+            <input type="range" id="speed-slider" min="0.1" max="3" step="0.1" value="1">
+            <span id="speed-value">1.0x</span>
+        </div>
+    </div>
+    
+    <div id="stats">
+        <strong>Camera Position:</strong><br>
+        X: <span id="pos-x">0.00</span><br>
+        Y: <span id="pos-y">0.00</span><br>
+        Z: <span id="pos-z">0.00</span><br><br>
+        <strong>Looking At:</strong><br>
+        X: <span id="look-x">0.00</span><br>
+        Y: <span id="look-y">0.00</span><br>
+        Z: <span id="look-z">0.00</span>
+    </div>
+    
+    <div id="progress">
+        <strong>Progress:</strong> <span id="progress-text">0%</span>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <input type="range" id="scrubber" min="0" max="100" value="0" step="0.1">
+        <div style="margin-top: 5px; font-size: 10px; color: #666;">
+            <span>0%</span>
+            <span style="float: right;">100%</span>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        // ============================================
+        // SCENE SETUP
+        // ============================================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+        scene.fog = new THREE.FogExp2(0x1a1a2e, 0.01);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // Start at first waypoint
+        camera.position.set(20.22, 1.11, 0.69);
+        camera.lookAt(10.25, 0.56, 0.35); // First lookAt
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // ============================================
+        // LIGHTING
+        // ============================================
+        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambient);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(50, 100, 50);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 500;
+        directionalLight.shadow.camera.left = -100;
+        directionalLight.shadow.camera.right = 100;
+        directionalLight.shadow.camera.top = 100;
+        directionalLight.shadow.camera.bottom = -100;
+        scene.add(directionalLight);
+
+        // ============================================
+        // LOAD SCENE MODEL
+        // ============================================
+        const loader = new GLTFLoader();
+
+        loader.loadAsync('/models/scenes/factory_scene/source/scene.glb')
+            .then(gltf => {
+                console.log('✅ Scene model loaded');
+                const sceneModel = gltf.scene;
+                sceneModel.name = 'factory_scene';
+                
+                sceneModel.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                scene.add(sceneModel);
+            })
+            .catch(error => {
+                console.error('❌ Failed to load scene model:', error);
+                console.log('⚠️ Using fallback scene');
+                // Create fallback ground
+                const groundGeo = new THREE.PlaneGeometry(200, 200);
+                const groundMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+                const ground = new THREE.Mesh(groundGeo, groundMat);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                scene.add(ground);
+            });
+
+        // ============================================
+        // RAIL PATH CONFIGURATION
+        // ============================================
+        const railPath = {
+            id: 'exterior_path_complete',
+            name: 'Complete Exterior Scene Path',
+            waypoints: [
+                { x: 20.22, y: 1.11, z: 0.69 },
+                { x: 20.22, y: 1.11, z: 0.69 },
+                { x: 19.64, y: 1.11, z: 0.67 },
+                { x: 18.26, y: 1.11, z: 0.52 },
+                { x: 14.01, y: 1.11, z: 0.36 },
+                { x: 12.26, y: 1.11, z: -1.49 },
+                { x: 12.15, y: 1.11, z: -0.92 },
+                { x: 10.49, y: 1.11, z: 0.99 },
+                { x: 8.29, y: 1.11, z: 2.33 },
+                { x: 4.07, y: 1.11, z: 2.62 },
+                { x: 4.14, y: 1.11, z: 2.65 },
+                { x: 4.14, y: 1.11, z: 2.65 },
+                { x: -0.86, y: 1.11, z: 0.79 },
+                { x: -4.46, y: 1.11, z: 0.10 },
+                { x: -4.46, y: 1.11, z: 0.10 },
+                { x: -4.70, y: 1.11, z: 3.32 },
+                { x: -6.92, y: 1.11, z: 5.21 },
+                { x: -6.92, y: 1.11, z: 5.21 },
+                { x: -6.92, y: 1.11, z: 5.21 }
+            ],
+            lookAt: { x: -16.45, y: 0.86, z: 8.22 },
+            duration: 3000
+        };
+
+        // Individual lookAt points for each waypoint
+        const waypointLookAts = [
+            { x: 10.25, y: 0.56, z: 0.35 },
+            { x: 10.25, y: 0.56, z: 0.35 },
+            { x: 12.36, y: 1.58, z: -6.17 },
+            { x: 11.64, y: 1.84, z: 7.98 },
+            { x: 9.17, y: 2.18, z: -8.32 },
+            { x: 10.33, y: 0.56, z: -11.29 },
+            { x: 10.75, y: 1.08, z: 8.98 },
+            { x: 0.98, y: 1.40, z: 4.06 },
+            { x: -1.68, y: 1.24, z: 3.13 },
+            { x: -1.99, y: 0.96, z: 10.57 },
+            { x: 3.75, y: 1.34, z: -7.34 },
+            { x: -5.10, y: 1.08, z: -1.19 },
+            { x: -10.63, y: 1.00, z: -1.33 },
+            { x: -13.70, y: 0.74, z: -3.70 },
+            { x: -3.49, y: 0.70, z: 10.04 },
+            { x: -12.07, y: 0.64, z: 10.07 },
+            { x: -16.72, y: 0.50, z: 7.07 },
+            { x: -2.34, y: 0.94, z: 14.10 },
+            { x: -16.45, y: 0.86, z: 8.22 }
+        ];
+
+        // ============================================
+        // VISUAL PATH INDICATORS
+        // ============================================
+        const pathVisuals = new THREE.Group();
+        scene.add(pathVisuals);
+
+        // Draw waypoint markers
+        railPath.waypoints.forEach((wp, index) => {
+            // Green sphere for waypoint
+            const markerGeo = new THREE.SphereGeometry(0.2, 16, 16);
+            const markerMat = new THREE.MeshBasicMaterial({
+                color: 0x00ff00,
+                transparent: true,
+                opacity: 0.6
+            });
+            const marker = new THREE.Mesh(markerGeo, markerMat);
+            marker.position.set(wp.x, wp.y, wp.z);
+            pathVisuals.add(marker);
+            
+            // Yellow sphere for lookAt
+            if (waypointLookAts[index]) {
+                const lookAtGeo = new THREE.SphereGeometry(0.15, 8, 8);
+                const lookAtMat = new THREE.MeshBasicMaterial({
+                    color: 0xffff00,
+                    transparent: true,
+                    opacity: 0.4
+                });
+                const lookAtMarker = new THREE.Mesh(lookAtGeo, lookAtMat);
+                lookAtMarker.position.set(
+                    waypointLookAts[index].x,
+                    waypointLookAts[index].y,
+                    waypointLookAts[index].z
+                );
+                pathVisuals.add(lookAtMarker);
+            }
+        });
+
+        // Draw path line
+        const points = railPath.waypoints.map(wp => new THREE.Vector3(wp.x, wp.y, wp.z));
+        const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
+        const curvePoints = curve.getPoints(200);
+        const geometry = new THREE.BufferGeometry().setFromPoints(curvePoints);
+        const material = new THREE.LineBasicMaterial({
+            color: 0x00ffff,
+            linewidth: 2,
+            transparent: true,
+            opacity: 0.5
+        });
+        const pathLine = new THREE.Line(geometry, material);
+        pathVisuals.add(pathLine);
+
+        // ============================================
+        // RAIL MOVEMENT SYSTEM
+        // ============================================
+        let isMoving = false;
+        let isPaused = false;
+        let startTime = null;
+        let pausedElapsed = 0;
+        let currentProgress = 0;
+        let splineCurve = null;
+        let baseDuration = railPath.duration;
+        let speedMultiplier = 1.0;
+        let isScrubbing = false;
+        const waypointPauseDuration = 800; // Pause for 800ms at each waypoint (adjustable)
+
+        function easeInOutCubic(t) {
+            return t < 0.5
+                ? 4 * t * t * t
+                : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
+        
+        /**
+         * Map progress with waypoint pauses
+         * Adds pause time at each waypoint, making the camera dwell longer
+         */
+        function getProgressWithPauses(rawProgress) {
+            // Clamp progress to 0-1 range
+            const clampedProgress = Math.max(0, Math.min(1, rawProgress));
+            
+            const numWaypoints = railPath.waypoints.length;
+            const numSegments = numWaypoints - 1;
+            
+            if (numSegments <= 0) return 0;
+            
+            // Total duration including all pauses
+            const totalPauseTime = (numWaypoints - 1) * waypointPauseDuration;
+            const totalDuration = baseDuration + totalPauseTime;
+            
+            // Calculate which segment we're in based on time
+            const currentTime = clampedProgress * totalDuration;
+            let accumulatedTime = 0;
+            
+            // Find which segment we're in
+            for (let i = 0; i < numSegments; i++) {
+                const segmentDuration = baseDuration / numSegments;
+                const segmentEndTime = accumulatedTime + segmentDuration;
+                
+                if (currentTime <= segmentEndTime) {
+                    // We're in this segment
+                    const timeInSegment = currentTime - accumulatedTime;
+                    const segmentProgress = Math.max(0, Math.min(1, timeInSegment / segmentDuration));
+                    const finalProgress = (i + segmentProgress) / numSegments;
+                    return Math.max(0, Math.min(1, finalProgress)); // Ensure 0-1
+                }
+                
+                // Move past this segment and its pause
+                accumulatedTime = segmentEndTime + waypointPauseDuration;
+            }
+            
+            // Past all segments, at final waypoint
+            return 1.0;
+        }
+
+        function startRailMovement() {
+            if (isPaused) {
+                isPaused = false;
+                startTime = performance.now() - pausedElapsed;
+                document.getElementById('status').textContent = 'Moving on rails...';
+                document.getElementById('pause-btn').textContent = 'Pause';
+                document.getElementById('pause-btn').disabled = false;
+                return;
+            }
+            
+            if (isMoving) {
+                resetCamera();
+                setTimeout(() => startRailMovement(), 50);
+                return;
+            }
+            
+            const startPos = camera.position.clone();
+            
+            // Ensure points array is valid
+            if (!points || points.length === 0) {
+                console.error('❌ No waypoints defined!');
+                return;
+            }
+            
+            // Validate all points
+            const validPoints = points.filter(p => p && p.x !== undefined && p.y !== undefined && p.z !== undefined);
+            if (validPoints.length === 0) {
+                console.error('❌ No valid waypoints!');
+                return;
+            }
+            
+            const allPoints = [startPos, ...validPoints];
+            
+            try {
+                splineCurve = new THREE.CatmullRomCurve3(allPoints, false, 'centripetal');
+                console.log(`✅ Spline curve created with ${allPoints.length} points`);
+            } catch (error) {
+                console.error('❌ Error creating spline curve:', error);
+                console.error('Points:', allPoints);
+                return;
+            }
+            
+            isMoving = true;
+            isPaused = false;
+            startTime = performance.now();
+            pausedElapsed = 0;
+            currentProgress = 0;
+            
+            document.getElementById('status').textContent = 'Moving on rails...';
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('pause-btn').disabled = false;
+            document.getElementById('pause-btn').textContent = 'Pause';
+            
+            console.log('🚂 Rail movement started');
+        }
+        
+        function togglePause() {
+            if (!isMoving) return;
+            
+            if (isPaused) {
+                isPaused = false;
+                startTime = performance.now() - pausedElapsed;
+                document.getElementById('status').textContent = 'Moving on rails...';
+                document.getElementById('pause-btn').textContent = 'Pause';
+            } else {
+                isPaused = true;
+                pausedElapsed = performance.now() - startTime;
+                document.getElementById('status').textContent = 'Paused';
+                document.getElementById('pause-btn').textContent = 'Resume';
+            }
+        }
+        
+        function updateSpeed(value) {
+            speedMultiplier = parseFloat(value);
+            const totalPauseTime = (railPath.waypoints.length - 1) * waypointPauseDuration;
+            const totalDuration = (baseDuration + totalPauseTime) / speedMultiplier;
+            document.getElementById('speed-value').textContent = speedMultiplier.toFixed(1) + 'x';
+            document.getElementById('duration-text').textContent = Math.round(totalDuration);
+            
+            if (isMoving && !isPaused) {
+                const adjustedElapsed = pausedElapsed / speedMultiplier;
+                startTime = performance.now() - adjustedElapsed;
+            }
+        }
+        
+        function scrubToProgress(percent) {
+            // Ensure points array exists and is valid
+            if (!points || points.length === 0) {
+                console.error('❌ Points array not available in scrubToProgress!');
+                return;
+            }
+            
+            if (!splineCurve) {
+                const startPos = camera.position.clone();
+                const validPoints = points.filter(p => p && p.x !== undefined && p.y !== undefined && p.z !== undefined);
+                if (validPoints.length === 0) {
+                    console.error('❌ No valid points for spline curve!');
+                    return;
+                }
+                const allPoints = [startPos, ...validPoints];
+                try {
+                    splineCurve = new THREE.CatmullRomCurve3(allPoints, false, 'centripetal');
+                } catch (error) {
+                    console.error('❌ Error creating spline curve in scrub:', error);
+                    return;
+                }
+            }
+            
+            const progress = parseFloat(percent) / 100;
+            currentProgress = progress;
+            
+            // Apply waypoint pauses to progress
+            const progressWithPauses = getProgressWithPauses(progress);
+            const easedProgress = Math.max(0, Math.min(1, easeInOutCubic(progressWithPauses)));
+            
+            // Safety check for spline curve
+            if (!splineCurve) {
+                console.error('❌ Spline curve not initialized in scrubToProgress!');
+                // Create it if it doesn't exist
+                const startPos = camera.position.clone();
+                const allPoints = [startPos, ...points];
+                splineCurve = new THREE.CatmullRomCurve3(allPoints, false, 'centripetal');
+            }
+            
+            try {
+                const currentPos = splineCurve.getPointAt(easedProgress);
+                if (currentPos && currentPos.x !== undefined && currentPos.y !== undefined && currentPos.z !== undefined) {
+                    camera.position.copy(currentPos);
+                } else {
+                    console.error('❌ Invalid position from spline in scrub:', currentPos);
+                }
+            } catch (error) {
+                console.error('❌ Error getting point from spline in scrub:', error, 'Progress:', easedProgress);
+            }
+            
+            const numLookAtPoints = waypointLookAts.length;
+            const waypointProgress = progressWithPauses * (numLookAtPoints - 1);
+            const waypointIndex = Math.floor(waypointProgress);
+            const waypointLocalProgress = waypointProgress - waypointIndex;
+            
+            const currentLookAtIndex = Math.min(waypointIndex, numLookAtPoints - 1);
+            const nextLookAtIndex = Math.min(waypointIndex + 1, numLookAtPoints - 1);
+            
+            const currentLookAt = waypointLookAts[currentLookAtIndex];
+            const nextLookAt = waypointLookAts[nextLookAtIndex];
+            
+            // Check if we're in pause zone (at a waypoint)
+            const numWaypoints = railPath.waypoints.length;
+            const numSegments = numWaypoints - 1;
+            const segmentProgress = progressWithPauses * numSegments;
+            const segmentIndex = Math.floor(segmentProgress);
+            const segmentLocalProgress = segmentProgress - segmentIndex;
+            const pauseZoneStart = 0.85; // Start pausing at 85% through segment
+            
+            // Determine if we're at a waypoint or moving between waypoints
+            const isAtWaypoint = segmentLocalProgress >= pauseZoneStart && segmentIndex < numSegments;
+            
+            let interpolatedLookAt;
+            if (isAtWaypoint) {
+                // Pausing at waypoint - use exact lookAt for this waypoint
+                interpolatedLookAt = new THREE.Vector3(
+                    currentLookAt.x,
+                    currentLookAt.y,
+                    currentLookAt.z
+                );
+            } else {
+                // Moving between waypoints - interpolate
+                interpolatedLookAt = new THREE.Vector3().lerpVectors(
+                    new THREE.Vector3(currentLookAt.x, currentLookAt.y, currentLookAt.z),
+                    new THREE.Vector3(nextLookAt.x, nextLookAt.y, nextLookAt.z),
+                    waypointLocalProgress
+                );
+            }
+            
+            camera.lookAt(interpolatedLookAt);
+            
+            // Update state display for scrubToProgress (reuse variables already calculated above)
+            const railStateElement = document.getElementById('rail-state');
+            if (isAtWaypoint) {
+                railStateElement.textContent = `At Waypoint ${segmentIndex + 2}`;
+                railStateElement.style.color = '#ffff00';
+            } else {
+                railStateElement.textContent = `Moving (${segmentIndex + 1} → ${segmentIndex + 2})`;
+                railStateElement.style.color = '#00ff00';
+            }
+            
+            document.getElementById('progress-text').textContent = Math.round(progress * 100) + '%';
+            document.getElementById('progress-fill').style.width = (progress * 100) + '%';
+            
+            const totalPauseTime = (railPath.waypoints.length - 1) * waypointPauseDuration;
+            const totalDuration = baseDuration + totalPauseTime;
+            if (isMoving && !isPaused) {
+                pausedElapsed = progress * (totalDuration / speedMultiplier);
+                startTime = performance.now() - pausedElapsed;
+            } else if (isMoving && isPaused) {
+                pausedElapsed = progress * (totalDuration / speedMultiplier);
+            }
+        }
+
+        function resetCamera() {
+            isMoving = false;
+            isPaused = false;
+            startTime = null;
+            pausedElapsed = 0;
+            currentProgress = 0;
+            
+            camera.position.set(20.22, 1.11, 0.69);
+            camera.lookAt(10.25, 0.56, 0.35);
+            
+            document.getElementById('status').textContent = 'Ready';
+            document.getElementById('start-btn').disabled = false;
+            document.getElementById('pause-btn').disabled = true;
+            document.getElementById('pause-btn').textContent = 'Pause';
+            document.getElementById('progress-text').textContent = '0%';
+            document.getElementById('progress-fill').style.width = '0%';
+            document.getElementById('scrubber').value = 0;
+            document.getElementById('rail-state').textContent = 'Stopped';
+            document.getElementById('rail-state').style.color = '#666';
+            
+            console.log('🔄 Camera reset');
+        }
+
+        // ============================================
+        // ANIMATION LOOP
+        // ============================================
+        const clock = new THREE.Clock();
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            
+            if (isMoving && !isPaused && splineCurve && startTime) {
+                const currentTime = performance.now();
+                const totalPauseTime = (railPath.waypoints.length - 1) * waypointPauseDuration;
+                const totalDuration = (baseDuration + totalPauseTime) / speedMultiplier;
+                const elapsed = (currentTime - startTime) * speedMultiplier;
+                const progress = Math.min(elapsed / (baseDuration + totalPauseTime), 1.0);
+                currentProgress = progress;
+                
+                if (progress >= 1.0) {
+                    isMoving = false;
+                    const finalPos = splineCurve.getPointAt(1.0);
+                    camera.position.copy(finalPos);
+                    camera.lookAt(
+                        railPath.lookAt.x,
+                        railPath.lookAt.y,
+                        railPath.lookAt.z
+                    );
+                    
+                    document.getElementById('status').textContent = 'Complete!';
+                    document.getElementById('start-btn').disabled = false;
+                    document.getElementById('progress-text').textContent = '100%';
+                    document.getElementById('progress-fill').style.width = '100%';
+                    
+                    console.log('✅ Rail movement complete');
+                } else {
+                    // Apply waypoint pauses to progress
+                    const progressWithPauses = getProgressWithPauses(progress);
+                    const easedProgress = Math.max(0, Math.min(1, easeInOutCubic(progressWithPauses)));
+                    
+                    // Safety check for spline curve
+                    if (!splineCurve) {
+                        console.error('❌ Spline curve not initialized!');
+                        return;
+                    }
+                    
+                    try {
+                        const currentPos = splineCurve.getPointAt(easedProgress);
+                        if (currentPos && currentPos.x !== undefined && currentPos.y !== undefined && currentPos.z !== undefined) {
+                            camera.position.copy(currentPos);
+                        } else {
+                            console.error('❌ Invalid position from spline:', currentPos);
+                        }
+                    } catch (error) {
+                        console.error('❌ Error getting point from spline:', error, 'Progress:', easedProgress);
+                    }
+                    
+                    const numLookAtPoints = waypointLookAts.length;
+                    const waypointProgress = progressWithPauses * (numLookAtPoints - 1);
+                    const waypointIndex = Math.floor(waypointProgress);
+                    const waypointLocalProgress = waypointProgress - waypointIndex;
+                    
+                    const currentLookAtIndex = Math.min(waypointIndex, numLookAtPoints - 1);
+                    const nextLookAtIndex = Math.min(waypointIndex + 1, numLookAtPoints - 1);
+                    
+                    const currentLookAt = waypointLookAts[currentLookAtIndex];
+                    const nextLookAt = waypointLookAts[nextLookAtIndex];
+                    
+                    // Check if we're at a waypoint or moving between waypoints
+                    const numWaypoints = railPath.waypoints.length;
+                    const numSegments = numWaypoints - 1;
+                    const segmentProgress = progressWithPauses * numSegments;
+                    const segmentIndex = Math.floor(segmentProgress);
+                    const segmentLocalProgress = segmentProgress - segmentIndex;
+                    const pauseZoneStart = 0.85; // Start pausing at 85% through segment
+                    
+                    const isAtWaypoint = segmentLocalProgress >= pauseZoneStart && segmentIndex < numSegments;
+                    
+                    let interpolatedLookAt;
+                    if (isAtWaypoint) {
+                        // Pausing at waypoint - use exact lookAt
+                        interpolatedLookAt = new THREE.Vector3(
+                            currentLookAt.x,
+                            currentLookAt.y,
+                            currentLookAt.z
+                        );
+                    } else {
+                        // Moving between waypoints - interpolate
+                        interpolatedLookAt = new THREE.Vector3().lerpVectors(
+                            new THREE.Vector3(currentLookAt.x, currentLookAt.y, currentLookAt.z),
+                            new THREE.Vector3(nextLookAt.x, nextLookAt.y, nextLookAt.z),
+                            waypointLocalProgress
+                        );
+                    }
+                    
+                    camera.lookAt(interpolatedLookAt);
+                    
+                    // Update state display
+                    const railStateElement = document.getElementById('rail-state');
+                    if (isAtWaypoint) {
+                        railStateElement.textContent = `At Waypoint ${waypointIndex + 2}`;
+                        railStateElement.style.color = '#ffff00';
+                    } else {
+                        railStateElement.textContent = `Moving (${waypointIndex + 1} → ${waypointIndex + 2})`;
+                        railStateElement.style.color = '#00ff00';
+                    }
+                    
+                    const prevWaypointIndex = Math.floor((currentProgress - 0.01) * (numLookAtPoints - 1));
+                    if (prevWaypointIndex !== waypointIndex) {
+                        console.log(`📍 At Waypoint ${waypointIndex + 1}: LookAt=(${currentLookAt.x.toFixed(2)}, ${currentLookAt.y.toFixed(2)}, ${currentLookAt.z.toFixed(2)})`);
+                    }
+                    
+                    const progressPercent = Math.round(progress * 100);
+                    document.getElementById('progress-text').textContent = progressPercent + '%';
+                    document.getElementById('progress-fill').style.width = progressPercent + '%';
+                    
+                    if (!window.isScrubbing) {
+                        const scrubber = document.getElementById('scrubber');
+                        scrubber.value = progressPercent;
+                    }
+                }
+            } else if (isMoving && isPaused) {
+                const progressPercent = Math.round(currentProgress * 100);
+                document.getElementById('progress-text').textContent = progressPercent + '%';
+                document.getElementById('progress-fill').style.width = progressPercent + '%';
+            }
+            
+            const pos = camera.position;
+            document.getElementById('pos-x').textContent = pos.x.toFixed(2);
+            document.getElementById('pos-y').textContent = pos.y.toFixed(2);
+            document.getElementById('pos-z').textContent = pos.z.toFixed(2);
+            
+            const direction = new THREE.Vector3();
+            camera.getWorldDirection(direction);
+            const lookAtPoint = pos.clone().add(direction.multiplyScalar(10));
+            document.getElementById('look-x').textContent = lookAtPoint.x.toFixed(2);
+            document.getElementById('look-y').textContent = lookAtPoint.y.toFixed(2);
+            document.getElementById('look-z').textContent = lookAtPoint.z.toFixed(2);
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Expose functions globally
+        window.startRailMovement = startRailMovement;
+        window.resetCamera = resetCamera;
+        window.togglePause = togglePause;
+        window.updateSpeed = updateSpeed;
+        window.scrubToProgress = scrubToProgress;
+        window.isScrubbing = false;
+        
+        // Wire up buttons and controls with addEventListener (after DOM is ready)
+        // Use setTimeout to ensure DOM is fully loaded
+        setTimeout(() => {
+            const startBtn = document.getElementById('start-btn');
+            const pauseBtn = document.getElementById('pause-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const speedSlider = document.getElementById('speed-slider');
+            const scrubber = document.getElementById('scrubber');
+            
+            if (startBtn) startBtn.addEventListener('click', startRailMovement);
+            if (pauseBtn) pauseBtn.addEventListener('click', togglePause);
+            if (resetBtn) resetBtn.addEventListener('click', resetCamera);
+            if (speedSlider) speedSlider.addEventListener('input', (e) => updateSpeed(e.target.value));
+            
+            if (scrubber) {
+                scrubber.addEventListener('mousedown', () => { window.isScrubbing = true; });
+                scrubber.addEventListener('mouseup', () => { window.isScrubbing = false; });
+                scrubber.addEventListener('touchstart', () => { window.isScrubbing = true; });
+                scrubber.addEventListener('touchend', () => { window.isScrubbing = false; });
+                scrubber.addEventListener('input', (e) => scrubToProgress(e.target.value));
+                scrubber.addEventListener('change', (e) => scrubToProgress(e.target.value));
+            }
+        }, 0);
+        
+        animate();
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        console.log('✅ Rail System Test 2 initialized');
+        console.log('📋 Path has', railPath.waypoints.length, 'waypoints');
+        console.log('⏱️  Duration:', baseDuration, 'ms');
+        console.log('📋 LookAt points:');
+        waypointLookAts.forEach((lookAt, i) => {
+            console.log(`  Waypoint ${i + 1}: LookAt(${lookAt.x.toFixed(2)}, ${lookAt.y.toFixed(2)}, ${lookAt.z.toFixed(2)})`);
+        });
+    </script>
+</body>
+</html>
