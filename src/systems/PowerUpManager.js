@@ -28,6 +28,7 @@ export class PowerUpManager {
             : new THREE.Vector3(position.x, position.y, position.z);
         
         powerUp = new PowerUp(pos, type, this.scene, onCollect);
+        // PowerUp constructor already sets group.visible = false until model loads
         this.powerUps.push(powerUp);
     }
     

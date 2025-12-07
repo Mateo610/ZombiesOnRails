@@ -5,6 +5,7 @@
 
 import { GameState, gameData } from '../core/GameState.js';
 import { CAMERA_SCENES } from '../core/SceneConfig.js';
+import { modelCache } from '../core/ModelCache.js';
 // WEAPON_AMMO_CONFIG is defined in main.js, will be passed as parameter
 
 export class GameFlowManager {
@@ -72,6 +73,25 @@ export class GameFlowManager {
         }
         
         console.log('🚀 Starting Game');
+        
+        // Preload ammo pickup models at game start
+        const ammoPickupModelPaths = [
+            '/models/objects/power_ups/pistol_ammo.glb',
+            '/models/objects/power_ups/shotgun_ammo.glb',
+            '/models/objects/power_ups/rifle_ammo.glb'
+        ];
+        
+        // Preload ammo pickup models
+        modelCache.preload(ammoPickupModelPaths).catch(error => {
+            console.warn('⚠️ Failed to preload ammo pickup models:', error);
+        });
+        
+        // Preload models for first scene in background
+        if (CAMERA_SCENES[0] && CAMERA_SCENES[0].spawnPoints) {
+            modelCache.preloadSceneModels(0, CAMERA_SCENES[0].spawnPoints).catch(error => {
+                console.warn('⚠️ Failed to preload first scene models:', error);
+            });
+        }
         
         // Validate critical dependencies
         if (!this.sceneLoader) {

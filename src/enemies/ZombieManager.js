@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import Zombie from './Zombie.js';
+import { SpawnDustEffect } from '../effects/SpawnDustEffect.js';
 
 /**
  * Manages all zombies for the current scene.
@@ -17,6 +18,7 @@ export default class ZombieManager {
         this.zombies = [];
         this.sceneZombiesKilled = 0;
         this._sceneClearedNotified = false; // Track if we've already notified about scene being cleared
+        this.spawnDustEffects = []; // Track active dust effects
         
         // Wave system properties
         this.currentWave = 1;
@@ -79,9 +81,31 @@ export default class ZombieManager {
             this._expectedZombieCount = 0;
         } else {
             spawnPoints.forEach((spawn, index) => {
+                const spawnPosition = new THREE.Vector3(spawn.x, spawn.y, spawn.z);
+                
+                // Create dust effect BEFORE spawning zombie
+                const dustDelay = index * 300;
+                const zombieSpawnDelay = dustDelay + 800; // Zombie appears 0.8s after dust starts
+                
+                // Start dust effect
+                setTimeout(() => {
+                    const dustEffect = new SpawnDustEffect(spawnPosition, this.scene);
+                    this.spawnDustEffects.push(dustEffect);
+                    
+                    // Remove dust effect when it's done
+                    setTimeout(() => {
+                        const idx = this.spawnDustEffects.indexOf(dustEffect);
+                        if (idx !== -1) {
+                            this.spawnDustEffects.splice(idx, 1);
+                        }
+                    }, dustEffect.duration * 1000);
+                }, dustDelay);
+                
+                // Spawn zombie after dust effect has started
+                // Keep zombie hidden until dust cloud is dense enough
                 setTimeout(() => {
                     const zombie = new Zombie(
-                        new THREE.Vector3(spawn.x, spawn.y, spawn.z),
+                        spawnPosition,
                         spawn.type,
                         this.scene,
                         this.camera,
@@ -89,6 +113,16 @@ export default class ZombieManager {
                         this.damagePlayer,
                         this.incrementCombo
                     );
+                    
+                    // Keep zombie completely invisible during dust effect
+                    zombie.mesh.visible = false;
+                    
+                    // Make zombie visible only after dust starts to fade (70% through effect)
+                    const dustFadeStart = 800 + (1500 * 0.7); // 0.8s delay + 70% of 1.5s duration
+                    setTimeout(() => {
+                        zombie.mesh.visible = true;
+                    }, dustFadeStart);
+                    
                     this.zombies.push(zombie);
                     spawnedCount++;
                     
@@ -97,7 +131,7 @@ export default class ZombieManager {
                         this._spawningZombies = false;
                         console.log(`✅ All ${spawnedCount} zombies added to array`);
                     }
-                }, index * 300);
+                }, zombieSpawnDelay);
             });
         }
     }
@@ -113,6 +147,18 @@ export default class ZombieManager {
     update(deltaTime, slowMoActive, currentState, gameplayStateConst, onSceneClearedCb) {
         // Update wave system (check for respawns)
         this.updateWaveSystem();
+        
+        // Update spawn dust effects
+        if (this.spawnDustEffects && this.spawnDustEffects.length > 0) {
+            this.spawnDustEffects.forEach(effect => {
+                if (effect && effect.active) {
+                    effect.update(deltaTime);
+                }
+            });
+            
+            // Clean up finished dust effects
+            this.spawnDustEffects = this.spawnDustEffects.filter(effect => effect && effect.active);
+        }
         
         this.zombies.forEach(zombie => {
             if (!zombie.isDead) {
@@ -293,6 +339,10 @@ export default class ZombieManager {
     }
     
     clearZombies(force = false) {
+        // Clean up any active dust effects
+        this.spawnDustEffects.forEach(effect => effect.dispose());
+        this.spawnDustEffects = [];
+        
         // If zombies are animating death and not forcing, wait for them to finish first
         if (!force && this.hasAnimatingDeaths()) {
             console.log('⏳ Waiting for death animations before clearing zombies...');

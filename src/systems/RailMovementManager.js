@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RAIL_PATHS, getPathById } from './RailPathConfig.js';
 import { CAMERA_SCENES } from '../core/SceneConfig.js';
+import { modelCache } from '../core/ModelCache.js';
 
 /**
  * Easing function - cubic ease in/out
@@ -481,6 +482,18 @@ export class RailMovementManager {
         
         // Update currentPathIndex to match the target path
         this.currentPathIndex = targetPathIndex;
+        
+        // Preload models for the next scene during rail movement
+        const nextSceneIndex = this.gameData.currentScene + 1;
+        if (nextSceneIndex < CAMERA_SCENES.length) {
+            const nextScene = CAMERA_SCENES[nextSceneIndex];
+            if (nextScene && nextScene.spawnPoints) {
+                // Preload models in background (non-blocking)
+                modelCache.preloadSceneModels(nextSceneIndex, nextScene.spawnPoints).catch(error => {
+                    console.warn(`⚠️ Failed to preload models for Scene ${nextSceneIndex + 1}:`, error);
+                });
+            }
+        }
         
         // Additional check: ensure paths array is valid
         if (!this.paths || this.paths.length === 0) {

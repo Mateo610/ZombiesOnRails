@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { modelCache } from '../core/ModelCache.js';
 
 const AMMO_PICKUP_VALUES = {
     pistol: 8,
@@ -10,6 +11,13 @@ const AMMO_PICKUP_COLORS = {
     pistol: 0xffff00,    // Yellow
     shotgun: 0xff8800,   // Orange
     rifle: 0x00ff00      // Green
+};
+
+// Model paths for ammo pickups
+const AMMO_PICKUP_MODEL_PATHS = {
+    pistol: '/models/objects/power_ups/pistol_ammo.glb',
+    shotgun: '/models/objects/power_ups/shotgun_ammo.glb',
+    rifle: '/models/objects/power_ups/rifle_ammo.glb'
 };
 
 /**
@@ -38,7 +46,7 @@ export default class AmmoPickup {
         // Base glow color
         const color = AMMO_PICKUP_COLORS[weaponType] ?? 0xffffff;
 
-        // Main mesh - test cube (temporary until models are ready)
+        // Create temporary placeholder mesh until model loads
         const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
         const material = new THREE.MeshStandardMaterial({
             color,
@@ -58,10 +66,15 @@ export default class AmmoPickup {
         this.mesh.userData.ammoPickup = this;
 
         this.group.add(this.mesh);
+        
+        // Load the actual model
+        this._loadModel(weaponType, color);
 
-        // Particle-like lights for visibility
+        // Particle-like lights for visibility (not for rifle)
         this.particleLights = [];
-        this._createParticleLights(color);
+        if (weaponType !== 'rifle') {
+            this._createParticleLights(color);
+        }
 
         // Animation state
         this.baseY = position.y;
@@ -72,8 +85,12 @@ export default class AmmoPickup {
 
         // Collected state
         this.collected = false;
+        
+        // Model loading state
+        this._modelLoading = true;
 
-        // Add to scene
+        // Add to scene but make invisible until model loads
+        this.group.visible = false;
         this.scene.add(this.group);
     }
 
@@ -153,14 +170,121 @@ export default class AmmoPickup {
         }
     }
 
+    async _loadModel(weaponType, color) {
+        const modelPath = AMMO_PICKUP_MODEL_PATHS[weaponType];
+        if (!modelPath) {
+            console.warn(`⚠️ No model path for ammo pickup type: ${weaponType}`);
+            return;
+        }
+
+        try {
+            // Load model using cache (browser cache makes this fast)
+            const { scene: modelGroup } = await modelCache.load(modelPath);
+            
+            if (!modelGroup) {
+                console.warn(`⚠️ Model loaded but is null for ${weaponType} ammo pickup`);
+                return;
+            }
+            
+            // Apply scale - rifle is 1/20th size (1/2 of 1/10th), others are normal
+            const scale = weaponType === 'rifle' ? 0.015 : 0.3;
+            modelGroup.scale.setScalar(scale);
+            
+            // Setup the model
+            modelGroup.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = false;
+                    child.userData.isAmmoPickup = true;
+                    child.userData.weaponType = this.weaponType;
+                    child.userData.ammoPickup = this;
+
+                    // Apply emissive glow to match the color scheme (except for rifle)
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => {
+                                if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
+                                    if (weaponType === 'rifle') {
+                                        // Remove emission for rifle
+                                        mat.emissive = new THREE.Color(0x000000);
+                                        mat.emissiveIntensity = 0;
+                                    } else {
+                                        mat.emissive = new THREE.Color(color);
+                                        mat.emissiveIntensity = 0.5;
+                                    }
+                                }
+                            });
+                        } else if (child.material.isMeshStandardMaterial || child.material.isMeshPhysicalMaterial) {
+                            if (weaponType === 'rifle') {
+                                // Remove emission for rifle
+                                child.material.emissive = new THREE.Color(0x000000);
+                                child.material.emissiveIntensity = 0;
+                            } else {
+                                child.material.emissive = new THREE.Color(color);
+                                child.material.emissiveIntensity = 0.5;
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Replace placeholder with the actual model
+            if (this.mesh && this.mesh.parent) {
+                this.group.remove(this.mesh);
+                if (this.mesh.geometry) this.mesh.geometry.dispose();
+                if (this.mesh.material) {
+                    if (Array.isArray(this.mesh.material)) {
+                        this.mesh.material.forEach(mat => mat && mat.dispose());
+                    } else {
+                        this.mesh.material.dispose();
+                    }
+                }
+            }
+
+            // Set the model group as the main mesh for raycasting
+            // All meshes are marked for raycasting, but we keep a reference
+            this.mesh = modelGroup;
+            this.group.add(modelGroup);
+            
+            // Make visible now that model is loaded
+            this.group.visible = true;
+            this._modelLoading = false;
+            
+            console.log(`✅ Loaded GLB model for ammo pickup: ${weaponType}`);
+        } catch (error) {
+            console.error(`❌ Failed to load ammo pickup model for ${weaponType}:`, error);
+            // Keep placeholder mesh if loading fails, but make it visible
+            this.group.visible = true;
+            this._modelLoading = false;
+        }
+    }
+
     _dispose() {
         if (this.group.parent) {
             this.group.parent.remove(this.group);
         }
 
         if (this.mesh) {
-            this.mesh.geometry.dispose();
-            this.mesh.material.dispose();
+            // Check if it's a placeholder or model
+            if (this.mesh.geometry && this.mesh.material) {
+                // Placeholder mesh
+                this.mesh.geometry.dispose();
+                this.mesh.material.dispose();
+            } else if (this.mesh.traverse) {
+                // Model group - dispose all meshes
+                this.mesh.traverse((child) => {
+                    if (child.isMesh) {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(mat => mat && mat.dispose());
+                            } else {
+                                child.material.dispose();
+                            }
+                        }
+                    }
+                });
+            }
         }
 
         this.particleLights.forEach(light => {

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { modelCache } from '../core/ModelCache.js';
 
 // ============================================================================
 // ZOMBIE TYPES CONFIG
@@ -67,8 +67,7 @@ export const ZOMBIE_TYPES = {
     }
 };
 
-// Shared loader instance
-const gltfLoader = new GLTFLoader();
+// ModelCache handles all loading and caching (imported above)
 
 // ============================================================================
 // ZOMBIE CLASS
@@ -157,9 +156,25 @@ export default class Zombie {
      */
     async loadModel() {
         try {
-            console.log(`📦 Loading zombie model: ${this.config.modelPath}`);
-            const gltf = await gltfLoader.loadAsync(this.config.modelPath);
-            const model = gltf.scene;
+            if (!this.config.modelPath) {
+                console.warn(`⚠️ No model path configured for ${this.config.name}`);
+                return;
+            }
+            
+            // Use model cache for faster loading (browser cache makes this fast)
+            // Each zombie gets a fresh instance to avoid sharing conflicts
+            const { scene: model, gltf } = await modelCache.load(this.config.modelPath);
+            
+            if (!model) {
+                console.error(`❌ Model loaded but is null for ${this.config.name} at ${this.config.modelPath}`);
+                return;
+            }
+            
+            // GLTF object is returned directly from load() for animation setup
+            if (!gltf) {
+                console.warn(`⚠️ GLTF object not available for ${this.config.modelPath} - animations may not work`);
+                // Continue without animations
+            }
             
             // Enable shadows and SET USERDATA on all child meshes
             model.traverse((child) => {
@@ -212,8 +227,8 @@ export default class Zombie {
             
             console.log(`📏 ${this.config.name} positioned at: x=${model.position.x.toFixed(2)}, y=${model.position.y.toFixed(2)}, z=${model.position.z.toFixed(2)}, scale: ${this.config.scale}`);
             
-            // Setup animations
-            if (gltf.animations && gltf.animations.length > 0) {
+            // Setup animations (only if GLTF object is available)
+            if (gltf && gltf.animations && gltf.animations.length > 0) {
                 this.mixer = new THREE.AnimationMixer(model);
                 
                 const animConfig = this.config.animations;
@@ -272,16 +287,33 @@ export default class Zombie {
             this.mesh.userData.zombie = this;
             this.mesh.userData.isZombie = true;
             
-            // Remove placeholder and add model
-            this.scene.remove(oldMesh);
-            oldMesh.geometry.dispose();
-            oldMesh.material.dispose();
-            this.scene.add(this.mesh);
+            // Remove placeholder and safely dispose
+            if (oldMesh && oldMesh.parent) {
+                this.scene.remove(oldMesh);
+            }
+            
+            if (oldMesh) {
+                if (oldMesh.geometry) oldMesh.geometry.dispose();
+                if (oldMesh.material) {
+                    if (Array.isArray(oldMesh.material)) {
+                        oldMesh.material.forEach(mat => mat && mat.dispose());
+                    } else {
+                        oldMesh.material.dispose();
+                    }
+                }
+            }
+            
+            // Add new model to scene (only if not already added)
+            if (this.mesh && !this.mesh.parent) {
+                this.scene.add(this.mesh);
+            }
             
             this.isPlaceholder = false;
             console.log(`✅ Loaded GLB model for ${this.config.name}`);
         } catch (error) {
             console.error(`❌ Failed to load zombie model for ${this.config.name}:`, error);
+            console.error(`   Model path: ${this.config.modelPath}`);
+            console.error(`   Error details:`, error.message || error);
             // Keep placeholder mesh if loading fails
         }
     }
