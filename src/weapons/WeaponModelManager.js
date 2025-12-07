@@ -10,9 +10,10 @@ import { BulletMeshHandler } from './bullets/BulletMeshHandler.js';
  * Coordinates loading, positioning, visibility, and bullet handling
  */
 export class WeaponModelManager {
-    constructor(scene, camera) {
+    constructor(scene, camera, crosshairManager = null) {
         this.scene = scene;
         this.camera = camera;
+        this.crosshairManager = crosshairManager;
         this.weaponModels = {};
         this.currentWeaponModel = null;
         this.weaponGroup = null;
@@ -43,7 +44,7 @@ export class WeaponModelManager {
 
         // Initialize subsystems that need weapon group
         this.visibility = new WeaponVisibility(this.weaponModels, this.weaponGroup);
-        this.positioner = new WeaponPositioner(this.weaponGroup, this.camera);
+        this.positioner = new WeaponPositioner(this.weaponGroup, this.camera, this.crosshairManager);
     }
 
     /**
@@ -125,7 +126,7 @@ export class WeaponModelManager {
         if (!this.positioner) return;
 
         const currentWeaponId = this.getCurrentWeaponId();
-        this.positioner.update(deltaTime, currentWeaponId);
+        this.positioner.update(deltaTime, currentWeaponId, this.crosshairManager);
     }
 
     /**

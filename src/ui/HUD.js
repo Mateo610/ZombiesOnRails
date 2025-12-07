@@ -36,6 +36,58 @@ export function createUI() {
             z-index: 5;
         "></div>
         
+        <!-- Boss Health Bar (Top of Screen) -->
+        <div id="boss-health-bar" style="
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            z-index: 15;
+            pointer-events: none;
+            display: none;
+            font-family: 'Courier New', monospace;
+        ">
+            <div style="
+                text-align: center;
+                margin-bottom: 8px;
+                font-size: 18px;
+                color: #ff0000;
+                text-shadow: 0 0 10px #ff0000, 2px 2px 4px #000;
+                font-weight: bold;
+                letter-spacing: 2px;
+            ">GRIM REAPER</div>
+            <div style="
+                width: 100%;
+                height: 30px;
+                background: rgba(0, 0, 0, 0.9);
+                border: 3px solid #ff0000;
+                border-radius: 6px;
+                overflow: hidden;
+                box-shadow: 
+                    0 0 20px rgba(255, 0, 0, 0.8),
+                    inset 0 0 15px rgba(0, 0, 0, 0.5);
+            ">
+                <div id="boss-health-fill" style="
+                    width: 100%;
+                    height: 100%;
+                    background: linear-gradient(90deg, #ff0000, #ff4444, #ff0000);
+                    box-shadow: 0 0 15px rgba(255, 0, 0, 0.9);
+                    transition: width 0.3s ease-out;
+                "></div>
+            </div>
+            <div style="
+                text-align: center;
+                margin-top: 6px;
+                font-size: 14px;
+                color: #ffffff;
+                text-shadow: 0 0 8px #ffffff, 2px 2px 4px #000;
+                font-weight: bold;
+            ">
+                <span id="boss-health-current">3000</span> / <span id="boss-health-max">3000</span>
+            </div>
+        </div>
+        
         <!-- HUD - Left Panel (Primary Stats) -->
         <div id="hud-left" style="
             position: fixed;
@@ -1310,6 +1362,37 @@ export function updateUI() {
     const zombies = zombieManager.getZombies();
     const aliveZombies = zombies.filter(z => !z.isDead).length;
     const deadZombies = zombies.filter(z => z.isDead).length;
+    
+    // Boss Health Bar (Grim Reaper)
+    const bossHealthBar = document.getElementById('boss-health-bar');
+    const bossHealthFill = document.getElementById('boss-health-fill');
+    const bossHealthCurrent = document.getElementById('boss-health-current');
+    const bossHealthMax = document.getElementById('boss-health-max');
+    
+    if (bossHealthBar && bossHealthFill && bossHealthCurrent && bossHealthMax) {
+        // Find the reaper boss (alive)
+        const reaper = zombies.find(z => z.type === 'reaper' && !z.isDead);
+        
+        if (reaper) {
+            // Show boss health bar
+            bossHealthBar.style.display = 'block';
+            
+            // Update health values
+            const currentHealth = Math.max(0, reaper.health);
+            const maxHealth = reaper.config.health || 3000;
+            const healthPercent = (currentHealth / maxHealth) * 100;
+            
+            // Update fill bar
+            bossHealthFill.style.width = `${healthPercent}%`;
+            
+            // Update text
+            bossHealthCurrent.textContent = Math.ceil(currentHealth);
+            bossHealthMax.textContent = maxHealth;
+        } else {
+            // Hide boss health bar if reaper is dead or doesn't exist
+            bossHealthBar.style.display = 'none';
+        }
+    }
     
     // Calculate zombies killed: count dead zombies in array
     // Note: zombies stay in array until death animations finish, so this is accurate

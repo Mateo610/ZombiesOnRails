@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import Zombie from './Zombie.js';
 import { SpawnDustEffect } from '../effects/SpawnDustEffect.js';
+import { CAMERA_SCENES } from '../core/SceneConfig.js';
 
 /**
  * Manages all zombies for the current scene.
@@ -19,6 +20,7 @@ export default class ZombieManager {
         this.sceneZombiesKilled = 0;
         this._sceneClearedNotified = false; // Track if we've already notified about scene being cleared
         this.spawnDustEffects = []; // Track active dust effects
+        this.soundManager = null; // Will be set externally
         
         // Wave system properties
         this.currentWave = 1;
@@ -32,6 +34,7 @@ export default class ZombieManager {
         this._spawningNextWave = false; // Flag to prevent premature transitions during wave spawn
         this._spawningZombies = false; // Flag to track if zombies are currently being spawned
         this._expectedZombieCount = 0; // Expected number of zombies to spawn
+        this.wave2SpawnPoints = null; // Special spawn points for wave 2 (reaper boss)
     }
     
     /**
@@ -42,13 +45,22 @@ export default class ZombieManager {
         // Store spawn points for wave respawning
         this.currentSpawnPoints = spawnPoints;
         
-        // Set max waves based on difficulty
-        const difficultyWaves = {
-            easy: 1,
-            medium: 2,
-            hard: 3
-        };
-        this.maxWaves = difficultyWaves[this.gameData.difficulty] || 1;
+        // Special case: Scene 8 (Warehouse Interior - Final) always has 2 waves (second wave is reaper boss)
+        const currentSceneConfig = CAMERA_SCENES[this.gameData.currentScene];
+        if (currentSceneConfig && currentSceneConfig.wave2SpawnPoints) {
+            // Scene 8 has a special second wave with the reaper
+            this.maxWaves = 2;
+            this.wave2SpawnPoints = currentSceneConfig.wave2SpawnPoints;
+        } else {
+            // Set max waves based on difficulty for other scenes
+            const difficultyWaves = {
+                easy: 1,
+                medium: 2,
+                hard: 3
+            };
+            this.maxWaves = difficultyWaves[this.gameData.difficulty] || 1;
+            this.wave2SpawnPoints = null;
+        }
         
         // Reset wave counter and scene start time for new scene
         if (this.gameData.currentScene !== this._lastSceneIndex) {
@@ -89,7 +101,12 @@ export default class ZombieManager {
                 
                 // Start dust effect
                 setTimeout(() => {
-                    const dustEffect = new SpawnDustEffect(spawnPosition, this.scene);
+                    // Get scale multiplier for dust effect to match zombie scale
+                    const currentSceneConfig = CAMERA_SCENES[this.gameData.currentScene];
+                    const scaleMultiplier = (currentSceneConfig && currentSceneConfig.zombieScaleMultiplier) 
+                        ? currentSceneConfig.zombieScaleMultiplier 
+                        : 1.0;
+                    const dustEffect = new SpawnDustEffect(spawnPosition, this.scene, scaleMultiplier);
                     this.spawnDustEffects.push(dustEffect);
                     
                     // Remove dust effect when it's done
@@ -104,6 +121,12 @@ export default class ZombieManager {
                 // Spawn zombie after dust effect has started
                 // Keep zombie hidden until dust cloud is dense enough
                 setTimeout(() => {
+                    // Get scale multiplier BEFORE creating zombie so it's set before loadModel() is called
+                    const currentSceneConfig = CAMERA_SCENES[this.gameData.currentScene];
+                    const scaleMultiplier = (currentSceneConfig && currentSceneConfig.zombieScaleMultiplier) 
+                        ? currentSceneConfig.zombieScaleMultiplier 
+                        : 1.0;
+                    
                     const zombie = new Zombie(
                         spawnPosition,
                         spawn.type,
@@ -113,6 +136,15 @@ export default class ZombieManager {
                         this.damagePlayer,
                         this.incrementCombo
                     );
+                    
+                    // Set scale multiplier immediately (before model loads)
+                    zombie.scaleMultiplier = scaleMultiplier;
+                    // Update attack range and speed to match the scale
+                    zombie._updateAttackRange();
+                    zombie._updateSpeed();
+                    
+                    // Set sound manager for zombie
+                    zombie.soundManager = this.soundManager;
                     
                     // Keep zombie completely invisible during dust effect
                     zombie.mesh.visible = false;
@@ -294,17 +326,28 @@ export default class ZombieManager {
             console.log(`🌊 Spawning Wave ${this.currentWave}/${this.maxWaves} (${(elapsed / 1000).toFixed(1)}s elapsed since scene start)`);
             this._sceneClearedNotified = false; // Reset notification flag for new wave
             
-            // Spawn next wave using stored spawn points
-            if (this.currentSpawnPoints && this.currentSpawnPoints.length > 0) {
-                const spawnCount = this.currentSpawnPoints.length;
+            // Check if this is wave 2 and we have special wave 2 spawn points (for reaper boss)
+            const spawnPointsForWave = (this.currentWave === 2 && this.wave2SpawnPoints) 
+                ? this.wave2SpawnPoints 
+                : this.currentSpawnPoints;
+            
+            // Spawn next wave using appropriate spawn points
+            if (spawnPointsForWave && spawnPointsForWave.length > 0) {
+                const spawnCount = spawnPointsForWave.length;
                 let spawnedCount = 0;
                 
                 // Track spawning state for next wave
                 this._spawningZombies = true;
                 this._expectedZombieCount = spawnCount;
                 
-                this.currentSpawnPoints.forEach((spawn, index) => {
+                spawnPointsForWave.forEach((spawn, index) => {
                     setTimeout(() => {
+                        // Get scale multiplier BEFORE creating zombie so it's set before loadModel() is called
+                        const currentSceneConfig = CAMERA_SCENES[this.gameData.currentScene];
+                        const scaleMultiplier = (currentSceneConfig && currentSceneConfig.zombieScaleMultiplier) 
+                            ? currentSceneConfig.zombieScaleMultiplier 
+                            : 1.0;
+                        
                         const zombie = new Zombie(
                             new THREE.Vector3(spawn.x, spawn.y, spawn.z),
                             spawn.type,
@@ -314,6 +357,18 @@ export default class ZombieManager {
                             this.damagePlayer,
                             this.incrementCombo
                         );
+                        
+                        // Set scale multiplier immediately (before model loads)
+                        zombie.scaleMultiplier = scaleMultiplier;
+                        // Update attack range and speed to match the scale
+                        zombie._updateAttackRange();
+                        zombie._updateSpeed();
+                        
+                        // Ensure sound manager is set on wave 2 zombies (especially reaper)
+                        if (this.soundManager) {
+                            zombie.soundManager = this.soundManager;
+                        }
+                        
                         this.zombies.push(zombie);
                         spawnedCount++;
                         
@@ -336,6 +391,18 @@ export default class ZombieManager {
         if (this.currentWave >= this.maxWaves) {
             this.waveTimerActive = false;
         }
+    }
+    
+    /**
+     * Set the sound manager for all zombies
+     * @param {ZombieSoundManager} soundManager 
+     */
+    setSoundManager(soundManager) {
+        this.soundManager = soundManager;
+        // Update existing zombies
+        this.zombies.forEach(zombie => {
+            zombie.soundManager = soundManager;
+        });
     }
     
     clearZombies(force = false) {
@@ -373,6 +440,24 @@ export default class ZombieManager {
     
     getZombies() {
         return this.zombies;
+    }
+    
+    /**
+     * Get all active projectiles from reaper bosses
+     * @returns {Array} Array of projectile groups
+     */
+    getProjectiles() {
+        const projectiles = [];
+        this.zombies.forEach(zombie => {
+            if (zombie.config && zombie.config.shootsProjectiles && zombie.projectiles) {
+                zombie.projectiles.forEach(projectile => {
+                    if (!projectile.isDestroyed && projectile.group) {
+                        projectiles.push(projectile.group);
+                    }
+                });
+            }
+        });
+        return projectiles;
     }
     
     /**

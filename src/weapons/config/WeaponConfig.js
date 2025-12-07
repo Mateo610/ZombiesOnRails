@@ -30,7 +30,7 @@ export const WEAPON_POSITIONS = {
     rifle: {
         x: 0.05,   // ADJUST: Move left (-) or right (+)
         y: -0.1,  // ADJUST: Move down (-) or up (+)
-        z: -0.75  // ADJUST: Move closer (-) or farther (+)
+        z: -0.67  // ADJUST: Move closer (-) or farther (+)
     }
 };
 
@@ -51,9 +51,9 @@ export const WEAPON_ROTATIONS = {
         z: -0.05         // Pitch: slight downward angle
     },
     rifle: {
-        x: 0,
+        x: -0.1,
         y: Math.PI / 2,  // Same as pistol - barrel points forward
-        z: 0
+        z: -0.05
     }
 };
 

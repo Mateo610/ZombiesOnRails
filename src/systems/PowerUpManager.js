@@ -82,14 +82,20 @@ export class PowerUpManager {
             );
             break;
         case 'ammo':
-            // Add ammo to all weapons' reserves
+            // Add ammo to all weapons' reserves (allow going over max)
             Object.keys(this.gameData.weaponAmmo).forEach(weaponId => {
                 if (this.gameData.weaponAmmo[weaponId]) {
+                    // Don't cap - allow ammo to exceed original max
                     this.gameData.weaponAmmo[weaponId].reserve += 12;
                 }
             });
-            // Sync legacy property for UI compatibility
-            this.gameData.reserveAmmo += 12;
+            // Sync legacy property for UI compatibility (use current weapon's reserve)
+            const currentWeaponId = this.getCurrentWeaponId ? this.getCurrentWeaponId() : 'pistol';
+            if (this.gameData.weaponAmmo && this.gameData.weaponAmmo[currentWeaponId]) {
+                this.gameData.reserveAmmo = this.gameData.weaponAmmo[currentWeaponId].reserve;
+            } else {
+                this.gameData.reserveAmmo += 12;
+            }
             break;
         case 'double_damage':
             this.gameData.doubleDamageActive = true;

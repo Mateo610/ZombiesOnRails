@@ -14,7 +14,7 @@ export const CAMERA_SCENES = [
         spawnPoints: [
             { x: 6.75, y: 0.00, z: 10.49, type: 'runner' },
             { x: 6.75, y: 0.00, z: 11.49, type: 'walker' },
-            { x: 6.75, y: 0.00, z: 12.49, type: 'walker' }
+            { x: 6.75, y: 0.00, z: 12.49, type: 'crawler' }
         ]
     },
     {
@@ -81,14 +81,19 @@ export const CAMERA_SCENES = [
         position: { x: 0.13, y: 0.29, z: 0.22 },
         lookAt: { x: -9.40, y: 0.43, z: -2.82 },
         transitionDuration: 3000, // Optional: duration in ms for rail movement transition
+        zombieScaleMultiplier: 0.25,
         spawnPoints: [
-            // Final boss wave - multiple zombies from different directions
-            { x: -5.0, y: 0.0, z: -3.0, type: 'runner' },
-            { x: -7.0, y: 0.0, z: -2.0, type: 'runner' },
-            { x: -6.0, y: 0.0, z: -5.0, type: 'walker' },
-            { x: -8.0, y: 0.0, z: -4.0, type: 'walker' },
-            { x: -4.0, y: 0.0, z: -4.0, type: 'walker' },
-            { x: -9.0, y: 0.0, z: -3.0, type: 'runner' }
+            // Wave 1 - multiple zombies from different directions (moved to the left)
+            { x: -4.0, y: 0.0, z: -1.5, type: 'runner' },
+            { x: -4.5, y: 0.0, z: -1.0, type: 'runner' },
+            { x: -4.2, y: 0.0, z: -2.0, type: 'walker' },
+            { x: -5.5, y: 0.0, z: -1.8, type: 'walker' },
+            { x: -3.5, y: 0.0, z: -1.8, type: 'walker' },
+            { x: -5.0, y: 0.0, z: -1.5, type: 'runner' }
+        ],
+        // Wave 2 - Grim Reaper boss (spawns after wave 1 is cleared)
+        wave2SpawnPoints: [
+            { x: -3.0, y: 0.0, z: -1.0, type: 'reaper' }
         ]
     }
 ];

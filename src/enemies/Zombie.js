@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { modelCache } from '../core/ModelCache.js';
+import { ReaperProjectile } from './ReaperProjectile.js';
 
 // ============================================================================
 // ZOMBIE TYPES CONFIG
@@ -64,6 +65,24 @@ export const ZOMBIE_TYPES = {
             attack: 'Armature|attack',
             die: 'Armature|die'
         }
+    },
+    reaper: {
+        name: 'Grim Reaper',
+        health: 3000,
+        speed: 0.2, // Very slow
+        damage: 30, // Projectile damage
+        points: 1000,
+        color: 0x000000,
+        scale: 1.0, // Normal size
+        modelPath: '/models/zombies/reaper/scene.glb',
+        animations: {
+            move: 'Armature|run',
+            attack: 'Armature|attack',
+            die: 'Armature|die'
+        },
+        isBoss: true,
+        shootsProjectiles: true,
+        projectileCooldown: 2.5 // 2.5 seconds between shots
     }
 };
 
@@ -90,6 +109,7 @@ export default class Zombie {
         this.gameData = gameData;
         this.damagePlayer = damagePlayer;
         this.incrementCombo = incrementCombo;
+        this.scaleMultiplier = 1.0; // Scene-specific scale multiplier (default 1.0)
         
         // Create temporary placeholder mesh (will be replaced by GLB)
         const geometry = this.type === 'crawler'
@@ -102,6 +122,7 @@ export default class Zombie {
         });
         this.mesh = new THREE.Mesh(geometry, material);
         this.mesh.position.copy(position);
+        // Note: scaleMultiplier will be applied later when model loads, placeholder uses base scale
         this.mesh.position.y = (this.type === 'crawler' ? 0.25 : 0.75) * this.config.scale;
         this.mesh.scale.setScalar(this.config.scale);
         this.mesh.castShadow = true;
@@ -113,6 +134,9 @@ export default class Zombie {
         this.maxHealth = this.config.health;
         this.baseSpeed = this.config.speed;
         this.currentSpeed = this.baseSpeed;
+        
+        // Update speed when scale multiplier changes
+        this._updateSpeed();
         this.isDead = false;
         this.isAttacking = false;
         this.isAnimatingDeath = false; // Track if death animation is still playing
@@ -124,18 +148,32 @@ export default class Zombie {
             this.camera.position.z
         );
         this.distanceToPlayer = 999;
-        this.attackRange = 1.5;
+        this.baseAttackRange = 1.5; // Base attack range (will be scaled)
+        this.attackRange = this.baseAttackRange; // Will be updated when scaleMultiplier is set
         
         // Visual
         this.hitFlashTimer = 0;
         this.scuttleTime = 0;
         this.baseX = this.mesh.position.x;
+        this.lastScuttleOffset = 0; // Track previous scuttle offset for velocity calculation
         
         // Animation
         this.mixer = null;
         this.animations = {};
         this.currentAnimationAction = null;
         this.currentAnimationName = null;
+        
+        // Sound system
+        this.soundManager = null; // Will be set externally
+        this.groanTimer = 0;
+        this.groanInterval = 2.0; // 2 seconds between groans
+        this.currentMovementSound = null; // Track playing movement sound
+        this.isPlayingMovementSound = false;
+        
+        // Projectile system (for reaper boss)
+        this.projectiles = []; // Initialize empty array
+        this.lastProjectileTime = 0;
+        this.projectileCooldown = this.config.projectileCooldown || 0;
         
         // CRITICAL: Set userData for raycasting
         this.mesh.userData.zombie = this;
@@ -149,6 +187,24 @@ export default class Zombie {
         }
         
         console.log(`🧟 Spawned ${this.config.name} at`, position);
+    }
+    
+    /**
+     * Update attack range based on current scale multiplier
+     * Called when scaleMultiplier is set externally
+     */
+    _updateAttackRange() {
+        this.attackRange = this.baseAttackRange * (this.scaleMultiplier || 1.0);
+    }
+    
+    /**
+     * Update speed based on current scale multiplier
+     * Smaller zombies should move slower proportionally
+     */
+    _updateSpeed() {
+        // Speed scales with size - smaller zombies move slower
+        const speedMultiplier = this.scaleMultiplier || 1.0;
+        this.currentSpeed = this.baseSpeed * speedMultiplier;
     }
     
     /**
@@ -169,6 +225,9 @@ export default class Zombie {
                 console.error(`❌ Model loaded but is null for ${this.config.name} at ${this.config.modelPath}`);
                 return;
             }
+            
+            // Reset any existing scale on the model from cache
+            model.scale.set(1, 1, 1);
             
             // GLTF object is returned directly from load() for animation setup
             if (!gltf) {
@@ -218,14 +277,54 @@ export default class Zombie {
                 }
             });
             
-            // Apply scale directly from config (no automatic calculation)
-            model.scale.setScalar(this.config.scale);
-            
-            // Position model at EXACT same location as placeholder
+            // Position model at EXACT same location as placeholder FIRST
             model.position.copy(this.mesh.position);
             model.rotation.y = this.mesh.rotation.y;
             
-            console.log(`📏 ${this.config.name} positioned at: x=${model.position.x.toFixed(2)}, y=${model.position.y.toFixed(2)}, z=${model.position.z.toFixed(2)}, scale: ${this.config.scale}`);
+            // Special handling for reaper - ensure it's on the ground
+            if (this.type === 'reaper') {
+                // Reaper models might have different origin points, ensure Y is at ground level
+                model.position.y = 0.0;
+            } else {
+                // For other zombies, ensure Y position is correct based on type and scale
+                // The placeholder Y was set based on config.scale, but we need to account for scaleMultiplier
+                const baseY = (this.type === 'crawler' ? 0.25 : 0.75) * this.config.scale;
+                const scaledY = baseY * (this.scaleMultiplier || 1.0);
+                model.position.y = scaledY;
+            }
+            
+            // Apply scale directly from config first
+            // Then apply scene-specific scale multiplier to the FINAL size
+            // This ensures the final rendered size is what gets scaled, not the base config.scale
+            let finalScale = this.config.scale;
+            
+            // If scaleMultiplier is set, apply it to the FINAL scale (not to config.scale)
+            // This way the final rendered size is what gets scaled down
+            if (this.scaleMultiplier !== 1.0) {
+                finalScale = finalScale * this.scaleMultiplier;
+            }
+            
+            // Apply scale to the entire model hierarchy
+            // Store the final scale so we can re-apply it if needed
+            this.finalScale = finalScale;
+            model.scale.setScalar(finalScale);
+            
+            // Lock the scale on all children to prevent them from changing
+            model.traverse((child) => {
+                if (child !== model && child.isObject3D) {
+                    // Ensure children inherit the parent scale
+                    // Don't modify child scales directly - parent scale affects all
+                }
+            });
+            
+            // Store reference to model for potential re-scaling
+            this.loadedModel = model;
+            
+            if (this.scaleMultiplier !== 1.0) {
+                console.log(`📏 ${this.config.name} SCALED for interior scene: base=${this.config.scale}, multiplier=${this.scaleMultiplier}, final=${finalScale.toFixed(3)}`);
+                console.log(`   Model scale after setting: x=${model.scale.x.toFixed(3)}, y=${model.scale.y.toFixed(3)}, z=${model.scale.z.toFixed(3)}`);
+            }
+            console.log(`📏 ${this.config.name} positioned at: x=${model.position.x.toFixed(2)}, y=${model.position.y.toFixed(2)}, z=${model.position.z.toFixed(2)}, scale: ${finalScale.toFixed(3)}`);
             
             // Setup animations (only if GLTF object is available)
             if (gltf && gltf.animations && gltf.animations.length > 0) {
@@ -244,14 +343,34 @@ export default class Zombie {
                     let clip = gltf.animations.find(a => a.name === animName);
                     
                     // If not found, try case-insensitive and partial matches
-                    if (!clip && animType === 'die') {
-                        clip = gltf.animations.find(a => {
-                            const lower = a.name.toLowerCase();
-                            return lower.includes('death') || 
-                                   lower.includes('die') ||
-                                   lower.includes('killed') ||
-                                   lower.includes('fall');
-                        });
+                    if (!clip) {
+                        if (animType === 'move') {
+                            // Try to find movement animations
+                            clip = gltf.animations.find(a => {
+                                const lower = a.name.toLowerCase();
+                                return lower.includes('run') || 
+                                       lower.includes('walk') ||
+                                       lower.includes('move') ||
+                                       lower.includes('idle');
+                            });
+                        } else if (animType === 'attack') {
+                            // Try to find attack animations
+                            clip = gltf.animations.find(a => {
+                                const lower = a.name.toLowerCase();
+                                return lower.includes('attack') || 
+                                       lower.includes('hit') ||
+                                       lower.includes('strike');
+                            });
+                        } else if (animType === 'die') {
+                            // Try to find death animations
+                            clip = gltf.animations.find(a => {
+                                const lower = a.name.toLowerCase();
+                                return lower.includes('death') || 
+                                       lower.includes('die') ||
+                                       lower.includes('killed') ||
+                                       lower.includes('fall');
+                            });
+                        }
                     }
                     
                     if (clip) {
@@ -308,6 +427,26 @@ export default class Zombie {
                 this.scene.add(this.mesh);
             }
             
+            // Re-apply scale after adding to scene (in case it was reset)
+            // Use stored finalScale to ensure consistency
+            if (this.finalScale !== undefined) {
+                this.mesh.scale.setScalar(this.finalScale);
+                if (this.scaleMultiplier !== 1.0) {
+                    // Also update attack range again (in case scaleMultiplier was set after loadModel started)
+                    this.attackRange = this.baseAttackRange * this.scaleMultiplier;
+                    this._updateSpeed();
+                    console.log(`🔧 Re-applied FINAL scale after scene add: ${this.finalScale.toFixed(3)} (config.scale=${this.config.scale}, multiplier=${this.scaleMultiplier}), attack range: ${this.attackRange.toFixed(2)}, speed: ${this.currentSpeed.toFixed(3)}`);
+                }
+            } else if (this.scaleMultiplier !== 1.0) {
+                // Fallback if finalScale wasn't set yet
+                const finalScale = this.config.scale * this.scaleMultiplier;
+                this.mesh.scale.setScalar(finalScale);
+                this.finalScale = finalScale;
+                this.attackRange = this.baseAttackRange * this.scaleMultiplier;
+                this._updateSpeed();
+                console.log(`🔧 Re-applied scale after scene add (fallback): ${finalScale.toFixed(3)}, attack range: ${this.attackRange.toFixed(2)}`);
+            }
+            
             this.isPlaceholder = false;
             console.log(`✅ Loaded GLB model for ${this.config.name}`);
         } catch (error) {
@@ -355,6 +494,25 @@ export default class Zombie {
         console.log(`🎬 Playing animation: ${animType} for ${this.config.name}`);
         console.log(`   Action enabled: ${action.enabled}, weight: ${action.weight}, time: ${action.time}`);
         
+        // Handle movement sound when move animation starts
+        if (animType === 'move' && !this.isPlayingMovementSound && this.soundManager && this.mesh && !this.isDead) {
+            const animationName = this.config.animations.move || 'walk';
+            const movementSound = this.soundManager.playMovementSound(
+                this.type,
+                animationName,
+                this.mesh.position
+            );
+            if (movementSound) {
+                this.currentMovementSound = movementSound;
+                this.isPlayingMovementSound = true;
+            }
+        }
+        
+        // Stop movement sound when attack starts
+        if (animType === 'attack' && this.isPlayingMovementSound) {
+            this.stopMovementSound();
+        }
+        
         // Fade out current animation
         if (this.currentAnimationAction && this.currentAnimationAction !== action) {
             this.currentAnimationAction.fadeOut(0.2);
@@ -382,6 +540,15 @@ export default class Zombie {
                 if (action.isRunning()) {
                     console.log(`💀 Death anim playing - time: ${action.time.toFixed(2)}/${action.getClip().duration.toFixed(2)}, weight: ${action.getEffectiveWeight()}`);
                 }
+            }
+        }
+        
+        // Ensure scale stays locked to finalScale (prevent any accidental changes)
+        if (!this.isPlaceholder && this.finalScale !== undefined) {
+            const currentScale = this.mesh.scale.x; // Assuming uniform scaling
+            if (Math.abs(currentScale - this.finalScale) > 0.001) {
+                // Scale was changed - restore it
+                this.mesh.scale.setScalar(this.finalScale);
             }
         }
         
@@ -427,14 +594,40 @@ export default class Zombie {
         };
         const difficultyMultiplier = difficultyMultipliers[this.gameData.difficulty] || 1.0;
         
-        this.currentSpeed = this.baseSpeed * Math.max(1, speedMultiplier) * slowFactor * difficultyMultiplier;
+        // Base speed should already be scaled by scaleMultiplier (via _updateSpeed)
+        // But we need to apply it here too in case it wasn't set yet
+        const scaleSpeedMultiplier = this.scaleMultiplier || 1.0;
+        this.currentSpeed = this.baseSpeed * scaleSpeedMultiplier * Math.max(1, speedMultiplier) * slowFactor * difficultyMultiplier;
         
-        // Check if in attack range
-        if (this.distanceToPlayer < this.attackRange) {
-            if (!this.isAttacking) {
-                this.attack();
+        // Reaper boss: melee attack when close, projectiles when far
+        if (this.config.shootsProjectiles && this.config.isBoss) {
+            // Check if in melee range first
+            if (this.distanceToPlayer < this.attackRange) {
+                // In melee range - use melee attack (no projectiles)
+                if (!this.isAttacking) {
+                    this.attack(true); // Pass true to indicate melee attack (use runner sound)
+                }
+                return;
+            } else {
+                // Not in melee range - shoot projectiles
+                const currentTime = Date.now() / 1000;
+                if (currentTime - this.lastProjectileTime >= this.projectileCooldown) {
+                    this.shootProjectile();
+                    this.lastProjectileTime = currentTime;
+                }
             }
-            return;
+            
+            // Still move slowly toward player
+            // Continue with movement logic below
+        } else {
+            // Normal zombies use melee attack
+            // Check if in attack range
+            if (this.distanceToPlayer < this.attackRange) {
+                if (!this.isAttacking) {
+                    this.attack();
+                }
+                return;
+            }
         }
         
         // Move toward player (horizontal plane only)
@@ -449,14 +642,27 @@ export default class Zombie {
             
             // Crawlers "scuttle" side-to-side
             if (this.type === 'crawler') {
-                this.scuttleTime += deltaTime * 8;
-                const scuttleAmplitude = 0.3 * this.config.scale;
-                const sideOffset = Math.sin(this.scuttleTime) * scuttleAmplitude;
+                const scuttleSpeed = 2.0; // Oscillation speed (frequency)
+                const scuttleAmplitude = 1 * this.config.scale; // Maximum distance from center
+                
+                // Update scuttle time for oscillation
+                this.scuttleTime += deltaTime * scuttleSpeed;
+                
+                // Calculate current target offset (where we want to be)
+                const targetOffset = Math.sin(this.scuttleTime) * scuttleAmplitude;
+                
+                // Calculate velocity needed to reach target (maintains constant distance)
+                const scuttleVelocity = (targetOffset - this.lastScuttleOffset) / deltaTime;
                 
                 // Side vector perpendicular to direction
                 const side = new THREE.Vector3(-direction.z, 0, direction.x).normalize();
-                this.mesh.position.x += side.x * sideOffset;
-                this.mesh.position.z += side.z * sideOffset;
+                
+                // Apply movement based on velocity to maintain constant distance
+                this.mesh.position.x += side.x * scuttleVelocity * deltaTime;
+                this.mesh.position.z += side.z * scuttleVelocity * deltaTime;
+                
+                // Update last offset for next frame
+                this.lastScuttleOffset = targetOffset;
             }
             
             // Face direction
@@ -468,13 +674,50 @@ export default class Zombie {
                 this.playAnimation('move');
             }
         }
+        
+        // Update movement sound position if playing
+        if (this.currentMovementSound && this.currentMovementSound.isPlaying) {
+            this.currentMovementSound.position.copy(this.mesh.position);
+        }
+        
+        // Groan sound logic - randomly groan every 2 seconds (or every 3 seconds for reaper)
+        if (this.soundManager && !this.isDead && !this.isAttacking) {
+            this.groanTimer += deltaTime;
+            // Reaper groans every 3 seconds, other zombies use random intervals
+            const groanInterval = (this.type === 'reaper') ? 3.0 : this.groanInterval;
+            if (this.groanTimer >= groanInterval) {
+                if (this.type === 'reaper' || Math.random() < 0.3) { // Reaper always groans, others 30% chance
+                    this.playGroan();
+                }
+                this.groanTimer = 0;
+                // Reaper always uses 3 seconds, others use random interval
+                if (this.type !== 'reaper') {
+                    this.groanInterval = 1.5 + Math.random(); // Reset for next random interval (1.5-2.5 seconds)
+                }
+            }
+        }
+        
+        // Update projectiles for reaper boss
+        if (this.config && this.config.shootsProjectiles) {
+            this.updateProjectiles(deltaTime);
+        }
     }
     
-    attack() {
+    attack(isMeleeAttack = false) {
         if (this.isAttacking) return;
         
         this.isAttacking = true;
         console.log(`💥 ${this.config.name} attacking! Damage: ${this.config.damage}`);
+        
+        // Stop movement sound when attacking
+        this.stopMovementSound();
+        
+        // Play attack sound
+        // For reaper melee attacks, use runner sound; otherwise use zombie's own sound
+        if (this.soundManager && this.mesh) {
+            const soundType = (isMeleeAttack && this.type === 'reaper') ? 'runner' : this.type;
+            this.soundManager.playAttackSound(soundType, this.mesh.position);
+        }
         
         // Play attack animation
         this.playAnimation('attack');
@@ -653,7 +896,41 @@ export default class Zombie {
         }
     }
     
+    /**
+     * Play a groan sound
+     */
+    playGroan() {
+        if (!this.soundManager || this.isDead || this.isAttacking || !this.mesh) return;
+        
+        this.soundManager.playGroan(this.type, this.mesh.position);
+    }
+    
+    /**
+     * Stop movement sound
+     */
+    stopMovementSound() {
+        if (this.currentMovementSound && this.currentMovementSound.isPlaying) {
+            this.currentMovementSound.stop();
+            this.currentMovementSound.disconnect();
+            this.currentMovementSound = null;
+        }
+        this.isPlayingMovementSound = false;
+    }
+    
     remove() {
+        // Stop all sounds
+        this.stopMovementSound();
+        
+        // Destroy all projectiles
+        if (this.projectiles && this.projectiles.length > 0) {
+            this.projectiles.forEach(projectile => {
+                if (projectile && !projectile.isDestroyed) {
+                    projectile.destroy();
+                }
+            });
+            this.projectiles = [];
+        }
+        
         // Stop all animations
         if (this.mixer) {
             Object.values(this.animations).forEach(action => {
@@ -690,5 +967,77 @@ export default class Zombie {
                 }
             });
         }
+    }
+    
+    /**
+     * Shoot a projectile at the player (reaper boss only)
+     */
+    shootProjectile() {
+        if (!this.config.shootsProjectiles || !this.mesh || this.isDead) return;
+        
+        // Get position from the model (mesh is replaced with model after loading)
+        // Use world position to get the actual model position in the scene
+        const worldPosition = new THREE.Vector3();
+        this.mesh.getWorldPosition(worldPosition);
+        
+        // Scale the Y offset based on the model's scale (for 3x reaper, offset should be 3x too)
+        const modelScale = this.mesh.scale.x; // Assuming uniform scaling
+        const startPosition = worldPosition.clone();
+        startPosition.y += 1.5 * modelScale; // Shoot from upper body, scaled with model size
+        
+        const targetPosition = this.camera.position.clone();
+        
+        // Play attack sound when shooting projectile
+        if (this.soundManager) {
+            console.log(`⚡ Reaper shooting projectile, playing attack sound at`, startPosition);
+            this.soundManager.playAttackSound(this.type, startPosition);
+        } else {
+            console.warn(`⚠️ Sound manager not available for reaper projectile sound`);
+        }
+        
+        const projectile = new ReaperProjectile(startPosition, targetPosition, this.scene);
+        this.projectiles.push(projectile);
+    }
+    
+    /**
+     * Update projectiles
+     * @param {number} deltaTime 
+     */
+    updateProjectiles(deltaTime) {
+        if (!this.config.shootsProjectiles) return;
+        
+        // Ensure projectiles array exists
+        if (!this.projectiles) {
+            this.projectiles = [];
+            return;
+        }
+        
+        // Update and check projectiles
+        this.projectiles = this.projectiles.filter(projectile => {
+            if (projectile.isDestroyed) {
+                return false;
+            }
+            
+            projectile.update(deltaTime);
+            
+            // Check if projectile hit player
+            if (projectile.checkHit(this.camera.position, 0.8)) {
+                // Deal damage to player
+                if (this.damagePlayer) {
+                    this.damagePlayer(this.config.damage);
+                }
+                projectile.destroy();
+                return false;
+            }
+            
+            // Remove if too far away
+            const distance = projectile.position.distanceTo(this.mesh.position);
+            if (distance > 50) {
+                projectile.destroy();
+                return false;
+            }
+            
+            return true;
+        });
     }
 }

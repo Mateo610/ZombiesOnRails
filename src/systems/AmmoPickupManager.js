@@ -65,20 +65,22 @@ export class AmmoPickupManager {
         const idx = this.ammoPickups.indexOf(pickupInstance);
         if (idx !== -1) this.ammoPickups.splice(idx, 1);
         
-        // Get current weapon ID
-        const currentWeaponId = this.getCurrentWeaponId();
-        
-        // Only add ammo if pickup matches current weapon
-        // This ensures ammo goes to the correct weapon
-        if (weaponType === currentWeaponId) {
+        // Update the specific weapon's ammo pool
+        if (this.gameData.weaponAmmo && this.gameData.weaponAmmo[weaponType]) {
+            const weaponAmmo = this.gameData.weaponAmmo[weaponType];
             const maxReserve = this.getMaxReserveForWeapon(weaponType);
-            const currentReserve = this.gameData.reserveAmmo || 0;
             
-            // Add ammo to reserve, capping at max
-            this.gameData.reserveAmmo = Math.min(currentReserve + ammoAmount, maxReserve);
+            // Add ammo to the specific weapon's reserve, capping at max
+            weaponAmmo.reserve = Math.min(weaponAmmo.reserve + ammoAmount, maxReserve);
+            
+            // Also sync legacy property for backward compatibility (use current weapon's reserve)
+            const currentWeaponId = this.getCurrentWeaponId();
+            if (this.gameData.weaponAmmo[currentWeaponId]) {
+                this.gameData.reserveAmmo = this.gameData.weaponAmmo[currentWeaponId].reserve;
+            }
+        } else {
+            console.warn(`⚠️ Weapon ammo pool not found for ${weaponType}`);
         }
-        // If pickup doesn't match current weapon, ammo is lost
-        // Future enhancement: track per-weapon ammo and apply on weapon switch
         
         const weaponLabel = {
             pistol: 'PISTOL',

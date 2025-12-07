@@ -471,6 +471,7 @@ export class RailMovementManager {
         // Path 0 goes to Scene 1, Path 1 goes to Scene 2, etc.
         // So if we're at Scene 0, use Path 0; if at Scene 1, use Path 1
         const targetPathIndex = this.gameData.currentScene;
+        const nextSceneIndex = this.gameData.currentScene + 1;
         
         // Check if we have a valid path for the next scene
         if (targetPathIndex >= this.paths.length) {
@@ -484,7 +485,6 @@ export class RailMovementManager {
         this.currentPathIndex = targetPathIndex;
         
         // Preload models for the next scene during rail movement
-        const nextSceneIndex = this.gameData.currentScene + 1;
         if (nextSceneIndex < CAMERA_SCENES.length) {
             const nextScene = CAMERA_SCENES[nextSceneIndex];
             if (nextScene && nextScene.spawnPoints) {

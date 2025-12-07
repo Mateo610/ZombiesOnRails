@@ -102,7 +102,8 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
     const ammoPickups = ammoPickupsRef ? ammoPickupsRef() : [];
     const ammoPickupGroups = ammoPickups.map(p => p.group);
     const lockMeshes = lockManagerRef && lockManagerRef.isActive() ? lockManagerRef.getLockMeshes() : [];
-    const intersects = raycaster.intersectObjects([scene.getObjectByName('ground') || null, ...zombieMeshes, ...powerUpGroups, ...ammoPickupGroups, ...lockMeshes].filter(Boolean), true);
+    const projectileGroups = zombieManager.getProjectiles ? zombieManager.getProjectiles() : [];
+    const intersects = raycaster.intersectObjects([scene.getObjectByName('ground') || null, ...zombieMeshes, ...powerUpGroups, ...ammoPickupGroups, ...lockMeshes, ...projectileGroups].filter(Boolean), true);
     
     if (intersects.length > 0) {
         const hitObject = intersects[0].object;
@@ -138,6 +139,23 @@ export function shoot(mouseX, mouseY, currentWeaponId) {
             }
             if (updateUIFn) updateUIFn();
             return;
+        }
+        
+        // Check for reaper projectiles first (can be shot out of the air)
+        if (hitObject.userData.isReaperProjectile && hitObject.userData.projectile) {
+            const projectile = hitObject.userData.projectile;
+            if (!projectile.isDestroyed) {
+                // Destroy projectile
+                projectile.destroy();
+                gameData.shotsHit++;
+                console.log('⚡ Shot reaper projectile out of the air!');
+                
+                // Create impact effect
+                createImpactSphere(hitPoint, 0x00ffff);
+                
+                if (updateUIFn) updateUIFn();
+                return;
+            }
         }
         
         if (hitObject.userData.isZombie) {

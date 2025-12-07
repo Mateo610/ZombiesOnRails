@@ -5,9 +5,10 @@ import * as THREE from 'three';
  * Creates a black dust cloud that rises from the ground before a zombie spawns
  */
 export class SpawnDustEffect {
-    constructor(position, scene) {
+    constructor(position, scene, scaleMultiplier = 1.0) {
         this.position = position.clone();
         this.scene = scene;
+        this.scaleMultiplier = scaleMultiplier; // Scale to match zombie size
         this.duration = 1.5; // Total duration in seconds
         this.elapsed = 0;
         this.active = true;
@@ -23,13 +24,15 @@ export class SpawnDustEffect {
         // Add to scene
         this.scene.add(this.particleGroup);
         
-        console.log(`🌪️ Created dust effect at ${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)}`);
+        console.log(`🌪️ Created dust effect at ${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)} with scale ${scaleMultiplier.toFixed(2)}`);
     }
     
     _createParticles() {
         // Create dense black dust particles to completely hide zombie spawn
         for (let i = 0; i < this.particleCount; i++) {
-            const size = 0.15 + Math.random() * 0.25; // Larger particles for dense cloud
+            // Scale particle size with zombie scale
+            const baseSize = 0.15 + Math.random() * 0.25; // Larger particles for dense cloud
+            const size = baseSize * this.scaleMultiplier;
             const geometry = new THREE.SphereGeometry(size, 8, 8);
             const material = new THREE.MeshStandardMaterial({
                 color: 0x1a1a1a, // Very dark gray/black
@@ -43,20 +46,23 @@ export class SpawnDustEffect {
             const particle = new THREE.Mesh(geometry, material);
             
             // Random starting position around spawn point (on ground)
-            // Dense distribution to create solid cloud
+            // Scale spread radius with zombie scale
             const angle = Math.random() * Math.PI * 2;
-            const radius = Math.random() * 1.2; // Wider spread for full coverage
+            const baseRadius = Math.random() * 1.2; // Wider spread for full coverage
+            const radius = baseRadius * this.scaleMultiplier;
+            const baseVerticalSpread = Math.random() * 0.3;
+            const verticalSpread = baseVerticalSpread * this.scaleMultiplier;
             particle.position.set(
                 this.position.x + Math.cos(angle) * radius,
-                this.position.y + Math.random() * 0.3, // Spread vertically from ground
+                this.position.y + verticalSpread, // Spread vertically from ground
                 this.position.z + Math.sin(angle) * radius
             );
             
-            // Random velocity (upward and outward)
+            // Random velocity (upward and outward) - scale with zombie size
             particle.userData.velocity = new THREE.Vector3(
-                (Math.random() - 0.5) * 0.5, // More horizontal spread
-                Math.random() * 0.8 + 0.5, // Stronger upward velocity
-                (Math.random() - 0.5) * 0.5 // More horizontal spread
+                (Math.random() - 0.5) * 0.5 * this.scaleMultiplier, // More horizontal spread
+                (Math.random() * 0.8 + 0.5) * this.scaleMultiplier, // Stronger upward velocity
+                (Math.random() - 0.5) * 0.5 * this.scaleMultiplier // More horizontal spread
             );
             
             // Random rotation

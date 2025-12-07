@@ -70,11 +70,8 @@ export default class AmmoPickup {
         // Load the actual model
         this._loadModel(weaponType, color);
 
-        // Particle-like lights for visibility (not for rifle)
+        // No particle lights for ammo pickups
         this.particleLights = [];
-        if (weaponType !== 'rifle') {
-            this._createParticleLights(color);
-        }
 
         // Animation state
         this.baseY = position.y;
@@ -186,8 +183,17 @@ export default class AmmoPickup {
                 return;
             }
             
-            // Apply scale - rifle is 1/20th size (1/2 of 1/10th), others are normal
-            const scale = weaponType === 'rifle' ? 0.015 : 0.3;
+            // Apply scale - rifle is 1/20th, shotgun is 1/30th of original, pistol is 7x current
+            let scale;
+            if (weaponType === 'rifle') {
+                scale = 0.015; // 1/20th of original
+            } else if (weaponType === 'shotgun') {
+                scale = 0.01; // 1/30th of original (0.3 / 30)
+            } else if (weaponType === 'pistol') {
+                scale = 1.05; // 7x current size (0.15 * 7)
+            } else {
+                scale = 0.3; // Default
+            }
             modelGroup.scale.setScalar(scale);
             
             // Setup the model
@@ -199,30 +205,18 @@ export default class AmmoPickup {
                     child.userData.weaponType = this.weaponType;
                     child.userData.ammoPickup = this;
 
-                    // Apply emissive glow to match the color scheme (except for rifle)
+                    // Remove emission from all ammo pickups (no glow)
                     if (child.material) {
                         if (Array.isArray(child.material)) {
                             child.material.forEach(mat => {
                                 if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
-                                    if (weaponType === 'rifle') {
-                                        // Remove emission for rifle
-                                        mat.emissive = new THREE.Color(0x000000);
-                                        mat.emissiveIntensity = 0;
-                                    } else {
-                                        mat.emissive = new THREE.Color(color);
-                                        mat.emissiveIntensity = 0.5;
-                                    }
+                                    mat.emissive = new THREE.Color(0x000000);
+                                    mat.emissiveIntensity = 0;
                                 }
                             });
                         } else if (child.material.isMeshStandardMaterial || child.material.isMeshPhysicalMaterial) {
-                            if (weaponType === 'rifle') {
-                                // Remove emission for rifle
-                                child.material.emissive = new THREE.Color(0x000000);
-                                child.material.emissiveIntensity = 0;
-                            } else {
-                                child.material.emissive = new THREE.Color(color);
-                                child.material.emissiveIntensity = 0.5;
-                            }
+                            child.material.emissive = new THREE.Color(0x000000);
+                            child.material.emissiveIntensity = 0;
                         }
                     }
                 }

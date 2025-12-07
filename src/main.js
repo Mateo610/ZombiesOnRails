@@ -30,6 +30,7 @@ import { CameraEffectsManager } from './systems/CameraEffectsManager.js';
 import { GameFlowManager } from './systems/GameFlowManager.js';
 import { SceneSetupManager } from './systems/SceneSetupManager.js';
 import { LockManager } from './systems/LockManager.js';
+import { ZombieSoundManager } from './systems/ZombieSoundManager.js';
 
 // ============================================================================
 // THREE.JS SETUP
@@ -123,6 +124,13 @@ let ammoPickupManager = new AmmoPickupManager(
     () => currentWeaponId // Pass function to get current weapon ID
 );
 
+// Audio Listener for 3D sounds (attached to camera)
+const audioListener = new THREE.AudioListener();
+camera.add(audioListener);
+
+// Zombie Sound Manager
+const zombieSoundManager = new ZombieSoundManager(audioListener);
+
 // Zombie Manager
 const zombieManager = new ZombieManager(
     scene,
@@ -132,8 +140,17 @@ const zombieManager = new ZombieManager(
     () => playerManager.incrementCombo()
 );
 
+// Set sound manager for zombies
+zombieManager.setSoundManager(zombieSoundManager);
+
+// Preload zombie sounds (non-blocking)
+zombieSoundManager.preloadSounds().catch(error => {
+    console.warn('⚠️ Failed to preload zombie sounds:', error);
+});
+
 // Weapon Model Manager
-const weaponModelManager = new WeaponModelManager(scene, camera);
+// Initialize weapon model manager after crosshair manager is created
+let weaponModelManager;
 
 // ============================================================================
 // SCENE SETUP MANAGER
@@ -1185,6 +1202,9 @@ createUI();
 // ============================================================================
 crosshairManager = new CrosshairManager();
 crosshairManager.init('crosshair');
+
+// Initialize weapon model manager with crosshair manager reference
+weaponModelManager = new WeaponModelManager(scene, camera, crosshairManager);
 
 // ============================================================================
 // UI EFFECTS MANAGER
