@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import PowerUp from '../powerups/PowerUp.js';
-import { POWERUP_SPAWN_POSITIONS } from '../core/SceneConfig.js';
+import HealthBottle from '../powerups/HealthBottle.js';
+import { POWERUP_SPAWN_POSITIONS, HEALTH_BOTTLE_SPAWN_POSITIONS } from '../core/SceneConfig.js';
 
 /**
 * PowerUpManager
@@ -27,7 +28,12 @@ const pos = position instanceof THREE.Vector3
 ? position 
 : new THREE.Vector3(position.x, position.y, position.z);
 
+// Use HealthBottle for health type, regular PowerUp for others
+if (type === 'health') {
+powerUp = new HealthBottle(pos, this.scene, onCollect);
+} else {
 powerUp = new PowerUp(pos, type, this.scene, onCollect);
+}
 // PowerUp constructor already sets group.visible = false until model loads
 this.powerUps.push(powerUp);
 }
@@ -42,7 +48,7 @@ positions.length,
 );
 
 const availableIndices = positions.map((_, i) => i);
-const types = ['health', 'ammo', 'double_damage', 'slow_mo'];
+const types = ['ammo', 'double_damage', 'slow_mo']; // Removed 'health' - health bottles spawn separately
 
 for (let i = 0; i < numToSpawn; i++) {
 if (availableIndices.length === 0) break;
@@ -53,6 +59,16 @@ const posIndex = availableIndices.splice(index, 1)[0];
 const type = types[Math.floor(Math.random() * types.length)];
 this.spawnPowerUp(positions[posIndex], type);
 }
+}
+
+spawnSceneHealthBottles(sceneIndex) {
+const positions = HEALTH_BOTTLE_SPAWN_POSITIONS[sceneIndex] || [];
+if (positions.length === 0) return;
+
+// Spawn all health bottles in the scene
+positions.forEach(position => {
+this.spawnPowerUp(position, 'health');
+});
 }
 
 clear() {
@@ -76,9 +92,11 @@ this.showPowerUpMessage(`POWER-UP: ${typeLabel}`);
 
 switch (type) {
 case 'health':
+// Add one heart (20 health per heart, 5 hearts = 100 max health)
+const healthPerHeart = this.gameData.maxHealth / 5; // 20 health per heart
 this.gameData.health = Math.min(
 this.gameData.maxHealth,
-this.gameData.health + 30
+this.gameData.health + healthPerHeart
 );
 break;
 case 'ammo':

@@ -371,6 +371,7 @@ zombieManager.setLockManager(null);
 // Spawn zombies for the new scene
 spawnSceneZombies();
 powerUpManager.spawnScenePowerUps(gameData.currentScene);
+powerUpManager.spawnSceneHealthBottles(gameData.currentScene);
 ammoPickupManager.spawnSceneAmmoPickups(gameData.currentScene);
 showSceneTitle();
 

@@ -168,14 +168,8 @@ if (this._isSamePositionPath) {
 // Don't move camera position (already at target), only rotate lookAt
 // Position stays the same throughout
 } else {
-// Get position along spline curve for X and Z
-const splinePos = this.splineCurve.getPointAt(easedProgress);
-
-// Keep Y constant at the starting height - no height changes during rail movement
-const constantY = this._startY !== undefined ? this._startY : this.camera.position.y;
-
-// Combine spline X/Z with constant Y
-const currentPos = new THREE.Vector3(splinePos.x, constantY, splinePos.z);
+// Get position along spline curve
+const currentPos = this.splineCurve.getPointAt(easedProgress);
 
 // CRITICAL: Update camera position directly - nothing should override this
 this.camera.position.copy(currentPos);
@@ -568,16 +562,12 @@ const waypoints = this.currentPath.waypoints;
 // This ensures smooth movement from wherever the camera is now
 const startPos = new THREE.Vector3().copy(this.camera.position);
 
-// Store starting Y position - Y will remain constant throughout rail movement
-this._startY = this.camera.position.y;
-
 // Convert waypoints to Vector3 array
-// Use starting Y for all waypoints to keep them on the same level
 const points = [startPos]; // Start from current position
 
-// Add all waypoints, but use starting Y instead of waypoint Y to keep level
+// Add all waypoints
 waypoints.forEach(wp => {
-points.push(new THREE.Vector3(wp.x, this._startY, wp.z));
+points.push(new THREE.Vector3(wp.x, wp.y, wp.z));
 });
 
 const endPos = points[points.length - 1];
@@ -740,17 +730,8 @@ this.onMovementComplete = onComplete;
 // Get current camera position
 const startPos = new THREE.Vector3().copy(this.camera.position);
 
-// Store starting Y position - Y will remain constant throughout rail movement
-this._startY = this.camera.position.y;
-
 // Create spline from current position to exact target
-// Use starting Y for target position to keep level
-const targetPos = new THREE.Vector3(
-this.exactTargetPosition.x,
-this._startY,
-this.exactTargetPosition.z
-);
-const points = [startPos, targetPos];
+const points = [startPos, this.exactTargetPosition];
 
 try {
 this.splineCurve = new THREE.CatmullRomCurve3(points, false, 'centripetal');

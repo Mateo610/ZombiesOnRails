@@ -467,6 +467,7 @@ this.powerUpManager.clear();
 // Spawn zombies for the new scene
 this.spawnSceneZombies();
 this.powerUpManager.spawnScenePowerUps(gameData.currentScene);
+this.powerUpManager.spawnSceneHealthBottles(gameData.currentScene);
 this.showSceneTitle();
 
 // Set state back to gameplay

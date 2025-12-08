@@ -275,6 +275,63 @@ export const POWERUP_SPAWN_POSITIONS = [
     ]
 ];
 
+// Fixed positions per scene for spawning health bottles
+// Only shooting scenes have health bottles
+export const HEALTH_BOTTLE_SPAWN_POSITIONS = [
+    // Scene 0 (WP1) - Shooting Scene - Intro
+    [
+        new THREE.Vector3(0, 1, -7)
+    ],
+    // Scene 1 (WP2) - Shooting Scene - Second Encounter
+    [
+        new THREE.Vector3(10.5, 1, 9.5)
+    ],
+    // Scene 2 (WP3) - Travel Scene - No health bottles
+    [],
+    // Scene 3 (WP4) - Travel Scene - No health bottles
+    [],
+    // Scene 4 (WP5) - Shooting Scene - Third Encounter
+    [
+        new THREE.Vector3(-1, 1, 7.5)
+    ],
+    // Scene 5 (WP6) - Shooting Scene - Extended Encounter
+    [
+        new THREE.Vector3(1.5, 1, -2.5)
+    ],
+    // Scene 6 (WP7) - Travel Scene - No health bottles
+    [],
+    // Scene 7 (WP8) - Travel Scene - No health bottles
+    [],
+    // Scene 8 (WP9) - Shooting Scene - Fifth Encounter
+    [
+        new THREE.Vector3(-6, 1, -1)
+    ],
+    // Scene 9 (WP10) - Shooting Scene - Sixth Encounter
+    [
+        new THREE.Vector3(-6.5, 1, 8)
+    ],
+    // Scene 10 (WP11) - Travel Scene - No health bottles
+    [],
+    // Scene 11 (WP12) - Travel Scene - No health bottles
+    [],
+    // Scene 12 (WP13) - Lock Scene - No health bottles (just lock)
+    [],
+    // Scene 13 (WP14) - Shooting Scene - Post-Lock Encounter
+    [
+        new THREE.Vector3(-5, 1, 13)
+    ],
+    // Scene 14 (WP15) - Travel Scene - No health bottles
+    [],
+    // Scene 15 - Warehouse Interior
+    [
+        new THREE.Vector3(-3, 0.5, -5.5)
+    ],
+    // Scene 16 - Warehouse Interior Final
+    [
+        new THREE.Vector3(-6, 0.5, -2)
+    ]
+];
+
 // Fixed positions per scene for spawning ammo pickups
 // Format: { x, y, z, weaponType: 'pistol' | 'shotgun' | 'rifle' }
 // Only shooting scenes have ammo pickups (scenes 0, 1, 4, 5, 7, 9, 12)

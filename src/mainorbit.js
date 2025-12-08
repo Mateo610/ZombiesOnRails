@@ -410,6 +410,7 @@ camera.lookAt(startLookAt);
 gameData.currentState = GameState.GAMEPLAY;
 spawnSceneZombies();
 powerUpManager.spawnScenePowerUps(gameData.currentScene);
+powerUpManager.spawnSceneHealthBottles(gameData.currentScene);
 showSceneTitle();
 })
 .start();
@@ -418,6 +419,7 @@ showSceneTitle();
 gameData.currentState = GameState.GAMEPLAY;
 spawnSceneZombies();
 powerUpManager.spawnScenePowerUps(gameData.currentScene);
+powerUpManager.spawnSceneHealthBottles(gameData.currentScene);
 showSceneTitle();
 }
 }
@@ -511,6 +513,7 @@ zombieManager.clearZombies();
 if (factorySceneLoaded || gameData.currentScene > 0) {
 spawnSceneZombies();
 powerUpManager.spawnScenePowerUps(gameData.currentScene);
+powerUpManager.spawnSceneHealthBottles(gameData.currentScene);
 if (!isFirstGameStart) {
 showSceneTitle();
 }

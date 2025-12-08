@@ -220,6 +220,7 @@ const factoryLoaded = this.factorySceneLoaded();
 if (factoryLoaded || gameData.currentScene > 0) {
 this.spawnSceneZombies();
 this.powerUpManager.spawnScenePowerUps(gameData.currentScene);
+this.powerUpManager.spawnSceneHealthBottles(gameData.currentScene);
 if (!this.isFirstGameStart) {
 this.showSceneTitle(gameData, CAMERA_SCENES);
 }
