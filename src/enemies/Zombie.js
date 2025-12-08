@@ -68,7 +68,7 @@ die: 'Armature|die'
 },
 reaper: {
 name: 'Grim Reaper',
-health: 3000,
+health: 2000,
 speed: 0.2, // Very slow
 damage: 30, // Projectile damage
 points: 1000,

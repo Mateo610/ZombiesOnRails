@@ -84,7 +84,7 @@ color: #ffffff;
 text-shadow: 0 0 8px #ffffff, 2px 2px 4px #000;
 font-weight: bold;
 ">
-<span id="boss-health-current">3000</span> / <span id="boss-health-max">3000</span>
+<span id="boss-health-current">2000</span> / <span id="boss-health-max">2000</span>
 </div>
 </div>
 
@@ -1380,7 +1380,7 @@ bossHealthBar.style.display = 'block';
 
 // Update health values
 const currentHealth = Math.max(0, reaper.health);
-const maxHealth = reaper.config.health || 3000;
+const maxHealth = reaper.config.health || 2000;
 const healthPercent = (currentHealth / maxHealth) * 100;
 
 // Update fill bar
@@ -1924,7 +1924,7 @@ const accuracy = gameData.shotsFired > 0
 ? Math.round((gameData.shotsHit / gameData.shotsFired) * 100)
 : 0;
 
-const scores = JSON.parse(localStorage.getItem('zombieRailShooterScores') || '[]');
+const scores = JSON.parse(localStorage.getItem('callOfTheFeralScores') || '[]');
 
 scores.push({
 score: gameData.score,
@@ -1939,7 +1939,7 @@ date: new Date().toLocaleDateString()
 scores.sort((a, b) => b.score - a.score);
 const topScores = scores.slice(0, 5);
 
-localStorage.setItem('zombieRailShooterScores', JSON.stringify(topScores));
+localStorage.setItem('callOfTheFeralScores', JSON.stringify(topScores));
 
 if (gameData.score > (gameData.bestScore || 0)) {
 gameData.bestScore = gameData.score;
@@ -1948,7 +1948,7 @@ localStorage.setItem('bestScore', gameData.score);
 }
 
 function updateLeaderboard() {
-const scores = JSON.parse(localStorage.getItem('zombieRailShooterScores') || '[]');
+const scores = JSON.parse(localStorage.getItem('callOfTheFeralScores') || '[]');
 
 let html = '';
 if (scores.length === 0) {
