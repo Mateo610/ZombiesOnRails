@@ -11,7 +11,7 @@ import * as THREE from 'three';
 */
 
 export const CAMERA_SCENES = [
-// Scene 0 (Waypoint 1) - SHOOTING SCENE
+    // Scene 0 (Waypoint 1) - SHOOTING SCENE
     {
         name: "Scene 0 - Intro",
         position: { x: 12.38, y: 1.11, z: 0.16 },
@@ -150,7 +150,7 @@ export const CAMERA_SCENES = [
     {
         name: "Scene 12 - Lock Scene",
         position: { x: -7.16, y: 1.11, z: 4.58 }, // Duplicate of WP12 for pause
-        lookAt: { x: -5.78, y: 1.11, z: 9.64 },
+        lookAt: { x: -16.55, y: 1.11, z: 8.55 },
         type: "shooting", // Keep as shooting for free aim, but no zombie spawns
         transitionDuration: 3000,
         spawnPoints: [] // No zombies - just the lock
