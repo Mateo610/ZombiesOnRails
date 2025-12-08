@@ -192,6 +192,23 @@ this.camera.rotation.x = 0;
 }
 
 /**
+* Reset mouse position tracking to current mouse position or center
+* This prevents large deltas when the mouse is at a different position
+* @param {number} mouseX - Optional mouse X position (defaults to center)
+* @param {number} mouseY - Optional mouse Y position (defaults to center)
+*/
+resetMousePosition(mouseX = null, mouseY = null) {
+if (mouseX !== null && mouseY !== null) {
+this.lastMouseX = mouseX;
+this.lastMouseY = mouseY;
+} else {
+// Default to center of screen
+this.lastMouseX = window.innerWidth / 2;
+this.lastMouseY = window.innerHeight / 2;
+}
+}
+
+/**
 * Clean up event listeners
 */
 dispose() {

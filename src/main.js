@@ -385,10 +385,18 @@ gameData.gameStarted = true;
 // Enable crosshair and center it
 if (crosshairManager) {
 crosshairManager.enable();
-crosshairManager.center(); // Reset crosshair to center
+// Pass mouseLookManager to sync mouse position and prevent snap
+crosshairManager.center(mouseLookManager); // Reset crosshair to center
 if (crosshairManager.crosshairElement) {
 crosshairManager.crosshairElement.style.display = 'block';
 }
+// Force center again after a short delay to ensure it's properly centered
+// This is especially important for Scene 12 (lock scene)
+setTimeout(() => {
+if (crosshairManager) {
+crosshairManager.center(mouseLookManager);
+}
+}, 100);
 }
 
 // CRITICAL: Clear rail movement flags immediately

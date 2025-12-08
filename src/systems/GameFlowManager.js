@@ -203,7 +203,9 @@ this.renderManager.updateCallbacks.freeCamera.enabled = false;
 // Enable crosshair at game start and center it
 if (this.crosshairManager) {
 this.crosshairManager.enable();
-this.crosshairManager.center(); // Reset crosshair to center at game start
+// Pass mouseLookManager if available to sync mouse position
+const mouseLookMgr = this.sceneCameraManager?.mouseLookManager || null;
+this.crosshairManager.center(mouseLookMgr); // Reset crosshair to center at game start
 if (this.crosshairManager.crosshairElement) {
 this.crosshairManager.crosshairElement.style.display = 'block';
 }

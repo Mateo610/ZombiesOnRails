@@ -188,7 +188,9 @@ gameData.currentState = GameState.GAMEPLAY;
 // Enable crosshair and center it
 if (this.crosshairManager) {
 this.crosshairManager.enable();
-this.crosshairManager.center(); // Reset crosshair to center at start of scene
+// Pass mouseLookManager if available to sync mouse position
+const mouseLookMgr = this.sceneCameraManager?.mouseLookManager || null;
+this.crosshairManager.center(mouseLookMgr); // Reset crosshair to center at start of scene
 if (this.crosshairManager.crosshairElement) {
 this.crosshairManager.crosshairElement.style.display = 'block';
 }

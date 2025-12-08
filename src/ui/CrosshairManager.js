@@ -154,8 +154,9 @@ y: this.mouseScreenY
 /**
 * Center the crosshair (useful for reset or disabled states)
 * Immediately snaps to center position
+* @param {MouseLookManager} mouseLookManager - Optional MouseLookManager to sync mouse position
 */
-center() {
+center(mouseLookManager = null) {
 const centerX = window.innerWidth / 2;
 const centerY = window.innerHeight / 2;
 
@@ -169,12 +170,29 @@ this.mouseY = 0;
 this.mouseScreenX = centerX;
 this.mouseScreenY = centerY;
 
+// Sync MouseLookManager's mouse position to prevent snap on first move
+if (mouseLookManager && typeof mouseLookManager.resetMousePosition === 'function') {
+// Get current mouse position if available, otherwise use center
+const currentMouseX = this.mouseScreenX || centerX;
+const currentMouseY = this.mouseScreenY || centerY;
+mouseLookManager.resetMousePosition(currentMouseX, currentMouseY);
+}
+
 // Immediately update the crosshair position
 if (this.crosshairElement) {
 const crosshairOffsetX = this.currentX - 20; // Half of 40px width
 const crosshairOffsetY = this.currentY - 20; // Half of 40px height
 this.crosshairElement.style.transform = `translate(${crosshairOffsetX}px, ${crosshairOffsetY}px)`;
 }
+
+// Force update on next frame to ensure position is applied
+requestAnimationFrame(() => {
+if (this.crosshairElement) {
+const crosshairOffsetX = this.currentX - 20;
+const crosshairOffsetY = this.currentY - 20;
+this.crosshairElement.style.transform = `translate(${crosshairOffsetX}px, ${crosshairOffsetY}px)`;
+}
+});
 }
 
 /**
